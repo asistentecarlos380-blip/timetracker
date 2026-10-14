@@ -6,193 +6,353 @@
     <title>Control de Asistencia</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 650px; }
+        body { background: #f0f2f5; margin: 0; padding: 15px; display: flex; justify-content: center; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 850px; }
         h2, h3 { color: #1a73e8; margin-top: 0; text-align: center; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: 600; color: #333; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
-        button { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 4px; font-weight: 600; color: #333; font-size: 14px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        button { width: 100%; padding: 11px; background: #1a73e8; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; }
         button:hover { background: #1557b0; }
         .btn-danger { background: #dc3545; }
         .btn-danger:hover { background: #bd2130; }
         .btn-success { background: #28a745; }
         .btn-success:hover { background: #218838; }
+        .btn-warning { background: #ffc107; color: #000; }
+        .btn-warning:hover { background: #e0a800; }
+        .btn-info { background: #17a2b8; }
+        .btn-info:hover { background: #138496; }
         .hidden { display: none; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background: #1a73e8; color: white; }
-        .badge-open { background: #ffc107; color: #000; padding: 3px 8px; border-radius: 4px; font-size: 12px; }
-        .badge-close { background: #28a745; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+        .badge-open { background: #ffc107; color: #000; padding: 3px 6px; border-radius: 4px; font-size: 11px; }
+        .badge-close { background: #28a745; color: #fff; padding: 3px 6px; border-radius: 4px; font-size: 11px; }
         .msg { padding: 10px; border-radius: 6px; margin-top: 10px; text-align: center; font-weight: bold; }
         .msg-success { background: #d4edda; color: #155724; }
         .msg-error { background: #f8d7da; color: #721c24; }
         .logout-btn { background: #6c757d; margin-top: 20px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <!-- VISTA DE LOGIN -->
+    <!-- VISTA PRINCIPAL LOGIN / MARCAJE -->
     <div id="view-login">
         <h2>⏰ Control de Asistencia</h2>
         <div class="form-group">
             <label>Nombre de Usuario / Trabajador:</label>
-            <input type="text" id="login-user" placeholder="Ej: user u admin">
+            <input type="text" id="login-user" placeholder="Ej: user o admin">
         </div>
         <div class="form-group">
             <label>PIN de Acceso:</label>
             <input type="password" id="login-pin" placeholder="Ingresa tu PIN">
         </div>
-        <button onclick="marcarAsistencia()" class="btn-success">📍 Marcar Entrada / Salida</button>
-        <button onclick="iniciarSesionAdmin()">🔑 Entrar como Administrador</button>
+
+        <div class="btn-grid">
+            <button onclick="marcarAsistencia()" class="btn-success">📍 Entrada / Salida</button>
+            <button onclick="gestionarReceso()" class="btn-warning">🍱 Ir/Volver de Receso</button>
+        </div>
+        
+        <div class="btn-grid" style="margin-top:10px;">
+            <button onclick="verMisHoras()" class="btn-info">👁️ Ver mis Horas</button>
+            <button onclick="iniciarSesionAdmin()">🔑 Panel Administrador</button>
+        </div>
+
         <div id="login-msg"></div>
     </div>
 
-    <!-- VISTA DE ADMINISTRADOR -->
+    <!-- VISTA TRABAJADOR (CONSULTA DE HORAS SIN COSTO) -->
+    <div id="view-worker" class="hidden">
+        <h2>📋 Mis Horas Registradas</h2>
+        <h4 id="worker-title" style="color: #555; text-align: center;"></h4>
+        <div id="worker-history" style="overflow-x:auto;"></div>
+        <button onclick="cerrarVistaTrabajador()" class="logout-btn">← Volver al Inicio</button>
+    </div>
+
+    <!-- VISTA ADMINISTRADOR -->
     <div id="view-admin" class="hidden">
         <h2>🛠️ Panel de Administración</h2>
         
-        <h3>👥 Gestión de Usuarios</h3>
-        <div class="form-group">
-            <label>Usuario:</label>
-            <input type="text" id="admin-new-user" placeholder="Ej: user">
+        <h3>👥 Gestión de Usuarios y Tarifas</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Usuario:</label>
+                <input type="text" id="admin-user" placeholder="Ej: user">
+            </div>
+            <div class="form-group">
+                <label>PIN:</label>
+                <input type="text" id="admin-pin" placeholder="Ej: 1234">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Área / Rol Trabajo:</label>
+                <input type="text" id="admin-area" placeholder="Ej: Ventas, Caja, Gestión">
+            </div>
+            <div class="form-group">
+                <label>Tarifa por Hora ($):</label>
+                <select id="admin-tarifa">
+                    <option value="1.0">$1.00 / hora</option>
+                    <option value="1.5">$1.50 / hora</option>
+                    <option value="1.8">$1.80 / hora</option>
+                    <option value="2.0">$2.00 / hora</option>
+                    <option value="2.5">$2.50 / hora</option>
+                    <option value="3.0">$3.00 / hora</option>
+                </select>
+            </div>
         </div>
         <div class="form-group">
-            <label>PIN:</label>
-            <input type="text" id="admin-new-pin" placeholder="Ej: 1234">
-        </div>
-        <div class="form-group">
-            <label>Rol:</label>
-            <select id="admin-new-rol">
+            <label>Permiso de Sistema:</label>
+            <select id="admin-rol-sis">
                 <option value="trabajador">Trabajador</option>
                 <option value="admin">Administrador</option>
             </select>
         </div>
-        <button onclick="guardarUsuario()" class="btn-success">➕ Crear / Guardar Usuario</button>
+        <button onclick="guardarUsuario()" class="btn-success">➕ Crear / Actualizar Usuario</button>
 
         <h4 style="margin-top:20px;">Usuarios Registrados</h4>
-        <div id="list-usuarios"></div>
+        <div id="list-usuarios" style="overflow-x:auto;"></div>
 
         <hr style="margin:25px 0;">
 
-        <h3>📋 Registros de Asistencia</h3>
+        <h3>📋 Registros de Asistencia y Nómina</h3>
         <div id="list-asistencias" style="overflow-x:auto;"></div>
 
-        <button onclick="cerrarSesion()" class="logout-btn">🔒 Cerrar Sesión</button>
+        <button onclick="cerrarSesionAdmin()" class="logout-btn">🔒 Cerrar Sesión Admin</button>
     </div>
 </div>
 
 <script>
     async function marcarAsistencia() {
-        const user = document.getElementById('login-user').value;
-        const pin = document.getElementById('login-pin').value;
-        const msgDiv = document.getElementById('login-msg');
+        const u = document.getElementById('login-user').value;
+        const p = document.getElementById('login-pin').value;
+        const msg = document.getElementById('login-msg');
 
-        if (!user || !pin) {
-            msgDiv.innerHTML = '<div class="msg msg-error">Ingresa usuario y PIN</div>';
-            return;
-        }
+        if (!u || !p) return msg.innerHTML = '<div class="msg msg-error">Ingresa usuario y PIN</div>';
 
         const res = await fetch('/api/marcar', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({usuario: user, pin: pin})
+            body: JSON.stringify({usuario: u, pin: p})
+        });
+        const data = await res.json();
+        if (res.ok) {
+            msg.innerHTML = `<div class="msg msg-success">${data.mensaje}</div>`;
+            document.getElementById('login-pin').value = '';
+        } else {
+            msg.innerHTML = `<div class="msg msg-error">${data.detail}</div>`;
+        }
+    }
+
+    async function gestionarReceso() {
+        const u = document.getElementById('login-user').value;
+        const p = document.getElementById('login-pin').value;
+        const msg = document.getElementById('login-msg');
+
+        if (!u || !p) return msg.innerHTML = '<div class="msg msg-error">Ingresa usuario y PIN</div>';
+
+        const res = await fetch('/api/receso', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({usuario: u, pin: p})
+        });
+        const data = await res.json();
+        if (res.ok) {
+            msg.innerHTML = `<div class="msg msg-success">${data.mensaje}</div>`;
+            document.getElementById('login-pin').value = '';
+        } else {
+            msg.innerHTML = `<div class="msg msg-error">${data.detail}</div>`;
+        }
+    }
+
+    async function verMisHoras() {
+        const u = document.getElementById('login-user').value;
+        const p = document.getElementById('login-pin').value;
+        const msg = document.getElementById('login-msg');
+
+        if (!u || !p) return msg.innerHTML = '<div class="msg msg-error">Ingresa usuario y PIN para consultar</div>';
+
+        const res = await fetch('/api/mis-horas', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({usuario: u, pin: p})
         });
 
         const data = await res.json();
         if (res.ok) {
-            msgDiv.innerHTML = `<div class="msg msg-success">${data.mensaje}</div>`;
-            document.getElementById('login-pin').value = '';
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('view-worker').classList.remove('hidden');
+            document.getElementById('worker-title').innerText = `Trabajador: ${data.usuario}`;
+
+            let html = '<table><tr><th>Entrada</th><th>Inicio Receso</th><th>Fin Receso</th><th>Salida</th><th>Horas Netas</th></tr>';
+            let totalHoras = 0;
+
+            data.registros.reverse().forEach(r => {
+                let hNetas = calcularHorasNetas(r.entrada, r.salida, r.receso_inicio, r.receso_fin);
+                totalHoras += hNetas;
+                html += `<tr>
+                    <td>${r.entrada}</td>
+                    <td>${r.receso_inicio || '-'}</td>
+                    <td>${r.receso_fin || '-'}</td>
+                    <td>${r.salida || '<span class="badge-open">En Turno</span>'}</td>
+                    <td><b>${hNetas.toFixed(2)} hrs</b></td>
+                </tr>`;
+            });
+            html += `<tr><td colspan="4" style="text-align:right;"><b>Total Horas Acumuladas:</b></td><td><b>${totalHoras.toFixed(2)} hrs</b></td></tr>`;
+            html += '</table>';
+            document.getElementById('worker-history').innerHTML = html;
         } else {
-            msgDiv.innerHTML = `<div class="msg msg-error">${data.detail}</div>`;
+            msg.innerHTML = `<div class="msg msg-error">${data.detail}</div>`;
         }
     }
 
+    function cerrarVistaTrabajador() {
+        document.getElementById('view-worker').classList.add('hidden');
+        document.getElementById('view-login').classList.remove('hidden');
+    }
+
     async function iniciarSesionAdmin() {
-        const user = document.getElementById('login-user').value;
-        const pin = document.getElementById('login-pin').value;
-        const msgDiv = document.getElementById('login-msg');
+        const u = document.getElementById('login-user').value;
+        const p = document.getElementById('login-pin').value;
+        const msg = document.getElementById('login-msg');
+
+        if (!u || !p) return msg.innerHTML = '<div class="msg msg-error">Ingresa usuario y PIN</div>';
 
         const res = await fetch('/api/login', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({usuario: user, pin: pin})
+            body: JSON.stringify({usuario: u, pin: p})
         });
 
         const data = await res.json();
-        if (res.ok && data.rol === 'admin') {
+        if (res.ok && data.rol_sistema === 'admin') {
             document.getElementById('view-login').classList.add('hidden');
             document.getElementById('view-admin').classList.remove('hidden');
             cargarDatosAdmin();
-        } else if (res.ok && data.rol !== 'admin') {
-            msgDiv.innerHTML = '<div class="msg msg-error">El usuario no tiene permisos de administrador</div>';
         } else {
-            msgDiv.innerHTML = `<div class="msg msg-error">${data.detail}</div>`;
+            msg.innerHTML = '<div class="msg msg-error">Acceso denegado. Se requieren permisos de Administrador</div>';
         }
+    }
+
+    function parseFecha(str) {
+        if (!str) return null;
+        try {
+            // Formato esperado: "YYYY-MM-DD HH:MM:SS AM/PM"
+            const parts = str.split(' ');
+            const dateParts = parts[0].split('-');
+            const timeParts = parts[1].split(':');
+            let hours = parseInt(timeParts[0]);
+            const minutes = parseInt(timeParts[1]);
+            const seconds = parseInt(timeParts[2]);
+            const ampm = parts[2];
+
+            if (ampm === 'PM' && hours < 12) hours += 12;
+            if (ampm === 'AM' && hours === 12) hours = 0;
+
+            return new Date(dateParts[0], dateParts[1] - 1, dateParts[2], hours, minutes, seconds);
+        } catch { return null; }
+    }
+
+    function calcularHorasNetas(eStr, sStr, rIStr, rFStr) {
+        const e = parseFecha(eStr);
+        const s = parseFecha(sStr) || new Date();
+        if (!e) return 0;
+
+        let diffMs = s - e;
+
+        // Descontar receso si existe
+        const rI = parseFecha(rIStr);
+        const rF = parseFecha(rFStr);
+        if (rI && rF && rF > rI) {
+            diffMs -= (rF - rI);
+        }
+
+        const hrs = diffMs / (1000 * 60 * 60);
+        return hrs > 0 ? hrs : 0;
     }
 
     async function cargarDatosAdmin() {
         const res = await fetch('/api/admin/datos');
         const data = await res.json();
 
-        // Render usuarios
-        let htmlUsers = '<table><tr><th>Usuario</th><th>PIN</th><th>Rol</th><th>Acción</th></tr>';
+        // Tabla Usuarios
+        let htmlU = '<table><tr><th>Usuario</th><th>PIN</th><th>Área / Rol</th><th>Tarifa/Hora</th><th>Permiso</th><th>Acción</th></tr>';
         for (let u in data.usuarios) {
-            htmlUsers += `<tr>
+            const user = data.usuarios[u];
+            htmlU += `<tr>
                 <td><b>${u}</b></td>
-                <td>${data.usuarios[u].pin}</td>
-                <td>${data.usuarios[u].rol}</td>
-                <td><button onclick="eliminarUsuario('${u}')" class="btn-danger" style="padding:4px 8px; font-size:12px; margin:0;">Eliminar</button></td>
+                <td>${user.pin}</td>
+                <td>${user.area || 'General'}</td>
+                <td><b>$${(user.tarifa_hora || 1.0).toFixed(2)}</b></td>
+                <td>${user.rol_sistema || 'trabajador'}</td>
+                <td><button onclick="eliminarUsuario('${u}')" class="btn-danger" style="padding:3px 8px; font-size:12px;">Eliminar</button></td>
             </tr>`;
         }
-        htmlUsers += '</table>';
-        document.getElementById('list-usuarios').innerHTML = htmlUsers;
+        htmlU += '</table>';
+        document.getElementById('list-usuarios').innerHTML = htmlU;
 
-        // Render asistencias
-        let htmlAsis = '<table><tr><th>ID</th><th>Trabajador</th><th>Entrada</th><th>Salida</th><th>Acción</th></tr>';
-        data.asistencias.reverse().forEach(a => {
-            let salidaText = a.salida ? a.salida : '<span class="badge-open">En turno</span>';
-            let accion = a.salida ? '<span class="badge-close">Cerrado</span>' : `<button onclick="ajustarSalida(${a.id})" class="btn-success" style="padding:4px 8px; font-size:12px; margin:0;">Ajustar Salida</button>`;
-            htmlAsis += `<tr>
+        // Tabla Asistencias
+        let htmlA = '<table><tr><th>ID</th><th>Trabajador</th><th>Entrada</th><th>Receso</th><th>Salida</th><th>Horas Netas</th><th>A Pagar ($)</th><th>Acción</th></tr>';
+        data.asistencias.slice().reverse().forEach(a => {
+            const uInfo = data.usuarios[a.usuario] || { tarifa_hora: 1.0 };
+            const tarifa = uInfo.tarifa_hora || 1.0;
+            const hNetas = calcularHorasNetas(a.entrada, a.salida, a.receso_inicio, a.receso_fin);
+            const aPagar = hNetas * tarifa;
+
+            let recesoTxt = '-';
+            if (a.receso_inicio && !a.receso_fin) recesoTxt = '<span class="badge-open">En Receso</span>';
+            if (a.receso_inicio && a.receso_fin) recesoTxt = `${a.receso_inicio} - ${a.receso_fin}`;
+
+            let accion = a.salida ? '<span class="badge-close">Cerrado</span>' : `<button onclick="ajustarSalida(${a.id})" class="btn-success" style="padding:3px 8px; font-size:12px;">Ajustar Salida</button>`;
+
+            htmlA += `<tr>
                 <td>${a.id}</td>
                 <td><b>${a.usuario}</b></td>
                 <td>${a.entrada}</td>
-                <td>${salidaText}</td>
+                <td>${recesoTxt}</td>
+                <td>${a.salida || '<span class="badge-open">En Turno</span>'}</td>
+                <td><b>${hNetas.toFixed(2)} hrs</b></td>
+                <td><b style="color:#28a745;">$${aPagar.toFixed(2)}</b></td>
                 <td>${accion}</td>
             </tr>`;
         });
-        htmlAsis += '</table>';
-        document.getElementById('list-asistencias').innerHTML = htmlAsis;
+        htmlA += '</table>';
+        document.getElementById('list-asistencias').innerHTML = htmlA;
     }
 
     async function guardarUsuario() {
-        const u = document.getElementById('admin-new-user').value;
-        const p = document.getElementById('admin-new-pin').value;
-        const r = document.getElementById('admin-new-rol').value;
+        const u = document.getElementById('admin-user').value;
+        const p = document.getElementById('admin-pin').value;
+        const a = document.getElementById('admin-area').value || "General";
+        const t = parseFloat(document.getElementById('admin-tarifa').value);
+        const r = document.getElementById('admin-rol-sis').value;
 
         if (!u || !p) return alert('Ingresa usuario y PIN');
 
         await fetch('/api/admin/usuario', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({usuario: u, pin: p, rol: r})
+            body: JSON.stringify({usuario: u, pin: p, area: a, tarifa_hora: t, rol_sistema: r})
         });
 
-        document.getElementById('admin-new-user').value = '';
-        document.getElementById('admin-new-pin').value = '';
+        document.getElementById('admin-user').value = '';
+        document.getElementById('admin-pin').value = '';
+        document.getElementById('admin-area').value = '';
         cargarDatosAdmin();
     }
 
-    async function eliminarUsuario(user) {
-        if (!confirm(`¿Eliminar al usuario ${user}?`)) return;
-        await fetch(`/api/admin/usuario/${user}`, { method: 'DELETE' });
+    async function eliminarUsuario(u) {
+        if (!confirm(`¿Eliminar al usuario ${u}?`)) return;
+        await fetch(`/api/admin/usuario/${u}`, { method: 'DELETE' });
         cargarDatosAdmin();
     }
 
     async function ajustarSalida(id) {
         const horaDefecto = new Date().toLocaleString('es-ES');
-        const nuevaHora = prompt("Ingresa la fecha y hora de salida correcta (Ej: 2026-10-14 08:00:00 PM):", horaDefecto);
+        const nuevaHora = prompt("Ingresa la fecha y hora de salida (Ej: 2026-10-14 08:00:00 PM):", horaDefecto);
         if (!nuevaHora) return;
 
         await fetch('/api/admin/ajustar-salida', {
@@ -204,7 +364,7 @@
         cargarDatosAdmin();
     }
 
-    function cerrarSesion() {
+    function cerrarSesionAdmin() {
         document.getElementById('view-admin').classList.add('hidden');
         document.getElementById('view-login').classList.remove('hidden');
         document.getElementById('login-pin').value = '';
