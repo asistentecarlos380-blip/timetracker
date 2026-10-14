@@ -19,7 +19,7 @@ def load_data():
     if not os.path.exists(DATA_FILE):
         return {
             "usuarios": {
-                "admin": {"pin": "9999", "rol_sistema": "admin", "area": "Administración", "tarifa_hora": 0.0}
+                "admin": {"pin": "9999", "rol_sistema": "admin", "area": "Administración", "tarifa_hora": 2.0}
             },
             "asistencias": []
         }
@@ -27,14 +27,14 @@ def load_data():
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
             if "usuarios" not in data:
-                data["usuarios"] = {"admin": {"pin": "9999", "rol_sistema": "admin", "area": "Administración", "tarifa_hora": 0.0}}
+                data["usuarios"] = {"admin": {"pin": "9999", "rol_sistema": "admin", "area": "Administración", "tarifa_hora": 2.0}}
             if "asistencias" not in data:
                 data["asistencias"] = []
             return data
     except:
         return {
             "usuarios": {
-                "admin": {"pin": "9999", "rol_sistema": "admin", "area": "Administración", "tarifa_hora": 0.0}
+                "admin": {"pin": "9999", "rol_sistema": "admin", "area": "Administración", "tarifa_hora": 2.0}
             },
             "asistencias": []
         }
@@ -48,6 +48,7 @@ class LoginReq(BaseModel):
     pin: str
 
 class UserReq(BaseModel):
+    usuario_antiguo: str = ""
     usuario: str
     pin: str
     rol_sistema: str = "trabajador"
@@ -88,7 +89,6 @@ def login(req: LoginReq):
         "tarifa_hora": u_info.get("tarifa_hora", 1.0)
     }
 
-# API Marcar Entrada/Salida
 @app.post("/api/marcar")
 def marcar(req: LoginReq):
     data = load_data()
@@ -105,17 +105,14 @@ def marcar(req: LoginReq):
 
     ahora = get_hora_actual()
     
-    # Verificar si tiene turno abierto
     for reg in reversed(data["asistencias"]):
         if reg["usuario"].lower() == u_clean and reg["salida"] is None:
-            # Si estaba en receso, cerrarlo
             if reg.get("receso_inicio") and not reg.get("receso_fin"):
                 reg["receso_fin"] = ahora
             reg["salida"] = ahora
             save_data(data)
             return {"status": "salida", "mensaje": f"Salida registrada a las {ahora}"}
 
-    # Registrar nueva entrada
     nuevo_reg = {
         "id": len(data["asistencias"]) + 1,
         "usuario": user_key,
@@ -128,7 +125,6 @@ def marcar(req: LoginReq):
     save_data(data)
     return {"status": "entrada", "mensaje": f"Entrada registrada a las {ahora}"}
 
-# API Iniciar / Finalizar Receso
 @app.post("/api/receso")
 def gestionar_receso(req: LoginReq):
     data = load_data()
@@ -150,17 +146,16 @@ def gestionar_receso(req: LoginReq):
             if reg.get("receso_inicio") is None:
                 reg["receso_inicio"] = ahora
                 save_data(data)
-                return {"status": "receso_inicio", "mensaje": f"Receso/Comida iniciado a las {ahora}"}
+                return {"status": "receso_inicio", "mensaje": f"Receso iniciado a las {ahora}"}
             elif reg.get("receso_fin") is None:
                 reg["receso_fin"] = ahora
                 save_data(data)
-                return {"status": "receso_fin", "mensaje": f"Receso/Comida finalizado a las {ahora}"}
+                return {"status": "receso_fin", "mensaje": f"Receso finalizado a las {ahora}"}
             else:
                 raise HTTPException(status_code=400, detail="Ya registraste un receso en este turno")
 
     raise HTTPException(status_code=400, detail="No tienes un turno activo abierto")
 
-# Mis Horas (Trabajador)
 @app.post("/api/mis-horas")
 def mis_horas(req: LoginReq):
     data = load_data()
@@ -178,16 +173,25 @@ def mis_horas(req: LoginReq):
     registros = [r for r in data["asistencias"] if r["usuario"].lower() == u_clean]
     return {"status": "ok", "usuario": user_key, "registros": registros}
 
-# API Admin: Datos completos
 @app.get("/api/admin/datos")
 def admin_datos():
     return load_data()
 
-# API Admin: Crear/Editar Usuario
 @app.post("/api/admin/usuario")
 def guardar_usuario(req: UserReq):
     data = load_data()
-    data["usuarios"][req.usuario.strip()] = {
+    nombre_antiguo = req.usuario_antiguo.strip()
+    nombre_nuevo = req.usuario.strip()
+
+    # Si se renombró el usuario
+    if nombre_antiguo and nombre_antiguo in data["usuarios"] and nombre_antiguo != nombre_nuevo:
+        data["usuarios"][nombre_nuevo] = data["usuarios"].pop(nombre_antiguo)
+        # Actualizar asistencias asociadas
+        for reg in data["asistencias"]:
+            if reg["usuario"].lower() == nombre_antiguo.lower():
+                reg["usuario"] = nombre_nuevo
+
+    data["usuarios"][nombre_nuevo] = {
         "pin": req.pin.strip(),
         "rol_sistema": req.rol_sistema.strip(),
         "area": req.area.strip(),
@@ -196,7 +200,6 @@ def guardar_usuario(req: UserReq):
     save_data(data)
     return {"status": "ok"}
 
-# API Admin: Eliminar Usuario
 @app.delete("/api/admin/usuario/{usuario}")
 def eliminar_usuario(usuario: str):
     data = load_data()
@@ -205,7 +208,6 @@ def eliminar_usuario(usuario: str):
         save_data(data)
     return {"status": "ok"}
 
-# API Admin: Ajustar Salida
 @app.post("/api/admin/ajustar-salida")
 def ajustar_salida(req: CheckoutReq):
     data = load_data()
