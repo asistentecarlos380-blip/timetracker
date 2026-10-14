@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Asistencia - Trabajadores</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        h2 { color: #0d6efd; margin-bottom: 20px; }
+        label { display: block; text-align: left; font-weight: 600; margin-top: 10px; color: #333; }
+        select, input { width: 100%; padding: 10px; margin-top: 5px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+        .btn-group { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
+        button { padding: 12px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; transition: 0.2s; }
+        .btn-primary { background-color: #0d6efd; }
+        .btn-in { background-color: #198754; }
+        .btn-break { background-color: #ffc107; color: black; }
+        .btn-out { background-color: #dc3545; }
+        #status-msg { margin-top: 15px; font-weight: bold; font-size: 14px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        🕒 <h2>Control de Asistencia</h2>
+        
+        <!-- SECCIÓN DE LOGIN CON PIN -->
+        <div id="login-section">
+            <label for="puesto">Selecciona tu Puesto:</label>
+            <select id="puesto">
+                <option value="Puesto 1">Puesto 1</option>
+                <option value="Puesto 2">Puesto 2</option>
+                <option value="Puesto 3">Puesto 3</option>
+                <option value="Puesto 4">Puesto 4</option>
+                <option value="Puesto 5">Puesto 5</option>
+                <option value="Puesto 6">Puesto 6</option>
+                <option value="Puesto 7">Puesto 7</option>
+                <option value="Puesto 8">Puesto 8</option>
+            </select>
+
+            <label for="pin">PIN de Acceso:</label>
+            <input type="password" id="pin" placeholder="Ingresa tu PIN secreto">
+
+            <button class="btn-primary" onclick="verifyLogin()">Iniciar Sesión</button>
+        </div>
+
+        <!-- SECCIÓN DE MARCADO DE ASISTENCIA -->
+        <div id="action-section" class="hidden">
+            <h3 id="worker-title" style="color: #198754; margin-bottom: 15px;"></h3>
+            <div class="btn-group">
+                <button class="btn-in" onclick="sendAction('IN')">🟢 Registrar Entrada</button>
+                <button class="btn-break" onclick="sendAction('BREAK')">☕ Ir a Receso / Pausa</button>
+                <button class="btn-in" onclick="sendAction('RETURN')">▶️ Regresar de Receso</button>
+                <button class="btn-out" onclick="sendAction('OUT')">🔴 Registrar Salida</button>
+            </div>
+            <button style="background-color: #6c757d; margin-top: 15px;" onclick="logout()">Cerrar Sesión</button>
+        </div>
+
+        <div id="status-msg">Estado: Conectado ✅</div>
+    </div>
+
+    <script>
+        const socket = io();
+        let currentWorker = "";
+        let currentPuesto = "";
+
+        function verifyLogin() {
+            currentPuesto = document.getElementById('puesto').value;
+            const pin = document.getElementById('pin').value;
+
+            socket.emit('worker_login', { puesto: currentPuesto, pin: pin });
+        }
+
+        socket.on('login_response', (data) => {
+            if (data.success) {
+                currentWorker = data.worker_name;
+                document.getElementById('worker-title').innerText = `Bienvenido, ${currentWorker} (${currentPuesto})`;
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('action-section').classList.remove('hidden');
+            } else {
+                alert(data.message);
+            }
+        });
+
+        function sendAction(action) {
+            socket.emit('worker_action', {
+                puesto: currentPuesto,
+                action: action,
+                worker_name: currentWorker
+            });
+            alert(`Acción registrada con éxito: ${action}`);
+        }
+
+        function logout() {
+            document.getElementById('action-section').classList.add('hidden');
+            document.getElementById('login-section').classList.remove('hidden');
+            document.getElementById('pin').value = "";
+        }
+    </script>
+</body>
+</html>
