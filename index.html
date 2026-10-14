@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Asistencia</title>
+    <title>Control de Asistencia y Nómina</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background: #f0f2f5; margin: 0; padding: 15px; display: flex; justify-content: center; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 850px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 900px; }
         h2, h3 { color: #1a73e8; margin-top: 0; text-align: center; }
         .form-group { margin-bottom: 12px; }
         label { display: block; margin-bottom: 4px; font-weight: 600; color: #333; font-size: 14px; }
@@ -34,6 +34,7 @@
         .msg-error { background: #f8d7da; color: #721c24; }
         .logout-btn { background: #6c757d; margin-top: 20px; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .box-filter { background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -43,7 +44,7 @@
     <div id="view-login">
         <h2>⏰ Control de Asistencia</h2>
         <div class="form-group">
-            <label>Nombre de Usuario / Trabajador:</label>
+            <label>Nombre de Usuario:</label>
             <input type="text" id="login-user" placeholder="Ej: user o admin">
         </div>
         <div class="form-group">
@@ -57,16 +58,16 @@
         </div>
         
         <div class="btn-grid" style="margin-top:10px;">
-            <button onclick="verMisHoras()" class="btn-info">👁️ Ver mis Horas</button>
+            <button onclick="verMisHoras()" class="btn-info">👁️ Ver mis Horas por Día</button>
             <button onclick="iniciarSesionAdmin()">🔑 Panel Administrador</button>
         </div>
 
         <div id="login-msg"></div>
     </div>
 
-    <!-- VISTA TRABAJADOR (CONSULTA DE HORAS SIN COSTO) -->
+    <!-- VISTA TRABAJADOR (MIS HORAS POR DÍA) -->
     <div id="view-worker" class="hidden">
-        <h2>📋 Mis Horas Registradas</h2>
+        <h2>📋 Mis Horas Diarias</h2>
         <h4 id="worker-title" style="color: #555; text-align: center;"></h4>
         <div id="worker-history" style="overflow-x:auto;"></div>
         <button onclick="cerrarVistaTrabajador()" class="logout-btn">← Volver al Inicio</button>
@@ -74,51 +75,65 @@
 
     <!-- VISTA ADMINISTRADOR -->
     <div id="view-admin" class="hidden">
-        <h2>🛠️ Panel de Administración</h2>
+        <h2>🛠️ Panel de Administración y Nómina</h2>
         
-        <h3>👥 Gestión de Usuarios y Tarifas</h3>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Usuario:</label>
-                <input type="text" id="admin-user" placeholder="Ej: user">
+        <!-- FORMULARIO CREAR / EDITAR USUARIO -->
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h3 id="admin-form-title" style="margin-top:0; font-size:16px; color:#333;">➕ Registrar Nuevo Trabajador</h3>
+            <input type="hidden" id="edit-old-user" value="">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Usuario:</label>
+                    <input type="text" id="admin-user" placeholder="Ej: user">
+                </div>
+                <div class="form-group">
+                    <label>PIN:</label>
+                    <input type="text" id="admin-pin" placeholder="Ej: 1234">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Área / Rol:</label>
+                    <input type="text" id="admin-area" placeholder="Ej: Ventas, Caja">
+                </div>
+                <div class="form-group">
+                    <label>Tarifa por Hora ($):</label>
+                    <input type="number" step="0.1" id="admin-tarifa" placeholder="Ej: 1.5">
+                </div>
             </div>
             <div class="form-group">
-                <label>PIN:</label>
-                <input type="text" id="admin-pin" placeholder="Ej: 1234">
-            </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Área / Rol Trabajo:</label>
-                <input type="text" id="admin-area" placeholder="Ej: Ventas, Caja, Gestión">
-            </div>
-            <div class="form-group">
-                <label>Tarifa por Hora ($):</label>
-                <select id="admin-tarifa">
-                    <option value="1.0">$1.00 / hora</option>
-                    <option value="1.5">$1.50 / hora</option>
-                    <option value="1.8">$1.80 / hora</option>
-                    <option value="2.0">$2.00 / hora</option>
-                    <option value="2.5">$2.50 / hora</option>
-                    <option value="3.0">$3.00 / hora</option>
+                <label>Permiso de Sistema:</label>
+                <select id="admin-rol-sis">
+                    <option value="trabajador">Trabajador</option>
+                    <option value="admin">Administrador</option>
                 </select>
             </div>
+            <button onclick="guardarUsuario()" class="btn-success" id="btn-save-user">Guardar Trabajador</button>
+            <button onclick="cancelarEdicion()" class="btn-danger hidden" id="btn-cancel-edit" style="margin-top:5px;">Cancelar Edición</button>
         </div>
-        <div class="form-group">
-            <label>Permiso de Sistema:</label>
-            <select id="admin-rol-sis">
-                <option value="trabajador">Trabajador</option>
-                <option value="admin">Administrador</option>
-            </select>
-        </div>
-        <button onclick="guardarUsuario()" class="btn-success">➕ Crear / Actualizar Usuario</button>
 
-        <h4 style="margin-top:20px;">Usuarios Registrados</h4>
+        <h4 style="margin-bottom:5px;">Usuarios Registrados</h4>
         <div id="list-usuarios" style="overflow-x:auto;"></div>
 
         <hr style="margin:25px 0;">
 
-        <h3>📋 Registros de Asistencia y Nómina</h3>
+        <!-- FILTRO QUINCENA / RANGO FECHAS -->
+        <div class="box-filter">
+            <h3 style="margin-top:0; font-size:16px;">💰 Cálculo de Pago por Quincena / Rango</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Desde (Fecha Inicio):</label>
+                    <input type="date" id="filtro-desde">
+                </div>
+                <div class="form-group">
+                    <label>Hasta (Fecha Fin):</label>
+                    <input type="date" id="filtro-hasta">
+                </div>
+            </div>
+            <button onclick="calcularNominaRango()" class="btn-success">🧮 Calcular Pago de Quincena</button>
+        </div>
+
+        <h3>📋 Reporte Detallado de Asistencia y Horas por Día</h3>
         <div id="list-asistencias" style="overflow-x:auto;"></div>
 
         <button onclick="cerrarSesionAdmin()" class="logout-btn">🔒 Cerrar Sesión Admin</button>
@@ -187,26 +202,35 @@
             document.getElementById('view-worker').classList.remove('hidden');
             document.getElementById('worker-title').innerText = `Trabajador: ${data.usuario}`;
 
-            let html = '<table><tr><th>Entrada</th><th>Inicio Receso</th><th>Fin Receso</th><th>Salida</th><th>Horas Netas</th></tr>';
-            let totalHoras = 0;
-
-            data.registros.reverse().forEach(r => {
-                let hNetas = calcularHorasNetas(r.entrada, r.salida, r.receso_inicio, r.receso_fin);
-                totalHoras += hNetas;
-                html += `<tr>
-                    <td>${r.entrada}</td>
-                    <td>${r.receso_inicio || '-'}</td>
-                    <td>${r.receso_fin || '-'}</td>
-                    <td>${r.salida || '<span class="badge-open">En Turno</span>'}</td>
-                    <td><b>${hNetas.toFixed(2)} hrs</b></td>
-                </tr>`;
+            // Agrupar horas por día basado en la fecha de ENTRADA
+            let diasMap = {};
+            data.registros.forEach(r => {
+                const fechaDia = r.entrada.split(' ')[0]; // YYYY-MM-DD
+                const hNetas = calcularHorasNetas(r.entrada, r.salida, r.receso_inicio, r.receso_fin);
+                diasMap[fechaDia] = (diasMap[fechaDia] || 0) + hNetas;
             });
-            html += `<tr><td colspan="4" style="text-align:right;"><b>Total Horas Acumuladas:</b></td><td><b>${totalHoras.toFixed(2)} hrs</b></td></tr>`;
+
+            let html = '<table><tr><th>Fecha (Día)</th><th>Horas Trabajadas</th></tr>';
+            let totalGeneral = 0;
+            Object.keys(diasMap).sort().reverse().forEach(dia => {
+                let hrs = diasMap[dia];
+                totalGeneral += hrs;
+                let nombreDia = obtenerNombreDia(dia);
+                html += `<tr><td><b>${nombreDia} (${dia})</b></td><td><b>${hrs.toFixed(2)} hrs</b></td></tr>`;
+            });
+            html += `<tr><td style="text-align:right;"><b>Total Horas Acumuladas:</b></td><td><b>${totalGeneral.toFixed(2)} hrs</b></td></tr>`;
             html += '</table>';
             document.getElementById('worker-history').innerHTML = html;
         } else {
             msg.innerHTML = `<div class="msg msg-error">${data.detail}</div>`;
         }
+    }
+
+    function obtenerNombreDia(fechaStr) {
+        const [y, m, d] = fechaStr.split('-');
+        const date = new Date(y, m - 1, d);
+        const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        return dias[date.getDay()];
     }
 
     function cerrarVistaTrabajador() {
@@ -231,6 +255,14 @@
         if (res.ok && data.rol_sistema === 'admin') {
             document.getElementById('view-login').classList.add('hidden');
             document.getElementById('view-admin').classList.remove('hidden');
+            
+            // Establecer fechas por defecto (últimos 14 días)
+            const hoy = new Date();
+            const hace14 = new Date();
+            hace14.setDate(hoy.getDate() - 14);
+            document.getElementById('filtro-hasta').valueAsDate = hoy;
+            document.getElementById('filtro-desde').valueAsDate = hace14;
+
             cargarDatosAdmin();
         } else {
             msg.innerHTML = '<div class="msg msg-error">Acceso denegado. Se requieren permisos de Administrador</div>';
@@ -240,7 +272,6 @@
     function parseFecha(str) {
         if (!str) return null;
         try {
-            // Formato esperado: "YYYY-MM-DD HH:MM:SS AM/PM"
             const parts = str.split(' ');
             const dateParts = parts[0].split('-');
             const timeParts = parts[1].split(':');
@@ -262,8 +293,6 @@
         if (!e) return 0;
 
         let diffMs = s - e;
-
-        // Descontar receso si existe
         const rI = parseFecha(rIStr);
         const rF = parseFecha(rFStr);
         if (rI && rF && rF > rI) {
@@ -274,10 +303,15 @@
         return hrs > 0 ? hrs : 0;
     }
 
+    let cacheAdminData = null;
+
     async function cargarDatosAdmin() {
         const res = await fetch('/api/admin/datos');
-        const data = await res.json();
+        cacheAdminData = await res.json();
+        renderAdminUI(cacheAdminData);
+    }
 
+    function renderAdminUI(data, filtradosAsis = null) {
         // Tabla Usuarios
         let htmlU = '<table><tr><th>Usuario</th><th>PIN</th><th>Área / Rol</th><th>Tarifa/Hora</th><th>Permiso</th><th>Acción</th></tr>';
         for (let u in data.usuarios) {
@@ -288,33 +322,40 @@
                 <td>${user.area || 'General'}</td>
                 <td><b>$${(user.tarifa_hora || 1.0).toFixed(2)}</b></td>
                 <td>${user.rol_sistema || 'trabajador'}</td>
-                <td><button onclick="eliminarUsuario('${u}')" class="btn-danger" style="padding:3px 8px; font-size:12px;">Eliminar</button></td>
+                <td>
+                    <button onclick="prepararEdicion('${u}', '${user.pin}', '${user.area || ''}', ${user.tarifa_hora || 1.0}, '${user.rol_sistema || 'trabajador'}')" class="btn-warning" style="padding:3px 6px; font-size:11px; margin-right:4px;">✏️ Editar</button>
+                    <button onclick="eliminarUsuario('${u}')" class="btn-danger" style="padding:3px 6px; font-size:11px;">🗑️</button>
+                </td>
             </tr>`;
         }
         htmlU += '</table>';
         document.getElementById('list-usuarios').innerHTML = htmlU;
 
         // Tabla Asistencias
-        let htmlA = '<table><tr><th>ID</th><th>Trabajador</th><th>Entrada</th><th>Receso</th><th>Salida</th><th>Horas Netas</th><th>A Pagar ($)</th><th>Acción</th></tr>';
-        data.asistencias.slice().reverse().forEach(a => {
+        const listaAsis = filtradosAsis || data.asistencias;
+        let htmlA = '<table><tr><th>ID</th><th>Trabajador</th><th>Día (Entrada)</th><th>Entrada</th><th>Receso</th><th>Salida</th><th>Netas</th><th>Pago ($)</th><th>Acción</th></tr>';
+        
+        listaAsis.slice().reverse().forEach(a => {
             const uInfo = data.usuarios[a.usuario] || { tarifa_hora: 1.0 };
             const tarifa = uInfo.tarifa_hora || 1.0;
             const hNetas = calcularHorasNetas(a.entrada, a.salida, a.receso_inicio, a.receso_fin);
             const aPagar = hNetas * tarifa;
+            const fechaDia = a.entrada.split(' ')[0];
 
             let recesoTxt = '-';
             if (a.receso_inicio && !a.receso_fin) recesoTxt = '<span class="badge-open">En Receso</span>';
             if (a.receso_inicio && a.receso_fin) recesoTxt = `${a.receso_inicio} - ${a.receso_fin}`;
 
-            let accion = a.salida ? '<span class="badge-close">Cerrado</span>' : `<button onclick="ajustarSalida(${a.id})" class="btn-success" style="padding:3px 8px; font-size:12px;">Ajustar Salida</button>`;
+            let accion = a.salida ? '<span class="badge-close">Cerrado</span>' : `<button onclick="ajustarSalida(${a.id})" class="btn-success" style="padding:3px 6px; font-size:11px;">Ajustar Salida</button>`;
 
             htmlA += `<tr>
                 <td>${a.id}</td>
                 <td><b>${a.usuario}</b></td>
+                <td>${fechaDia}</td>
                 <td>${a.entrada}</td>
                 <td>${recesoTxt}</td>
                 <td>${a.salida || '<span class="badge-open">En Turno</span>'}</td>
-                <td><b>${hNetas.toFixed(2)} hrs</b></td>
+                <td><b>${hNetas.toFixed(2)}h</b></td>
                 <td><b style="color:#28a745;">$${aPagar.toFixed(2)}</b></td>
                 <td>${accion}</td>
             </tr>`;
@@ -323,11 +364,38 @@
         document.getElementById('list-asistencias').innerHTML = htmlA;
     }
 
+    function prepararEdicion(user, pin, area, tarifa, rol) {
+        document.getElementById('edit-old-user').value = user;
+        document.getElementById('admin-user').value = user;
+        document.getElementById('admin-pin').value = pin;
+        document.getElementById('admin-area').value = area;
+        document.getElementById('admin-tarifa').value = tarifa;
+        document.getElementById('admin-rol-sis').value = rol;
+        
+        document.getElementById('admin-form-title').innerText = `✏️ Editando a: ${user}`;
+        document.getElementById('btn-save-user').innerText = 'Actualizar Trabajador';
+        document.getElementById('btn-cancel-edit').classList.remove('hidden');
+    }
+
+    function cancelarEdicion() {
+        document.getElementById('edit-old-user').value = '';
+        document.getElementById('admin-user').value = '';
+        document.getElementById('admin-pin').value = '';
+        document.getElementById('admin-area').value = '';
+        document.getElementById('admin-tarifa').value = '';
+        document.getElementById('admin-rol-sis').value = 'trabajador';
+
+        document.getElementById('admin-form-title').innerText = '➕ Registrar Nuevo Trabajador';
+        document.getElementById('btn-save-user').innerText = 'Guardar Trabajador';
+        document.getElementById('btn-cancel-edit').classList.add('hidden');
+    }
+
     async function guardarUsuario() {
+        const oldU = document.getElementById('edit-old-user').value;
         const u = document.getElementById('admin-user').value;
         const p = document.getElementById('admin-pin').value;
         const a = document.getElementById('admin-area').value || "General";
-        const t = parseFloat(document.getElementById('admin-tarifa').value);
+        const t = parseFloat(document.getElementById('admin-tarifa').value) || 1.0;
         const r = document.getElementById('admin-rol-sis').value;
 
         if (!u || !p) return alert('Ingresa usuario y PIN');
@@ -335,12 +403,10 @@
         await fetch('/api/admin/usuario', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({usuario: u, pin: p, area: a, tarifa_hora: t, rol_sistema: r})
+            body: JSON.stringify({usuario_antiguo: oldU, usuario: u, pin: p, area: a, tarifa_hora: t, rol_sistema: r})
         });
 
-        document.getElementById('admin-user').value = '';
-        document.getElementById('admin-pin').value = '';
-        document.getElementById('admin-area').value = '';
+        cancelarEdicion();
         cargarDatosAdmin();
     }
 
@@ -352,7 +418,7 @@
 
     async function ajustarSalida(id) {
         const horaDefecto = new Date().toLocaleString('es-ES');
-        const nuevaHora = prompt("Ingresa la fecha y hora de salida (Ej: 2026-10-14 08:00:00 PM):", horaDefecto);
+        const nuevaHora = prompt("Ingresa la fecha y hora de salida (Ej: 2026-10-14 03:00:00 AM):", horaDefecto);
         if (!nuevaHora) return;
 
         await fetch('/api/admin/ajustar-salida', {
@@ -362,6 +428,52 @@
         });
 
         cargarDatosAdmin();
+    }
+
+    function calcularNominaRango() {
+        if (!cacheAdminData) return;
+        const desdeStr = document.getElementById('filtro-desde').value;
+        const hastaStr = document.getElementById('filtro-hasta').value;
+
+        if (!desdeStr || !hastaStr) return alert('Selecciona fecha de inicio y fin');
+
+        const desde = new Date(desdeStr + 'T00:00:00');
+        const hasta = new Date(hastaStr + 'T23:59:59');
+
+        // Filtrar asistencias cuya entrada esté dentro del rango
+        const filtrados = cacheAdminData.asistencias.filter(a => {
+            const fechaDia = a.entrada.split(' ')[0];
+            const dReg = new Date(fechaDia + 'T00:00:00');
+            return dReg >= desde && dReg <= hasta;
+        });
+
+        // Calcular resumen de pago por trabajador en el rango
+        let resumenNomina = {};
+        filtrados.forEach(a => {
+            const uInfo = cacheAdminData.usuarios[a.usuario] || { tarifa_hora: 1.0 };
+            const tarifa = uInfo.tarifa_hora || 1.0;
+            const hNetas = calcularHorasNetas(a.entrada, a.salida, a.receso_inicio, a.receso_fin);
+
+            if (!resumenNomina[a.usuario]) {
+                resumenNomina[a.usuario] = { horas: 0, pago: 0 };
+            }
+            resumenNomina[a.usuario].horas += hNetas;
+            resumenNomina[a.usuario].pago += (hNetas * tarifa);
+        });
+
+        let mensajeNomina = `💰 RESUMEN DE PAGO (${desdeStr} al ${hastaStr}):\n\n`;
+        for (let trabajador in resumenNomina) {
+            let datos = resumenNomina[trabajador];
+            mensajeNomina += `👤 ${trabajador}: ${datos.horas.toFixed(2)} hrs | Total a Pagar: $${datos.pago.toFixed(2)}\n`;
+        }
+
+        if (Object.keys(resumenNomina).length === 0) {
+            alert('No hay registros de asistencia en este rango de fechas.');
+        } else {
+            alert(mensajeNomina);
+        }
+
+        renderAdminUI(cacheAdminData, filtrados);
     }
 
     function cerrarSesionAdmin() {
