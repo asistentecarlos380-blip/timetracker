@@ -1,29 +1,43 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import os
 import json
 import uvicorn
 from datetime import datetime
+import zoneinfo
 
 app = FastAPI()
 
 DATA_FILE = "system_data.json"
+TZ_VE = zoneinfo.ZoneInfo("America/Caracas")
+
+def get_hora_actual():
+    return datetime.now(TZ_VE).strftime("%Y-%m-%d %I:%M:%S %p")
 
 def load_data():
     if not os.path.exists(DATA_FILE):
-        return {"usuarios": {"admin": {"pin": "9999", "rol": "admin"}}, "asistencias": []}
+        return {
+            "usuarios": {
+                "admin": {"pin": "9999", "rol_sistema": "admin", "area": "Administración", "tarifa_hora": 0.0}
+            },
+            "asistencias": []
+        }
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
             if "usuarios" not in data:
-                data["usuarios"] = {"admin": {"pin": "9999", "rol": "admin"}}
+                data["usuarios"] = {"admin": {"pin": "9999", "rol_sistema": "admin", "area": "Administración", "tarifa_hora": 0.0}}
             if "asistencias" not in data:
                 data["asistencias"] = []
             return data
     except:
-        return {"usuarios": {"admin": {"pin": "9999", "rol": "admin"}}, "asistencias": []}
+        return {
+            "usuarios": {
+                "admin": {"pin": "9999", "rol_sistema": "admin", "area": "Administración", "tarifa_hora": 0.0}
+            },
+            "asistencias": []
+        }
 
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
@@ -36,7 +50,9 @@ class LoginReq(BaseModel):
 class UserReq(BaseModel):
     usuario: str
     pin: str
-    rol: str = "trabajador"
+    rol_sistema: str = "trabajador"
+    area: str = "General"
+    tarifa_hora: float = 1.0
 
 class CheckoutReq(BaseModel):
     registro_id: int
@@ -52,68 +68,130 @@ def read_root():
 @app.post("/api/login")
 def login(req: LoginReq):
     data = load_data()
-    usuario_clean = req.usuario.strip().lower()
+    u_clean = req.usuario.strip().lower()
     
-    # Buscar usuario (case-insensitive)
     user_key = None
     for k in data["usuarios"]:
-        if k.lower() == usuario_clean:
+        if k.lower() == u_clean:
             user_key = k
             break
             
     if not user_key or data["usuarios"][user_key]["pin"] != req.pin.strip():
         raise HTTPException(status_code=401, detail="Usuario o PIN incorrecto")
         
-    rol = data["usuarios"][user_key].get("rol", "trabajador")
-    return {"status": "ok", "usuario": user_key, "rol": rol}
+    u_info = data["usuarios"][user_key]
+    return {
+        "status": "ok",
+        "usuario": user_key,
+        "rol_sistema": u_info.get("rol_sistema", "trabajador"),
+        "area": u_info.get("area", "General"),
+        "tarifa_hora": u_info.get("tarifa_hora", 1.0)
+    }
 
-# API para marcar entrada/salida
+# API Marcar Entrada/Salida
 @app.post("/api/marcar")
 def marcar(req: LoginReq):
     data = load_data()
-    usuario_clean = req.usuario.strip().lower()
+    u_clean = req.usuario.strip().lower()
     
     user_key = None
     for k in data["usuarios"]:
-        if k.lower() == usuario_clean:
+        if k.lower() == u_clean:
             user_key = k
             break
             
     if not user_key or data["usuarios"][user_key]["pin"] != req.pin.strip():
         raise HTTPException(status_code=401, detail="Usuario o PIN incorrecto")
 
-    ahora = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+    ahora = get_hora_actual()
     
-    # Buscar si tiene un turno abierto
+    # Verificar si tiene turno abierto
     for reg in reversed(data["asistencias"]):
-        if reg["usuario"].lower() == usuario_clean and reg["salida"] is None:
+        if reg["usuario"].lower() == u_clean and reg["salida"] is None:
+            # Si estaba en receso, cerrarlo
+            if reg.get("receso_inicio") and not reg.get("receso_fin"):
+                reg["receso_fin"] = ahora
             reg["salida"] = ahora
             save_data(data)
             return {"status": "salida", "mensaje": f"Salida registrada a las {ahora}"}
 
-    # Si no tiene turno abierto, se registra entrada
+    # Registrar nueva entrada
     nuevo_reg = {
         "id": len(data["asistencias"]) + 1,
         "usuario": user_key,
         "entrada": ahora,
+        "receso_inicio": None,
+        "receso_fin": None,
         "salida": None
     }
     data["asistencias"].append(nuevo_reg)
     save_data(data)
     return {"status": "entrada", "mensaje": f"Entrada registrada a las {ahora}"}
 
-# API Admin: Obtener datos
+# API Iniciar / Finalizar Receso
+@app.post("/api/receso")
+def gestionar_receso(req: LoginReq):
+    data = load_data()
+    u_clean = req.usuario.strip().lower()
+    
+    user_key = None
+    for k in data["usuarios"]:
+        if k.lower() == u_clean:
+            user_key = k
+            break
+            
+    if not user_key or data["usuarios"][user_key]["pin"] != req.pin.strip():
+        raise HTTPException(status_code=401, detail="Usuario o PIN incorrecto")
+
+    ahora = get_hora_actual()
+    
+    for reg in reversed(data["asistencias"]):
+        if reg["usuario"].lower() == u_clean and reg["salida"] is None:
+            if reg.get("receso_inicio") is None:
+                reg["receso_inicio"] = ahora
+                save_data(data)
+                return {"status": "receso_inicio", "mensaje": f"Receso/Comida iniciado a las {ahora}"}
+            elif reg.get("receso_fin") is None:
+                reg["receso_fin"] = ahora
+                save_data(data)
+                return {"status": "receso_fin", "mensaje": f"Receso/Comida finalizado a las {ahora}"}
+            else:
+                raise HTTPException(status_code=400, detail="Ya registraste un receso en este turno")
+
+    raise HTTPException(status_code=400, detail="No tienes un turno activo abierto")
+
+# Mis Horas (Trabajador)
+@app.post("/api/mis-horas")
+def mis_horas(req: LoginReq):
+    data = load_data()
+    u_clean = req.usuario.strip().lower()
+    
+    user_key = None
+    for k in data["usuarios"]:
+        if k.lower() == u_clean:
+            user_key = k
+            break
+            
+    if not user_key or data["usuarios"][user_key]["pin"] != req.pin.strip():
+        raise HTTPException(status_code=401, detail="Usuario o PIN incorrecto")
+
+    registros = [r for r in data["asistencias"] if r["usuario"].lower() == u_clean]
+    return {"status": "ok", "usuario": user_key, "registros": registros}
+
+# API Admin: Datos completos
 @app.get("/api/admin/datos")
 def admin_datos():
     return load_data()
 
-# API Admin: Crear / Editar Usuario
+# API Admin: Crear/Editar Usuario
 @app.post("/api/admin/usuario")
 def guardar_usuario(req: UserReq):
     data = load_data()
     data["usuarios"][req.usuario.strip()] = {
         "pin": req.pin.strip(),
-        "rol": req.rol.strip()
+        "rol_sistema": req.rol_sistema.strip(),
+        "area": req.area.strip(),
+        "tarifa_hora": req.tarifa_hora
     }
     save_data(data)
     return {"status": "ok"}
@@ -127,7 +205,7 @@ def eliminar_usuario(usuario: str):
         save_data(data)
     return {"status": "ok"}
 
-# API Admin: Editar Salida Manualmente
+# API Admin: Ajustar Salida
 @app.post("/api/admin/ajustar-salida")
 def ajustar_salida(req: CheckoutReq):
     data = load_data()
