@@ -1,35 +1,13 @@
-import asyncio
-from datetime import datetime, timedelta
-from fastapi import FastAPI
-import socketio
-
-# Inicialización correcta de FastAPI y Socket.IO
-app = FastAPI()
-sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
-sio_app = socketio.ASGIApp(sio, app)
-
-# Diccionario para controlar el tiempo fuera de línea (sid: timestamp)
-pending_disconnects = {}
-
-async def monitor_offline_workers():
-    while True:
-        await asyncio.sleep(60) # Revisa cada 60 segundos
-        now = datetime.now()
-        for sid, disconnect_time in list(pending_disconnects.items()):
-            if now - disconnect_time > timedelta(minutes=10):
-                print(f"Turno cerrado automáticamente por 10 minutos de inactividad para sid: {sid}")
-                # Aquí puedes disparar la lógica para registrar la salida del trabajador
-                del pending_disconnects[sid]
-
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(monitor_offline_workers())
-
-@sio.event
-async def connect(sid, environ):
-    if sid in pending_disconnects:
-        del pending_disconnects[sid]
-
-@sio.event
-async def disconnect(sid):
-    pending_disconnects[sid] = datetime.now()
+{
+  "usuarios": {
+    "admin": {
+      "pin": "9999",
+      "rol": "admin"
+    },
+    "ricardo": {
+      "pin": "1234",
+      "rol": "trabajador"
+    }
+  },
+  "asistencias": []
+}
