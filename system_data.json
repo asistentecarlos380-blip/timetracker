@@ -2,11 +2,15 @@
   "usuarios": {
     "admin": {
       "pin": "9999",
-      "rol": "admin"
+      "rol_sistema": "admin",
+      "area": "Administración",
+      "tarifa_hora": 2.0
     },
     "user": {
       "pin": "1234",
-      "rol": "trabajador"
+      "rol_sistema": "trabajador",
+      "area": "Ventas",
+      "tarifa_hora": 1.5
     }
   },
   "asistencias": []
