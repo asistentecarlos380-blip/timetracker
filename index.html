@@ -3,101 +3,214 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Asistencia - Trabajadores</title>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <title>Control de Asistencia</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        h2 { color: #0d6efd; margin-bottom: 20px; }
-        label { display: block; text-align: left; font-weight: 600; margin-top: 10px; color: #333; }
-        select, input { width: 100%; padding: 10px; margin-top: 5px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
-        .btn-group { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
-        button { padding: 12px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; color: white; transition: 0.2s; }
-        .btn-primary { background-color: #0d6efd; }
-        .btn-in { background-color: #198754; }
-        .btn-break { background-color: #ffc107; color: black; }
-        .btn-out { background-color: #dc3545; }
-        #status-msg { margin-top: 15px; font-weight: bold; font-size: 14px; }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 650px; }
+        h2, h3 { color: #1a73e8; margin-top: 0; text-align: center; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #333; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+        button { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        button:hover { background: #1557b0; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #bd2130; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #218838; }
         .hidden { display: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #1a73e8; color: white; }
+        .badge-open { background: #ffc107; color: #000; padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+        .badge-close { background: #28a745; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+        .msg { padding: 10px; border-radius: 6px; margin-top: 10px; text-align: center; font-weight: bold; }
+        .msg-success { background: #d4edda; color: #155724; }
+        .msg-error { background: #f8d7da; color: #721c24; }
+        .logout-btn { background: #6c757d; margin-top: 20px; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        🕒 <h2>Control de Asistencia</h2>
-        
-        <!-- SECCIÓN DE LOGIN CON PIN -->
-        <div id="login-section">
-            <label for="puesto">Selecciona tu Puesto:</label>
-            <select id="puesto">
-                <option value="Puesto 1">Puesto 1</option>
-                <option value="Puesto 2">Puesto 2</option>
-                <option value="Puesto 3">Puesto 3</option>
-                <option value="Puesto 4">Puesto 4</option>
-                <option value="Puesto 5">Puesto 5</option>
-                <option value="Puesto 6">Puesto 6</option>
-                <option value="Puesto 7">Puesto 7</option>
-                <option value="Puesto 8">Puesto 8</option>
-            </select>
-
-            <label for="pin">PIN de Acceso:</label>
-            <input type="password" id="pin" placeholder="Ingresa tu PIN secreto">
-
-            <button class="btn-primary" onclick="verifyLogin()">Iniciar Sesión</button>
+<div class="card">
+    <!-- VISTA DE LOGIN -->
+    <div id="view-login">
+        <h2>⏰ Control de Asistencia</h2>
+        <div class="form-group">
+            <label>Nombre de Usuario / Trabajador:</label>
+            <input type="text" id="login-user" placeholder="Ej: Ricardo u Admin">
         </div>
-
-        <!-- SECCIÓN DE MARCADO DE ASISTENCIA -->
-        <div id="action-section" class="hidden">
-            <h3 id="worker-title" style="color: #198754; margin-bottom: 15px;"></h3>
-            <div class="btn-group">
-                <button class="btn-in" onclick="sendAction('IN')">🟢 Registrar Entrada</button>
-                <button class="btn-break" onclick="sendAction('BREAK')">☕ Ir a Receso / Pausa</button>
-                <button class="btn-in" onclick="sendAction('RETURN')">▶️ Regresar de Receso</button>
-                <button class="btn-out" onclick="sendAction('OUT')">🔴 Registrar Salida</button>
-            </div>
-            <button style="background-color: #6c757d; margin-top: 15px;" onclick="logout()">Cerrar Sesión</button>
+        <div class="form-group">
+            <label>PIN de Acceso:</label>
+            <input type="password" id="login-pin" placeholder="Ingresa tu PIN">
         </div>
-
-        <div id="status-msg">Estado: Conectado ✅</div>
+        <button onclick="marcarAsistencia()" class="btn-success">📍 Marcar Entrada / Salida</button>
+        <button onclick="iniciarSesionAdmin()">🔑 Entrar como Administrador</button>
+        <div id="login-msg"></div>
     </div>
 
-    <script>
-        const socket = io();
-        let currentWorker = "";
-        let currentPuesto = "";
+    <!-- VISTA DE ADMINISTRADOR -->
+    <div id="view-admin" class="hidden">
+        <h2>🛠️ Panel de Administración</h2>
+        
+        <h3>👥 Gestión de Usuarios</h3>
+        <div class="form-group">
+            <label>Usuario:</label>
+            <input type="text" id="admin-new-user" placeholder="Ej: Ricardo">
+        </div>
+        <div class="form-group">
+            <label>PIN:</label>
+            <input type="text" id="admin-new-pin" placeholder="Ej: 1234">
+        </div>
+        <div class="form-group">
+            <label>Rol:</label>
+            <select id="admin-new-rol">
+                <option value="trabajador">Trabajador</option>
+                <option value="admin">Administrador</option>
+            </select>
+        </div>
+        <button onclick="guardarUsuario()" class="btn-success">➕ Crear / Guardar Usuario</button>
 
-        function verifyLogin() {
-            currentPuesto = document.getElementById('puesto').value;
-            const pin = document.getElementById('pin').value;
+        <h4 style="margin-top:20px;">Usuarios Registrados</h4>
+        <div id="list-usuarios"></div>
 
-            socket.emit('worker_login', { puesto: currentPuesto, pin: pin });
+        <hr style="margin:25px 0;">
+
+        <h3>📋 Registros de Asistencia</h3>
+        <div id="list-asistencias" style="overflow-x:auto;"></div>
+
+        <button onclick="cerrarSesion()" class="logout-btn">🔒 Cerrar Sesión</button>
+    </div>
+</div>
+
+<script>
+    async function marcarAsistencia() {
+        const user = document.getElementById('login-user').value;
+        const pin = document.getElementById('login-pin').value;
+        const msgDiv = document.getElementById('login-msg');
+
+        if (!user || !pin) {
+            msgDiv.innerHTML = '<div class="msg msg-error">Ingresa usuario y PIN</div>';
+            return;
         }
 
-        socket.on('login_response', (data) => {
-            if (data.success) {
-                currentWorker = data.worker_name;
-                document.getElementById('worker-title').innerText = `Bienvenido, ${currentWorker} (${currentPuesto})`;
-                document.getElementById('login-section').classList.add('hidden');
-                document.getElementById('action-section').classList.remove('hidden');
-            } else {
-                alert(data.message);
-            }
+        const res = await fetch('/api/marcar', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({usuario: user, pin: pin})
         });
 
-        function sendAction(action) {
-            socket.emit('worker_action', {
-                puesto: currentPuesto,
-                action: action,
-                worker_name: currentWorker
-            });
-            alert(`Acción registrada con éxito: ${action}`);
+        const data = await res.json();
+        if (res.ok) {
+            msgDiv.innerHTML = `<div class="msg msg-success">${data.mensaje}</div>`;
+            document.getElementById('login-pin').value = '';
+        } else {
+            msgDiv.innerHTML = `<div class="msg msg-error">${data.detail}</div>`;
         }
+    }
 
-        function logout() {
-            document.getElementById('action-section').classList.add('hidden');
-            document.getElementById('login-section').classList.remove('hidden');
-            document.getElementById('pin').value = "";
+    async function iniciarSesionAdmin() {
+        const user = document.getElementById('login-user').value;
+        const pin = document.getElementById('login-pin').value;
+        const msgDiv = document.getElementById('login-msg');
+
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({usuario: user, pin: pin})
+        });
+
+        const data = await res.json();
+        if (res.ok && data.rol === 'admin') {
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('view-admin').classList.remove('hidden');
+            cargarDatosAdmin();
+        } else if (res.ok && data.rol !== 'admin') {
+            msgDiv.innerHTML = '<div class="msg msg-error">El usuario no tiene permisos de administrador</div>';
+        } else {
+            msgDiv.innerHTML = `<div class="msg msg-error">${data.detail}</div>`;
         }
-    </script>
+    }
+
+    async function cargarDatosAdmin() {
+        const res = await fetch('/api/admin/datos');
+        const data = await res.json();
+
+        // Render usuarios
+        let htmlUsers = '<table><tr><th>Usuario</th><th>PIN</th><th>Rol</th><th>Acción</th></tr>';
+        for (let u in data.usuarios) {
+            htmlUsers += `<tr>
+                <td><b>${u}</b></td>
+                <td>${data.usuarios[u].pin}</td>
+                <td>${data.usuarios[u].rol}</td>
+                <td><button onclick="eliminarUsuario('${u}')" class="btn-danger" style="padding:4px 8px; font-size:12px; margin:0;">Eliminar</button></td>
+            </tr>`;
+        }
+        htmlUsers += '</table>';
+        document.getElementById('list-usuarios').innerHTML = htmlUsers;
+
+        // Render asistencias
+        let htmlAsis = '<table><tr><th>ID</th><th>Trabajador</th><th>Entrada</th><th>Salida</th><th>Acción</th></tr>';
+        data.asistencias.reverse().forEach(a => {
+            let salidaText = a.salida ? a.salida : '<span class="badge-open">En turno</span>';
+            let accion = a.salida ? '<span class="badge-close">Cerrado</span>' : `<button onclick="ajustarSalida(${a.id})" class="btn-success" style="padding:4px 8px; font-size:12px; margin:0;">Ajustar Salida</button>`;
+            htmlAsis += `<tr>
+                <td>${a.id}</td>
+                <td><b>${a.usuario}</b></td>
+                <td>${a.entrada}</td>
+                <td>${salidaText}</td>
+                <td>${accion}</td>
+            </tr>`;
+        });
+        htmlAsis += '</table>';
+        document.getElementById('list-asistencias').innerHTML = htmlAsis;
+    }
+
+    async function guardarUsuario() {
+        const u = document.getElementById('admin-new-user').value;
+        const p = document.getElementById('admin-new-pin').value;
+        const r = document.getElementById('admin-new-rol').value;
+
+        if (!u || !p) return alert('Ingresa usuario y PIN');
+
+        await fetch('/api/admin/usuario', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({usuario: u, pin: p, rol: r})
+        });
+
+        document.getElementById('admin-new-user').value = '';
+        document.getElementById('admin-new-pin').value = '';
+        cargarDatosAdmin();
+    }
+
+    async function eliminarUsuario(user) {
+        if (!confirm(`¿Eliminar al usuario ${user}?`)) return;
+        await fetch(`/api/admin/usuario/${user}`, { method: 'DELETE' });
+        cargarDatosAdmin();
+    }
+
+    async function ajustarSalida(id) {
+        const horaDefecto = new Date().toLocaleString('es-ES');
+        const nuevaHora = prompt("Ingresa la fecha y hora de salida correcta (Ej: 2026-10-14 08:00:00 PM):", horaDefecto);
+        if (!nuevaHora) return;
+
+        await fetch('/api/admin/ajustar-salida', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({registro_id: id, hora_salida: nuevaHora})
+        });
+
+        cargarDatosAdmin();
+    }
+
+    function cerrarSesion() {
+        document.getElementById('view-admin').classList.add('hidden');
+        document.getElementById('view-login').classList.remove('hidden');
+        document.getElementById('login-pin').value = '';
+        document.getElementById('login-msg').innerHTML = '';
+    }
+</script>
+
 </body>
 </html>
