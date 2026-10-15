@@ -1,8 +1,9 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 import os
 import json
+import pandas as pd
 import uvicorn
 from datetime import datetime
 import zoneinfo
@@ -219,12 +220,86 @@ def ajustar_salida(req: CheckoutReq):
             return {"status": "ok", "mensaje": "Hora de salida actualizada"}
     raise HTTPException(status_code=404, detail="Registro no encontrado")
 
-@app.post("/api/admin/importar")
-def importar_datos(nuevo_estado: dict):
-    if "usuarios" not in nuevo_estado or "asistencias" not in nuevo_estado:
-        raise HTTPException(status_code=400, detail="Formato de respaldo inválido")
-    save_data(nuevo_estado)
-    return {"status": "ok", "mensaje": "Base de datos restaurada correctamente"}
+# EXPORTAR EN EXCEL (.xlsx) CON DOS HOJAS (Usuarios y Asistencias)
+@app.get("/api/admin/exportar-excel")
+def exportar_excel():
+    data = load_data()
+    
+    # Preparar tabla de usuarios
+    usuarios_list = []
+    for u, info in data["usuarios"].items():
+        usuarios_list.append({
+            "Usuario": u,
+            "PIN": info.get("pin"),
+            "Tipo_Pago": info.get("tipo_pago"),
+            "Monto_Fijo": info.get("monto_fijo"),
+            "Tarifa_Hora": info.get("tarifa_hora"),
+            "Area": info.get("area"),
+            "Rol_Sistema": info.get("rol_sistema")
+        })
+    df_usuarios = pd.DataFrame(usuarios_list)
+
+    # Preparar tabla de asistencias
+    asistencias_list = data["asistencias"] if data["asistencias"] else [{"id": "", "usuario": "", "entrada": "", "receso_inicio": "", "receso_fin": "", "salida": ""}]
+    df_asistencias = pd.DataFrame(asistencias_list)
+
+    file_path = "respaldo_nomina.xlsx"
+    with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
+        df_usuarios.to_excel(writer, sheet_name="Usuarios", index=False)
+        df_asistencias.to_excel(writer, sheet_name="Asistencias", index=False)
+
+    return FileResponse(file_path, filename=f"Respaldo_Nomina_{datetime.now().strftime('%Y-%m-%d')}.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+# IMPORTAR DESDE EXCEL (.xlsx)
+@app.post("/api/admin/importar-excel")
+async def importar_excel(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        temp_path = "temp_import.xlsx"
+        with open(temp_path, "wb") as f:
+            f.write(contents)
+
+        # Leer hojas del Excel
+        df_usuarios = pd.read_excel(temp_path, sheet_name="Usuarios")
+        df_asistencias = pd.read_excel(temp_path, sheet_name="Asistencias")
+
+        usuarios_dict = {}
+        for _, row in df_usuarios.iterrows():
+            u_name = str(row["Usuario"])
+            usuarios_dict[u_name] = {
+                "pin": str(row["PIN"]),
+                "tipo_pago": str(row["Tipo_Pago"]),
+                "monto_fijo": float(row["Monto_Fijo"]) if pd.notna(row["Monto_Fijo"]) else 150.0,
+                "tarifa_hora": float(row["Tarifa_Hora"]) if pd.notna(row["Tarifa_Hora"]) else 1.1,
+                "area": str(row["Area"]) if pd.notna(row["Area"]) else "General",
+                "rol_sistema": str(row["Rol_Sistema"]) if pd.notna(row["Rol_Sistema"]) else "trabajador"
+            }
+
+        asistencias_list = []
+        for _, row in df_asistencias.iterrows():
+            if pd.isna(row["usuario"]) or str(row["usuario"]).strip() == "":
+                continue
+            asistencias_list.append({
+                "id": int(row["id"]) if pd.notna(row["id"]) else len(asistencias_list) + 1,
+                "usuario": str(row["usuario"]),
+                "entrada": str(row["entrada"]),
+                "receso_inicio": str(row["receso_inicio"]) if pd.notna(row["receso_inicio"]) else None,
+                "receso_fin": str(row["receso_fin"]) if pd.notna(row["receso_fin"]) else None,
+                "salida": str(row["salida"]) if pd.notna(row["salida"]) else None
+            })
+
+        nuevo_estado = {
+            "usuarios": usuarios_dict,
+            "asistencias": asistencias_list
+        }
+        save_data(nuevo_estado)
+
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+        return {"status": "ok", "mensaje": "Excel importado y datos restaurados correctamente"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error al procesar el archivo Excel: {str(e)}")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
