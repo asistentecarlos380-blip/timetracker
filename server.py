@@ -13,6 +13,20 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# Lista oficial de personal predeterminado
+PERSONAL_INICIAL = [
+    {"usuario": "ADMIN", "pin": "1234", "rol_sistema": "admin", "tipo_pago": "Fijo", "monto_fijo": 300.0, "tarifa_hora": 0.0, "area": "Gerencia"},
+    {"usuario": "Ricardo", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+    {"usuario": "Ronald", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+    {"usuario": "Lisander", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+    {"usuario": "Daniel", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+    {"usuario": "Betzaida", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+    {"usuario": "Brayan", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+    {"usuario": "Gerson", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+    {"usuario": "Matias", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+    {"usuario": "Planta", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Gasolina", "monto_fijo": 0.0, "tarifa_hora": 0.0, "area": "Operaciones"}
+]
+
 @app.get("/", response_class=HTMLResponse)
 def leer_raiz():
     if os.path.exists("index.html"):
@@ -151,11 +165,28 @@ def receso(req: LoginRequest):
 
 @app.get("/api/admin/datos")
 def admin_datos():
-    res_u = supabase.table("usuarios").select("*").execute()
-    res_a = supabase.table("asistencias").select("*").execute()
-    usuarios_dict = {u["usuario"]: u for u in res_u.data} if res_u.data else {}
-    if "ADMIN" not in usuarios_dict:
-        usuarios_dict["ADMIN"] = {"usuario": "ADMIN", "pin": "1234", "rol_sistema": "admin", "tipo_pago": "Fijo", "monto_fijo": 300.0, "tarifa_hora": 0.0, "area": "Gerencia"}
+    try:
+        res_u = supabase.table("usuarios").select("*").execute()
+        res_a = supabase.table("asistencias").select("*").execute()
+    except Exception:
+        res_u = type('obj', (object,), {'data': []})()
+        res_a = type('obj', (object,), {'data': []})()
+        
+    usuarios_dict = {}
+    if res_u.data:
+        for u in res_u.data:
+            usuarios_dict[u["usuario"]] = u
+            
+    # Auto-garantizar que todos los usuarios predeterminados existan en tiempo de ejecución
+    for p_init in PERSONAL_INICIAL:
+        nombre = p_init["usuario"]
+        if nombre not in usuarios_dict:
+            try:
+                supabase.table("usuarios").upsert(p_init).execute()
+                usuarios_dict[nombre] = p_init
+            except Exception:
+                pass
+                
     return {"usuarios": usuarios_dict, "asistencias": res_a.data if res_a.data else []}
 
 @app.post("/api/admin/registro-manual")
