@@ -44,23 +44,28 @@
 <body>
 
 <div class="card">
-    <!-- VISTA PRINCIPAL LOGIN ÚNICO -->
+    <!-- VISTA LOGIN -->
     <div id="view-login">
         <h2>⏰ Control de Asistencia y Planta</h2>
-        <div class="form-group" style="margin-top: 20px;">
-            <label>Nombre de Usuario:</label>
-            <input type="text" id="login-user" placeholder="Ej: Ricardo, admin, Luz">
-        </div>
-        <div class="form-group">
-            <label>PIN de Acceso:</label>
-            <input type="password" id="login-pin" placeholder="Ingresa tu PIN">
-        </div>
+        
+        <!-- Envolvemos en un form con onsubmit para que al presionar Enter funcione automáticamente -->
+        <form onsubmit="event.preventDefault(); realizarLogin();">
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Nombre de Usuario:</label>
+                <input type="text" id="login-user" placeholder="Ej: Ricardo, admin, Luz" required>
+            </div>
+            <div class="form-group">
+                <label>PIN de Acceso:</label>
+                <input type="password" id="login-pin" placeholder="Ingresa tu PIN" required>
+            </div>
 
-        <button onclick="realizarLogin()" class="btn-success" style="margin-top: 10px;">🔑 Iniciar Sesión / Ingresar</button>
+            <button type="submit" class="btn-success" style="margin-top: 10px;">Iniciar Sesión</button>
+        </form>
+
         <div id="login-msg"></div>
     </div>
 
-    <!-- VISTA TRABAJADOR / PLANTA -->
+    <!-- VISTA TRABAJADOR -->
     <div id="view-worker" class="hidden">
         <h2 id="worker-title">📋 Panel de Trabajador</h2>
         
@@ -79,14 +84,14 @@
     <div id="view-admin" class="hidden">
         <h2>🛠️ Panel de Administración y Nómina</h2>
         
-        <!-- SECCIÓN DE RESPALDOS -->
+        <!-- SECCIÓN DE RESPALDOS EXCEL -->
         <div class="box-backup">
-            <h3 style="margin-top:0; font-size:16px; color:#274e13;">💾 Respaldo y Seguridad de Datos</h3>
-            <p style="font-size:13px; margin: 5px 0 10px 0;">Guarda o importa copias de seguridad de las dos semanas de trabajo.</p>
+            <h3 style="margin-top:0; font-size:16px; color:#274e13;">📊 Respaldo en Excel (.xlsx)</h3>
+            <p style="font-size:13px; margin: 5px 0 10px 0;">Descarga el archivo Excel para ver, editar o agregar las horas de la semana pasada, y súbelo para restaurar los datos.</p>
             <div class="btn-grid" style="margin-top:0;">
-                <button onclick="exportarRespaldo()" class="btn-success">📥 Exportar Respaldo (PC)</button>
+                <button onclick="exportarExcel()" class="btn-success">📥 Descargar Excel (PC)</button>
                 <label class="btn-info" style="display:block; text-align:center; padding:11px; border-radius:6px; cursor:pointer; color:white; font-weight:bold; font-size:15px; margin:0;">
-                    📤 Importar Respaldo <input type="file" id="file-import" accept=".json" onchange="importarRespaldo(event)" style="display:none;">
+                    📤 Subir e Importar Excel <input type="file" id="file-import-excel" accept=".xlsx" onchange="importarExcel(event)" style="display:none;">
                 </label>
             </div>
         </div>
@@ -145,7 +150,7 @@
 
         <hr style="margin:25px 0;">
 
-        <!-- FILTRO QUINCENA / RANGO FECHAS -->
+        <!-- FILTRO QUINCENA -->
         <div class="box-filter">
             <h3 style="margin-top:0; font-size:16px;">💰 Cálculo de Pago por Rango / Quincena (14 días)</h3>
             <div class="form-row">
@@ -348,12 +353,9 @@
     }
 
     function renderAdminUI(data, filtradosAsis = null) {
-        // Identificar qué usuarios tienen un turno abierto (en línea)
         let usuariosEnTurno = new Set();
         data.asistencias.forEach(a => {
-            if (!a.salida) {
-                usuariosEnTurno.add(a.usuario.toLowerCase());
-            }
+            if (!a.salida) usuariosEnTurno.add(a.usuario.toLowerCase());
         });
 
         let htmlU = '<table><tr><th>Usuario</th><th>PIN</th><th>Tipo</th><th>Detalle Config</th><th>Permiso</th><th>Acción</th></tr>';
@@ -480,40 +482,29 @@
         cargarDatosAdmin();
     }
 
-    function exportarRespaldo() {
-        if (!cacheAdminData) return alert('No hay datos cargados');
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cacheAdminData, null, 2));
-        const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `respaldo_asistencia_${new Date().toISOString().split('T')[0]}.json`);
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
+    function exportarExcel() {
+        window.location.href = '/api/admin/exportar-excel';
     }
 
-    function importarRespaldo(event) {
+    async function importarExcel(event) {
         const file = event.target.files[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            try {
-                const jsonContent = JSON.parse(e.target.result);
-                const res = await fetch('/api/admin/importar', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(jsonContent)
-                });
-                if (res.ok) {
-                    alert('¡Respaldo importado y restaurado con éxito!');
-                    cargarDatosAdmin();
-                } else {
-                    alert('Error al importar el archivo.');
-                }
-            } catch (err) {
-                alert('El archivo no es un JSON de respaldo válido.');
-            }
-        };
-        reader.readAsText(file);
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch('/api/admin/importar-excel', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            alert('¡Excel importado y datos restaurados con éxito!');
+            cargarDatosAdmin();
+        } else {
+            alert('Error al importar el Excel: ' + (data.detail || 'Formato incorrecto'));
+        }
     }
 
     function calcularNominaRango() {
@@ -589,23 +580,4 @@
         textoReporte += `• Horas sin luz: ${horasSinLuzTotal.toFixed(5)} h\n`;
         textoReporte += `• Consumo: 1.4 L/h\n`;
         textoReporte += `• Gasolina consumida: ${litrosGasolina.toFixed(2)} litros\n`;
-        textoReporte += `• A $0.50/L: $${costoGasolina.toFixed(2)}\n\n`;
-
-        textoReporte += `💰 Resumen final\n`;
-        textoReporte += `• Pago trabajadores: $${totalTrabajadoresPago.toFixed(2)}\n`;
-        if (totalFijoAdmin > 0) {
-            textoReporte += `• Pago Fijo (${semanasRango.toFixed(1)} sem): $${totalFijoAdmin.toFixed(2)}\n`;
-        }
-        textoReporte += `• Gasolina: $${costoGasolina.toFixed(2)}\n`;
-        textoReporte += `=====================================\n`;
-        textoReporte += `TOTAL GENERAL: $${totalGeneral.toFixed(2)}`;
-
-        document.getElementById('resultado-reporte').classList.remove('hidden');
-        document.getElementById('reporte-texto').innerText = textoReporte;
-
-        renderAdminUI(cacheAdminData, filtrados);
-    }
-</script>
-
-</body>
-</html>
+        textoReporte
