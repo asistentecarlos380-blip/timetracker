@@ -12,7 +12,6 @@ DB_FILE = "database.json"
 BACKUP_FILE = "database_backup.json"
 
 def inicializar_bd():
-    # Si el archivo principal no existe pero tenemos un respaldo, lo restauramos automáticamente
     if not os.path.exists(DB_FILE):
         if os.path.exists(BACKUP_FILE):
             try:
@@ -26,7 +25,6 @@ def inicializar_bd():
             except Exception:
                 pass
 
-        # Si no existe ninguno, creamos la estructura inicial
         datos_iniciales = {
             "usuarios": {
                 "ADMIN": {"pin": "1234", "rol_sistema": "admin", "tipo_pago": "Fijo", "monto_fijo": 300.0, "tarifa_hora": 0.0, "area": "Gerencia"},
@@ -46,6 +44,15 @@ def inicializar_bd():
             json.dump(datos_iniciales, f, indent=2, ensure_ascii=False)
             f.flush()
             os.fsync(f.fileno())
+            
+    # Asegurar que siempre exista el backup inicial
+    if not os.path.exists(BACKUP_FILE):
+        with open(DB_FILE, "r", encoding="utf-8") as f:
+            data_actual = json.load(f)
+        with open(BACKUP_FILE, "w", encoding="utf-8") as f_back:
+            json.dump(data_actual, f_back, indent=2, ensure_ascii=False)
+            f_back.flush()
+            os.fsync(f_back.fileno())
 
 inicializar_bd()
 
@@ -56,20 +63,18 @@ def leer_db():
         return json.load(f)
 
 def escribir_db(data):
-    # Escritura segura en el archivo principal con sincronización física de disco
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
         f.flush()
         os.fsync(f.fileno())
     
-    # Escritura simultánea en el archivo de respaldo (Backup)
     try:
         with open(BACKUP_FILE, "w", encoding="utf-8") as f_back:
             json.dump(data, f_back, indent=2, ensure_ascii=False)
             f_back.flush()
             os.fsync(f_back.fileno())
     except Exception as e:
-        print("Aviso al crear respaldo:", e)
+        print("Error en respaldo:", e)
 
 @app.get("/", response_class=HTMLResponse)
 def leer_raiz():
@@ -92,10 +97,6 @@ class EditarRegistroRequest(BaseModel):
     registro_id: int
     entrada: str
     salida: str | None = None
-
-class AjustarSalidaRequest(BaseModel):
-    registro_id: int
-    hora_salida: str
 
 class UsuarioAdminRequest(BaseModel):
     usuario_antiguo: str | None = None
@@ -148,9 +149,6 @@ def cambiar_pin(req: CambiarPinRequest):
     
     if usuarios[u_encontrado]["pin"] != req.pin_actual:
         raise HTTPException(status_code=400, detail="El PIN actual es incorrecto")
-    
-    if not req.pin_nuevo or len(req.pin_nuevo.strip()) < 4:
-        raise HTTPException(status_code=400, detail="El nuevo PIN debe tener al menos 4 caracteres")
     
     usuarios[u_encontrado]["pin"] = req.pin_nuevo.strip()
     db["usuarios"] = usuarios
@@ -268,6 +266,21 @@ def receso(req: LoginRequest):
 def admin_datos():
     db = leer_db()
     return {"usuarios": db.get("usuarios", {}), "asistencias": db.get("asistencias", [])}
+
+@app.post("/api/admin/restaurar-respaldo")
+def restaurar_respaldo():
+    if os.path.exists(BACKUP_FILE):
+        try:
+            with open(BACKUP_FILE, "r", encoding="utf-8") as f_back:
+                datos_backup = json.load(f_back)
+            with open(DB_FILE, "w", encoding="utf-8") as f:
+                json.dump(datos_backup, f, indent=2, ensure_ascii=False)
+                f.flush()
+                os.fsync(f.fileno())
+            return {"mensaje": "Respaldo restaurado con éxito"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error al restaurar respaldo: {str(e)}")
+    raise HTTPException(status_code=404, detail="No se encontró ningún archivo de respaldo en el servidor.")
 
 @app.post("/api/admin/registro-manual")
 def admin_registro_manual(req: RegistroManualRequest):
