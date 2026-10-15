@@ -95,7 +95,6 @@ def leer_raiz():
             patch_ui = """
             <script>
             document.addEventListener("DOMContentLoaded", () => {
-                // 1. Tuerca global en panel admin
                 const headerActions = document.querySelector('header') || document.querySelector('.flex.justify-between') || document.querySelector('#panel-admin');
                 if (headerActions && !document.getElementById('btn-config-global')) {
                     const btnConfig = document.createElement('button');
@@ -111,7 +110,6 @@ def leer_raiz():
                     }
                 }
 
-                // 2. Simulador de cobro en el menú del trabajador
                 const observer = new MutationObserver(() => {
                     const dropdownMenu = document.querySelector('#menu-config-trabajador') || document.querySelector('.dropdown-menu') || document.querySelector('[role="menu"]') || document.querySelector('.absolute.right-0.mt-2');
                     if (dropdownMenu && !document.getElementById('simulador-cobro-btn')) {
@@ -140,7 +138,7 @@ def leer_raiz():
                                 <i class="fas fa-sliders-h"></i> Configuración Global de Tarifas
                             </h3>
                             <p class="text-sm text-slate-400 mb-4">
-                                Actualiza la tarifa por hora para <b>todo el personal al mismo tiempo</b>. Podrás seguir editando la tarifa individual de cada trabajador en su respectivo botón de edición.
+                                Actualiza la tarifa por hora para <b>todo el personal al mismo tiempo</b>.
                             </p>
                             <div class="mb-4">
                                 <label class="block text-xs uppercase font-bold text-slate-400 mb-1">Nueva Tarifa General ($ / hora)</label>
@@ -192,20 +190,18 @@ def leer_raiz():
                                 <i class="fas fa-calculator"></i> Simulador de Cobro
                             </h3>
                             <p class="text-xs text-slate-400 mb-4">
-                                Ingresa tu tarifa referencial y calcula automáticamente el total acumulado en base a tus horas registradas en pantalla.
+                                Ingresa tu tarifa referencial y visualiza tu cálculo estimado.
                             </p>
                             
-                            <!-- Área 1: Modificar Tarifa de Referencia -->
                             <div class="mb-4">
                                 <label class="block text-xs uppercase font-bold text-slate-400 mb-1">1. Tarifa Referencial ($ / hora)</label>
                                 <input type="number" step="0.1" id="input-tarifa-ref" value="1.5" oninput="calcularTotalSimulado()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-bold text-lg">
                             </div>
 
-                            <!-- Área 2: Total Simulado Calculado -->
                             <div class="mb-5 bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center">
                                 <span class="block text-xs uppercase font-bold text-slate-400 mb-1">2. Total Estimado a Cobrar</span>
                                 <span id="resultado-simulado-total" class="text-2xl font-black text-emerald-400">$0.00</span>
-                                <span id="info-horas-base" class="block text-xs text-slate-400 mt-1">Suma total de horas en pantalla</span>
+                                <span id="info-horas-base" class="block text-xs text-slate-400 mt-1">Suma total de horas</span>
                             </div>
 
                             <div class="flex justify-end gap-3">
@@ -226,31 +222,33 @@ def leer_raiz():
 
                 const tarifa = parseFloat(tarifaInput.value) || 0;
 
-                // Sumar automáticamente TODAS las horas que aparecen en la tabla de resumen del trabajador (ej: "22.60 hrs")
-                let sumaHorasTotales = 0;
-                const elementosHoras = document.querySelectorAll('td, span, div');
-                elementosHoras.forEach(el => {
-                    const txt = el.textContent.trim();
-                    if (txt.endsWith('hrs')) {
-                        const val = parseFloat(txt.replace('hrs', '').trim());
-                        if (!isNaN(val) && val < 200) { // filtro lógico para evitar sumar años o IDs
-                            sumaHorasTotales += val;
+                // Evitar sumar duplicados recolectando únicamente los valores únicos de la tabla de resumen diario
+                let sumaHorasUnicas = 0;
+                let filasVistas = new Set();
+                
+                document.querySelectorAll('tr').forEach(tr => {
+                    const textoFila = tr.textContent;
+                    const matchHrs = textoFila.match(/([0-9]+\.[0-9]+)\s*hrs/);
+                    if (matchHrs && !filasVistas.has(textoFila)) {
+                        filasVistas.add(textoFila);
+                        const val = parseFloat(matchHrs[1]);
+                        if (!isNaN(val) && val < 200) {
+                            sumaHorasUnicas += val;
                         }
                     }
                 });
 
-                // Si por alguna razón no detecta las de la tabla, intentar buscar el total del periodo
-                if (sumaHorasTotales === 0) {
+                if (sumaHorasUnicas === 0) {
                     const elPeriodo = document.querySelector('#total-periodo, .total-periodo');
                     if (elPeriodo) {
                         const match = elPeriodo.textContent.match(/([0-9]+\.[0-9]+)/);
-                        if (match) sumaHorasTotales = parseFloat(match[1]) || 0;
+                        if (match) sumaHorasUnicas = parseFloat(match[1]) || 0;
                     }
                 }
 
-                const total = tarifa * sumaHorasTotales;
+                const total = tarifa * sumaHorasUnicas;
                 resultadoSpan.textContent = `$${total.toFixed(2)}`;
-                infoHoras.textContent = `Suma de ${sumaHorasTotales.toFixed(2)} hrs mostradas`;
+                infoHoras.textContent = `Suma de ${sumaHorasUnicas.toFixed(2)} hrs únicas`;
             }
             </script>
             """
