@@ -87,7 +87,6 @@ HISTORIAL_INICIAL = [
 ]
 
 def eliminar_duplicados_bd():
-    """Elimina automáticamente registros duplicados idénticos en Supabase"""
     try:
         res = supabase.table("asistencias").select("*").execute()
         if res.data:
@@ -99,7 +98,6 @@ def eliminar_duplicados_bd():
                     ids_a_borrar.append(r["id"])
                 else:
                     vistos.add(clave)
-            
             for rid in ids_a_borrar:
                 supabase.table("asistencias").delete().eq("id", rid).execute()
     except Exception:
@@ -114,6 +112,7 @@ def leer_raiz():
             patch_ui = """
             <script>
             document.addEventListener("DOMContentLoaded", () => {
+                // 1. Tuerca global en panel admin
                 const headerActions = document.querySelector('header') || document.querySelector('.flex.justify-between') || document.querySelector('#panel-admin');
                 if (headerActions && !document.getElementById('btn-config-global')) {
                     const btnConfig = document.createElement('button');
@@ -129,7 +128,39 @@ def leer_raiz():
                     }
                 }
 
-                const observer = new MutationObserver(() => {
+                // 2. Cuadro de Total General de Nómina en el panel admin
+                const observerNomina = new MutationObserver(() => {
+                    const seccionNomina = document.querySelector('#resumen-horas') || document.querySelector('div:has(table)') || document.querySelector('.overflow-x-auto');
+                    if (seccionNomina && !document.getElementById('cuadro-total-nomina-general')) {
+                        const contenedorTotal = document.createElement('div');
+                        contenedorTotal.id = 'cuadro-total-nomina-general';
+                        contenedorTotal.className = 'mb-4 p-4 bg-slate-900 border border-emerald-500/50 rounded-xl flex items-center justify-between shadow-xl';
+                        contenedorTotal.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                <div class="bg-emerald-500/20 p-3 rounded-lg text-emerald-400 text-xl">
+                                    <i class="fas fa-wallet"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs uppercase font-bold text-slate-400">Nómina Total a Pagar (General)</h4>
+                                    <p class="text-xs text-slate-500">Suma total incluyendo administradores, personal y planta</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span id="monto-total-nomina-general" class="text-2xl font-black text-emerald-400">$0.00</span>
+                            </div>
+                        `;
+                        seccionNomina.parentNode.insertBefore(contenedorTotal, seccionNomina);
+                        
+                        // Observar cambios en la tabla para recalcular automáticamente al hacer clic en "Calcular Horas"
+                        const observerTabla = new MutationObserver(calcularSumaTotalNomina);
+                        observerTabla.observe(seccionNomina, { childList: true, subtree: true });
+                    }
+                    calcularSumaTotalNomina();
+                });
+                observerNomina.observe(document.body, { childList: true, subtree: true });
+
+                // 3. Simulador de cobro trabajador
+                const observerTrabajador = new MutationObserver(() => {
                     const dropdownMenu = document.querySelector('#menu-config-trabajador') || document.querySelector('.dropdown-menu') || document.querySelector('[role="menu"]') || document.querySelector('.absolute.right-0.mt-2');
                     if (dropdownMenu && !document.getElementById('simulador-cobro-btn')) {
                         if (!dropdownMenu.innerHTML.includes('Simulador')) {
@@ -142,8 +173,50 @@ def leer_raiz():
                         }
                     }
                 });
-                observer.observe(document.body, { childList: true, subtree: true });
+                observerTrabajador.observe(document.body, { childList: true, subtree: true });
             });
+
+            function calcularSumaTotalNomina() {
+                const spanTotal = document.getElementById('monto-total-nomina-general');
+                if (!spanTotal) return;
+
+                let sumaTotal = 0;
+                // Buscar todas las celdas o elementos de montos a pagar (que empiezan con '$')
+                const elementosMonto = document.querySelectorAll('td, span, div');
+                elementosMonto.forEach(el => {
+                    const txt = el.textContent.trim();
+                    if (txt.startsWith('$') && !txt.includes('Total') && !txt.includes('General')) {
+                        const val = parseFloat(txt.replace('$', '').trim());
+                        if (!isNaN(val) && val < 50000) {
+                            // Sumar solo los montos de la tabla de resumen de nómina
+                            if (el.closest('table') || el.closest('.grid') || el.closest('.overflow-x-auto')) {
+                                sumaTotal += val;
+                            }
+                        }
+                    }
+                });
+
+                // Si hay duplicación visual en celdas, tomar un enfoque más preciso buscando en la última columna de la tabla de resumen
+                let sumaPrecisa = 0;
+                document.querySelectorAll('tr').forEach(tr => {
+                    const celdas = tr.querySelectorAll('td');
+                    if (celdas.length >= 5) {
+                        const ultimoTexto = celdas[celdas.length - 1].textContent.trim();
+                        if (ultimoTexto.startsWith('$')) {
+                            const v = parseFloat(ultimoTexto.replace('$', ''));
+                            if (!isNaN(v)) sumaPrecisa += v;
+                        }
+                    }
+                });
+
+                if (sumaPrecisa > 0) {
+                    spanTotal.textContent = `$${sumaPrecisa.toFixed(2)}`;
+                } else if (sumaTotal > 0) {
+                    spanTotal.textContent = `$${(sumaTotal / 2).toFixed(2)}`; // Evitar duplicados si lee celdas repetidas
+                } else {
+                    spanTotal.textContent = '$0.00';
+                }
+            }
 
             function abrirModalConfigGlobal() {
                 let modal = document.getElementById('modal-config-global');
@@ -240,7 +313,6 @@ def leer_raiz():
                 if (!tarifaInput || !resultadoSpan) return;
 
                 const tarifa = parseFloat(tarifaInput.value) || 0;
-
                 let sumaHorasUnicas = 0;
                 let filasVistas = new Set();
                 
@@ -343,7 +415,6 @@ def mis_horas(req: LoginRequest):
     if u.lower() == "admin" and str(req.pin).strip() == "1234":
         try:
             res_a = supabase.table("asistencias").select("*").execute()
-            # Filtrar duplicados en memoria también por seguridad
             unicos = []
             vistos = set()
             if res_a.data:
@@ -434,7 +505,6 @@ def admin_datos():
     try:
         res_a = supabase.table("asistencias").select("*").execute()
         if res_a.data and len(res_a.data) > 0:
-            # Filtrar únicos
             unicos = []
             vistos = set()
             for r in res_a.data:
