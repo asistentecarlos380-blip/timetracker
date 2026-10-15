@@ -59,6 +59,11 @@ class RegistroManualRequest(BaseModel):
     salida: str | None = None
     es_continua: bool = False
 
+class EditarRegistroRequest(BaseModel):
+    registro_id: int
+    entrada: str
+    salida: str | None = None
+
 class AjustarSalidaRequest(BaseModel):
     registro_id: int
     hora_salida: str
@@ -276,6 +281,34 @@ def admin_registro_manual(req: RegistroManualRequest):
     db["asistencias"] = asistencias
     escribir_db(db)
     return {"mensaje": "Registro manual guardado con éxito"}
+
+@app.post("/api/admin/editar-registro")
+def admin_editar_registro(req: EditarRegistroRequest):
+    db = leer_db()
+    asistencias = db.get("asistencias", [])
+    encontrado = False
+    for r in asistencias:
+        if r["id"] == req.registro_id:
+            r["entrada"] = req.entrada
+            r["salida"] = req.salida
+            encontrado = True
+            break
+    if not encontrado:
+        raise HTTPException(status_code=404, detail="Registro no encontrado")
+    db["asistencias"] = asistencias
+    escribir_db(db)
+    return {"mensaje": "Registro actualizado correctamente"}
+
+@app.delete("/api/admin/eliminar-registro/{registro_id}")
+def admin_eliminar_registro(registro_id: int):
+    db = leer_db()
+    asistencias = db.get("asistencias", [])
+    nuevas_asistencias = [r for r in asistencias if r["id"] != registro_id]
+    if len(nuevas_asistencias) == len(asistencias):
+        raise HTTPException(status_code=404, detail="Registro no encontrado")
+    db["asistencias"] = nuevas_asistencias
+    escribir_db(db)
+    return {"mensaje": "Registro eliminado"}
 
 @app.post("/api/admin/usuario")
 def admin_guardar_usuario(req: UsuarioAdminRequest):
