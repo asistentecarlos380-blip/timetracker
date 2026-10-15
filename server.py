@@ -12,14 +12,14 @@ app = FastAPI()
 DATA_FILE = "system_data.json"
 TZ_VE = timezone(timedelta(hours=-4))
 
-USUARIOS_POR_DEFECTO = {
-    "admin": {"pin": "9999", "tipo_pago": "fijo", "monto_fijo": 150.0, "tarifa_hora": 0.0, "area": "Administración", "rol_sistema": "admin"},
+USUARIOS_PREDETERMINADOS = {
+    "admin": {"pin": "9999", "tipo_pago": "Fijo", "monto_fijo": 150.0, "tarifa_hora": 0.0, "area": "Administración", "rol_sistema": "admin"},
     "Luz": {"pin": "1234", "tipo_pago": "Gasolina", "monto_fijo": 150.0, "tarifa_hora": 0.0, "area": "Planta", "rol_sistema": "trabajador"},
-    "Ronald": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestion", "rol_sistema": "trabajador"},
-    "Ricardo": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestion", "rol_sistema": "trabajador"},
-    "Daniel": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestion", "rol_sistema": "trabajador"},
-    "Betzaida": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestion", "rol_sistema": "trabajador"},
-    "Lisander": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestion", "rol_sistema": "trabajador"}
+    "Ronald": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
+    "Ricardo": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
+    "Daniel": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
+    "Betzaida": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
+    "Lisander": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"}
 }
 
 def get_hora_actual():
@@ -27,17 +27,26 @@ def get_hora_actual():
 
 def load_data():
     if not os.path.exists(DATA_FILE):
-        return {"usuarios": USUARIOS_POR_DEFECTO, "asistencias": []}
+        data = {"usuarios": USUARIOS_PREDETERMINADOS, "asistencias": []}
+        save_data(data)
+        return data
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
             if "usuarios" not in data or not data["usuarios"]:
-                data["usuarios"] = USUARIOS_POR_DEFECTO
+                data["usuarios"] = USUARIOS_PREDETERMINADOS
+            else:
+                # Asegurar que los usuarios predeterminados siempre existan si fueron borrados por error
+                for u, info in USUARIOS_PREDETERMINADOS.items():
+                    if u not in data["usuarios"]:
+                        data["usuarios"][u] = info
             if "asistencias" not in data:
                 data["asistencias"] = []
             return data
     except:
-        return {"usuarios": USUARIOS_POR_DEFECTO, "asistencias": []}
+        data = {"usuarios": USUARIOS_PREDETERMINADOS, "asistencias": []}
+        save_data(data)
+        return data
 
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
@@ -51,10 +60,10 @@ class UserReq(BaseModel):
     usuario_antiguo: str = ""
     usuario: str
     pin: str
-    tipo_pago: str = "horas"
+    tipo_pago: str = "Horas"
     monto_fijo: float = 150.0
     tarifa_hora: float = 1.1
-    area: str = "General"
+    area: str = "Gestión"
     rol_sistema: str = "trabajador"
 
 class CheckoutReq(BaseModel):
@@ -87,7 +96,7 @@ def login(req: LoginReq):
         "status": "ok",
         "usuario": user_key,
         "rol_sistema": u_info.get("rol_sistema", "trabajador"),
-        "tipo_pago": u_info.get("tipo_pago", "horas")
+        "tipo_pago": u_info.get("tipo_pago", "Horas")
     }
 
 @app.post("/api/marcar")
