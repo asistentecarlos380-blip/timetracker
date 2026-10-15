@@ -8,7 +8,6 @@ from supabase import create_client, Client
 
 app = FastAPI()
 
-# --- CREDENCIALES FIJAS (Sin variables de entorno para evitar bloqueos) ---
 SUPABASE_URL = "https://dvpfynkqtjwkvmcndael.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2cGZ5bmtxdGp3a3ZtY25kYWVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwODM1MDcsImV4cCI6MjEwNzY1OTUwN30.7gjZWE3AbR1ta8grbzr-Xpdd5vugYm0KSFJ54giI89Y"
 
@@ -53,12 +52,13 @@ class CambiarPinRequest(BaseModel):
 
 @app.post("/api/login")
 def login(req: LoginRequest):
+    # Búsqueda insensible a mayúsculas/minúsculas para prevenir errores
     res = supabase.table("usuarios").select("*").ilike("usuario", req.usuario.strip()).execute()
     if not res.data:
         raise HTTPException(status_code=400, detail="Usuario no encontrado")
     
     user_info = res.data[0]
-    if user_info["pin"] != req.pin:
+    if str(user_info["pin"]).strip() != str(req.pin).strip():
         raise HTTPException(status_code=400, detail="PIN incorrecto")
     
     return {
@@ -74,7 +74,7 @@ def cambiar_pin(req: CambiarPinRequest):
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     
     u_real = res.data[0]["usuario"]
-    if res.data[0]["pin"] != req.pin_actual:
+    if str(res.data[0]["pin"]).strip() != str(req.pin_actual).strip():
         raise HTTPException(status_code=400, detail="El PIN actual es incorrecto")
     
     supabase.table("usuarios").update({"pin": req.pin_nuevo.strip()}).eq("usuario", u_real).execute()
@@ -83,7 +83,7 @@ def cambiar_pin(req: CambiarPinRequest):
 @app.post("/api/mis-horas")
 def mis_horas(req: LoginRequest):
     res_u = supabase.table("usuarios").select("*").ilike("usuario", req.usuario.strip()).execute()
-    if not res_u.data or res_u.data[0]["pin"] != req.pin:
+    if not res_u.data or str(res_u.data[0]["pin"]).strip() != str(req.pin).strip():
         raise HTTPException(status_code=400, detail="Credenciales inválidas")
     
     u_real = res_u.data[0]["usuario"]
@@ -93,7 +93,7 @@ def mis_horas(req: LoginRequest):
 @app.post("/api/marcar")
 def marcar(req: LoginRequest):
     res_u = supabase.table("usuarios").select("*").ilike("usuario", req.usuario.strip()).execute()
-    if not res_u.data or res_u.data[0]["pin"] != req.pin:
+    if not res_u.data or str(res_u.data[0]["pin"]).strip() != str(req.pin).strip():
         raise HTTPException(status_code=400, detail="Credenciales inválidas")
     
     u_real = res_u.data[0]["usuario"]
@@ -122,7 +122,7 @@ def marcar(req: LoginRequest):
 @app.post("/api/receso")
 def receso(req: LoginRequest):
     res_u = supabase.table("usuarios").select("*").ilike("usuario", req.usuario.strip()).execute()
-    if not res_u.data or res_u.data[0]["pin"] != req.pin:
+    if not res_u.data or str(res_u.data[0]["pin"]).strip() != str(req.pin).strip():
         raise HTTPException(status_code=400, detail="Credenciales inválidas")
     
     u_real = res_u.data[0]["usuario"]
