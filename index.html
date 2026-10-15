@@ -1,1146 +1,401 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Asistencia</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        /* Fondo Matrix Animado Pantalla Completa Fijo */
-        canvas#matrix-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: -1;
-            background: #050811;
+from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi.responses import HTMLResponse, FileResponse
+from pydantic import BaseModel
+import json
+import os
+import pandas as pd
+from datetime import datetime
+
+app = FastAPI()
+
+DB_FILE = "database.json"
+BACKUP_FILE = "database_backup.json"
+
+def inicializar_bd():
+    if not os.path.exists(DB_FILE):
+        if os.path.exists(BACKUP_FILE):
+            try:
+                with open(BACKUP_FILE, "r", encoding="utf-8") as f_back:
+                    datos_backup = json.load(f_back)
+                with open(DB_FILE, "w", encoding="utf-8") as f:
+                    json.dump(datos_backup, f, indent=2, ensure_ascii=False)
+                    f.flush()
+                    os.fsync(f.fileno())
+                return
+            except Exception:
+                pass
+
+        datos_iniciales = {
+            "usuarios": {
+                "ADMIN": {"pin": "1234", "rol_sistema": "admin", "tipo_pago": "Fijo", "monto_fijo": 300.0, "tarifa_hora": 0.0, "area": "Gerencia"},
+                "Ricardo": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+                "Ronald": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+                "Lisander": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+                "Daniel": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+                "Betzaida": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+                "Brayan": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+                "Gerson": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+                "Matias": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+                "Planta": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Gasolina", "monto_fijo": 0.0, "tarifa_hora": 0.0, "area": "Operaciones"}
+            },
+            "asistencias": []
         }
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.65);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(51, 65, 85, 0.5);
-        }
-        .glass-login-card {
-            background: rgba(10, 16, 30, 0.65);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(16, 185, 129, 0.4);
-            box-shadow: 0 0 30px rgba(16, 185, 129, 0.15);
-        }
-    </style>
-</head>
-<body class="text-slate-100 min-h-screen flex flex-col justify-between relative overflow-x-hidden">
+        with open(DB_FILE, "w", encoding="utf-8") as f:
+            json.dump(datos_iniciales, f, indent=2, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
 
-    <canvas id="matrix-bg"></canvas>
+inicializar_bd()
 
-    <!-- LOGIN SCREEN -->
-    <div id="login-screen" class="flex items-center justify-center flex-grow p-4 z-10">
-        <div class="glass-login-card p-8 rounded-2xl shadow-2xl w-full max-w-md">
-            <div class="text-center mb-6">
-                <i class="fa-solid fa-shield-halved text-emerald-500 text-5xl mb-3 animate-pulse"></i>
-                <h1 class="text-2xl font-bold tracking-wide text-white">Control de Asistencia</h1>
-                <p class="text-xs text-slate-300 mt-1">Sistema de fichaje y gestión segura</p>
-            </div>
-            <form id="login-form" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-medium text-slate-200 mb-1">Usuario</label>
-                    <input type="text" id="login-usuario" required class="w-full bg-slate-900/70 border border-slate-700/80 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Tu nombre de usuario">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-200 mb-1">PIN</label>
-                    <div class="relative">
-                        <input type="password" id="login-pin" required class="w-full bg-slate-900/70 border border-slate-700/80 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-10" placeholder="••••">
-                        <button type="button" onclick="togglePass('login-pin', 'icon-login-pin')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
-                            <i id="icon-login-pin" class="fa-solid fa-eye text-xs"></i>
-                        </button>
-                    </div>
-                </div>
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg transition text-sm shadow-lg shadow-emerald-600/30">Ingresar al Sistema</button>
-            </form>
-            <div id="login-error" class="mt-4 text-center text-xs text-red-400 hidden"></div>
-        </div>
-    </div>
+def leer_db():
+    if not os.path.exists(DB_FILE):
+        inicializar_bd()
+    with open(DB_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-    <!-- WORKER DASHBOARD -->
-    <div id="worker-dashboard" class="hidden flex-grow flex flex-col p-4 max-w-4xl mx-auto w-full z-10">
-        <header class="glass-panel p-4 rounded-xl flex justify-between items-center mb-4 shadow-md relative">
-            <div>
-                <h1 class="text-lg font-bold text-emerald-400" id="worker-title">Panel de Trabajador</h1>
-                <p class="text-xs text-slate-300">Control personal de turnos y recesos</p>
-            </div>
-            <div class="flex items-center gap-2">
-                <button onclick="cargarPanelTrabajador()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-white p-2 rounded-lg text-xs font-medium transition border border-slate-700 flex items-center justify-center" title="Actualizar Datos">
-                    <i class="fa-solid fa-rotate text-sm"></i>
-                </button>
-                <div class="relative">
-                    <button onclick="toggleMenuConfig()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white p-2 rounded-lg text-xs font-medium transition border border-slate-700 flex items-center justify-center" title="Configuración y Simulador">
-                        <i class="fa-solid fa-gear text-sm"></i>
-                    </button>
-                    <div id="menu-config" class="hidden absolute right-0 mt-2 w-64 glass-panel p-3 rounded-xl shadow-2xl border border-slate-700 z-50 text-xs space-y-3">
-                        <div class="border-b border-slate-700 pb-2">
-                            <button onclick="abrirModalCambiarPin(); cerrarMenuConfig();" class="w-full text-left text-indigo-300 hover:text-white flex items-center gap-2 py-1">
-                                <i class="fa-solid fa-key"></i> Cambiar mi PIN
-                            </button>
-                        </div>
-                        <div>
-                            <span class="block text-slate-400 font-semibold mb-1"><i class="fa-solid fa-flask mr-1"></i>Simulador de Cobro ($):</span>
-                            <div class="flex items-center gap-2">
-                                <input type="number" id="simulador-tarifa" value="1.5" step="0.1" oninput="actualizarSimuladorCobro()" class="w-16 bg-slate-900 border border-indigo-500/50 rounded px-2 py-1 text-center text-white font-bold text-xs focus:outline-none">
-                                <span class="text-slate-300">/h =</span>
-                                <strong id="simulador-total-cobro" class="text-indigo-300 text-sm font-bold">$0.00</strong>
-                            </div>
-                            <p class="text-[10px] text-slate-400 mt-1">Basado en las horas calculadas abajo.</p>
-                        </div>
-                    </div>
-                </div>
-                <button onclick="cerrarSesion()" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-red-500/30">Cerrar Sesión</button>
-            </div>
-        </header>
+def escribir_db(data):
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+        f.flush()
+        os.fsync(f.fileno())
+    
+    try:
+        with open(BACKUP_FILE, "w", encoding="utf-8") as f_back:
+            json.dump(data, f_back, indent=2, ensure_ascii=False)
+            f_back.flush()
+            os.fsync(f_back.fileno())
+    except Exception as e:
+        print("Error en respaldo:", e)
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-            <button id="btn-accion-turno" onclick="ejecutarAccionMarcar()" class="bg-emerald-600/90 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1">
-                <i id="icon-accion-turno" class="fa-solid fa-play text-lg"></i>
-                <span id="text-accion-turno" class="text-xs">Iniciar Turno</span>
-            </button>
-            <button id="btn-receso" onclick="ejecutarReceso()" class="bg-amber-600/90 hover:bg-amber-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1">
-                <i class="fa-solid fa-mug-hot text-lg"></i>
-                <span class="text-xs">Pausar / Receso</span>
-            </button>
-        </div>
+@app.get("/", response_class=HTMLResponse)
+def leer_raiz():
+    if os.path.exists("index.html"):
+        with open("index.html", "r", encoding="utf-8") as f:
+            return f.read()
+    return "<h1>Error: index.html no encontrado en el servidor.</h1>"
 
-        <div class="glass-panel p-3 rounded-xl mb-4 shadow-md flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-semibold text-emerald-400"><i class="fa-solid fa-calculator mr-1"></i>Rango (14 días):</span>
-                <input type="date" id="worker-desde" class="bg-slate-900/80 border border-slate-700/80 rounded px-2 py-1 text-slate-200">
-                <span class="text-slate-400">a</span>
-                <input type="date" id="worker-hasta" class="bg-slate-900/80 border border-slate-700/80 rounded px-2 py-1 text-slate-200">
-                <button onclick="calcularHorasWorker()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded font-medium transition">Calcular</button>
-            </div>
+class LoginRequest(BaseModel):
+    usuario: str
+    pin: str
+
+class RegistroManualRequest(BaseModel):
+    usuario: str
+    entrada: str
+    salida: str | None = None
+    es_continua: bool = False
+
+class EditarRegistroRequest(BaseModel):
+    registro_id: int
+    entrada: str
+    salida: str | None = None
+
+class UsuarioAdminRequest(BaseModel):
+    usuario_antiguo: str | None = None
+    usuario: str
+    pin: str
+    tipo_pago: str
+    monto_fijo: float = 0.0
+    tarifa_hora: float = 1.5
+    area: str = "Operaciones"
+    rol_sistema: str = "trabajador"
+
+class CambiarPinRequest(BaseModel):
+    usuario: str
+    pin_actual: str
+    pin_nuevo: str
+
+@app.post("/api/login")
+def login(req: LoginRequest):
+    db = leer_db()
+    usuarios = db.get("usuarios", {})
+    usuario_encontrado = None
+    for u in usuarios:
+        if u.lower() == req.usuario.strip().lower():
+            usuario_encontrado = u
+            break
+
+    if not usuario_encontrado:
+        raise HTTPException(status_code=400, detail="Usuario no encontrado")
+    if usuarios[usuario_encontrado]["pin"] != req.pin:
+        raise HTTPException(status_code=400, detail="PIN incorrecto")
+    
+    return {
+        "usuario": usuario_encontrado,
+        "pin": req.pin,
+        "rol_sistema": usuarios[usuario_encontrado].get("rol_sistema", "trabajador")
+    }
+
+@app.post("/api/cambiar-pin")
+def cambiar_pin(req: CambiarPinRequest):
+    db = leer_db()
+    usuarios = db.get("usuarios", {})
+    u_encontrado = None
+    for u in usuarios:
+        if u.lower() == req.usuario.strip().lower():
+            u_encontrado = u
+            break
+
+    if not u_encontrado:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    if usuarios[u_encontrado]["pin"] != req.pin_actual:
+        raise HTTPException(status_code=400, detail="El PIN actual es incorrecto")
+    
+    usuarios[u_encontrado]["pin"] = req.pin_nuevo.strip()
+    db["usuarios"] = usuarios
+    escribir_db(db)
+    return {"mensaje": "PIN actualizado correctamente"}
+
+@app.post("/api/mis-horas")
+def mis_horas(req: LoginRequest):
+    db = leer_db()
+    usuarios = db.get("usuarios", {})
+    u_encontrado = None
+    for u in usuarios:
+        if u.lower() == req.usuario.strip().lower():
+            u_encontrado = u
+            break
             
-            <div class="bg-slate-900/70 border border-slate-700/80 px-3 py-1.5 rounded-lg">
-                <span class="text-slate-300">Total Período:</span> <strong id="worker-total-horas-rango" class="text-emerald-400 text-sm">0.00 hrs</strong>
-            </div>
-        </div>
+    if not u_encontrado or usuarios[u_encontrado]["pin"] != req.pin:
+        raise HTTPException(status_code=400, detail="Credenciales inválidas")
+    
+    registros = [r for r in db.get("asistencias", []) if r["usuario"].lower() == req.usuario.strip().lower()]
+    return {"registros": registros}
 
-        <div class="glass-panel rounded-xl p-3 flex-grow shadow-md overflow-x-auto max-h-[380px]">
-            <h2 class="text-xs font-semibold mb-2 text-slate-300">Resumen Diario Consolidado</h2>
-            <table class="w-full text-left text-xs">
-                <thead>
-                    <tr class="border-b border-slate-700/60 text-slate-400">
-                        <th class="py-1.5">Fecha</th>
-                        <th class="py-1.5">Primera Entrada</th>
-                        <th class="py-1.5">Última Salida</th>
-                        <th class="py-1.5 text-right">Total Horas Día</th>
-                        <th class="py-1.5 text-right">Acción</th>
-                    </tr>
-                </thead>
-                <tbody id="tabla-mis-horas" class="divide-y divide-slate-700/40"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- ADMIN DASHBOARD -->
-    <div id="admin-dashboard" class="hidden flex-grow flex flex-col p-4 max-w-7xl mx-auto w-full z-10">
-        <header class="glass-panel p-4 rounded-xl flex justify-between items-center mb-4 shadow-md">
-            <div>
-                <h1 class="text-lg font-bold text-emerald-400">Control de Asistencia</h1>
-                <p class="text-xs text-slate-300">Panel de Administración y Gestión Completa</p>
-            </div>
-            <div class="flex gap-2 items-center flex-wrap">
-                <button onclick="abrirModalManual()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow">
-                    <i class="fa-solid fa-plus-circle"></i> Agregar Horas Manuales / Lote
-                </button>
-                <label class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-blue-500/30 cursor-pointer flex items-center gap-1.5">
-                    <i class="fa-solid fa-file-import"></i> Cargar Archivo Excel (.xlsx)
-                    <input type="file" id="input-importar-excel" accept=".xlsx" class="hidden" onchange="importarExcel(event)">
-                </label>
-                <button onclick="exportarExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow">
-                    <i class="fa-solid fa-file-excel"></i> Exportar Excel
-                </button>
-                <button onclick="cerrarSesion()" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-red-500/30">Cerrar Sesión</button>
-            </div>
-        </header>
-
-        <div class="glass-panel p-4 rounded-xl shadow-md mb-4">
-            <h2 class="text-xs font-semibold text-slate-200 mb-2"><i class="fa-solid fa-calendar-days text-emerald-400 mr-1"></i>Resumen de Horas y Cálculo de Nómina (Quincenal / 14 días)</h2>
-            <div class="flex flex-wrap items-end gap-3 mb-3 text-xs">
-                <div>
-                    <label class="block text-slate-400 mb-1">Desde (Fecha inicio):</label>
-                    <input type="date" id="filtro-fecha-desde" class="bg-slate-900/80 border border-slate-700/80 rounded px-2 py-1 text-slate-100">
-                </div>
-                <div>
-                    <label class="block text-slate-400 mb-1">Hasta (Fecha fin):</label>
-                    <input type="date" id="filtro-fecha-hasta" class="bg-slate-900/80 border border-slate-700/80 rounded px-2 py-1 text-slate-100">
-                </div>
-                <button onclick="calcularResumenFechas()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded font-medium transition shadow">
-                    <i class="fa-solid fa-calculator mr-1"></i> Calcular Horas
-                </button>
-            </div>
-            <div class="overflow-x-auto max-h-52">
-                <table class="w-full text-left text-xs">
-                    <thead>
-                        <tr class="border-b border-slate-700/60 text-slate-400">
-                            <th class="py-1">Trabajador</th>
-                            <th class="py-1">Tipo Pago</th>
-                            <th class="py-1">Horas Totales</th>
-                            <th class="py-1">Tarifa / Monto</th>
-                            <th class="py-1 text-right">Total a Pagar</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-resumen-fechas" class="divide-y divide-slate-700/40">
-                        <tr><td colspan="5" class="py-3 text-center text-slate-500">Selecciona las fechas y presiona 'Calcular Horas'.</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div class="glass-panel p-4 rounded-xl shadow-md">
-                <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-xs font-semibold text-slate-200">Personal Registrado y Tarifas</h2>
-                    <button onclick="abrirModalUsuario()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded text-xs transition">+ Nuevo</button>
-                </div>
-                <div class="overflow-x-auto max-h-64">
-                    <table class="w-full text-left text-xs">
-                        <thead>
-                            <tr class="border-b border-slate-700/60 text-slate-400">
-                                <th class="py-1">Usuario</th>
-                                <th class="py-1">PIN</th>
-                                <th class="py-1">Pago</th>
-                                <th class="py-1">Tarifa</th>
-                                <th class="py-1">Cargo / Área</th>
-                                <th class="py-1 text-right">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-usuarios" class="divide-y divide-slate-700/40"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="glass-panel p-4 rounded-xl shadow-md flex flex-col">
-                <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-xs font-semibold text-slate-200">Asistencias en Tiempo Real (Ordenadas y con Horas)</h2>
-                    <button onclick="cargarAdminDatos()" class="text-xs text-emerald-400 hover:underline"><i class="fa-solid fa-rotate mr-1"></i> Actualizar</button>
-                </div>
-                <div class="overflow-x-auto max-h-64 flex-grow">
-                    <table class="w-full text-left text-xs">
-                        <thead>
-                            <tr class="border-b border-slate-700/60 text-slate-400">
-                                <th class="py-1">Usuario</th>
-                                <th class="py-1">Entrada</th>
-                                <th class="py-1">Salida</th>
-                                <th class="py-1 text-right">Total Horas</th>
-                                <th class="py-1 text-right">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-asistencias-admin" class="divide-y divide-slate-700/40"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL EDITAR REGISTRO -->
-    <div id="modal-editar-registro" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
-        <div class="glass-panel p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700 text-xs">
-            <h3 class="text-base font-bold mb-3 text-emerald-400"><i class="fa-solid fa-pen-to-square mr-2"></i>Editar Registro de Turno</h3>
-            <form id="form-editar-registro" class="space-y-3">
-                <input type="hidden" id="edit-reg-id">
-                <div>
-                    <label class="block text-slate-300 mb-1">Trabajador</label>
-                    <input type="text" id="edit-reg-usuario" disabled class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-2 text-slate-400">
-                </div>
-                <div>
-                    <label class="block text-slate-300 mb-1">Entrada (ej. 14-10-2026 05:52 PM)</label>
-                    <input type="text" id="edit-reg-entrada" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                </div>
-                <div>
-                    <label class="block text-slate-300 mb-1">Salida (ej. 15-10-2026 12:02 AM o dejar vacío si está activo)</label>
-                    <input type="text" id="edit-reg-salida" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="En Curso si está vacío">
-                </div>
-                <div class="flex justify-end gap-2 mt-5">
-                    <button type="button" onclick="cerrarModalEditarRegistro()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Cancelar</button>
-                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition">Guardar Cambios</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL CAMBIAR PIN -->
-    <div id="modal-cambiar-pin" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
-        <div class="glass-panel p-6 rounded-2xl w-full max-w-sm shadow-2xl border border-slate-700 text-xs">
-            <h3 class="text-base font-bold mb-4 text-emerald-400 flex items-center gap-2"><i class="fa-solid fa-key"></i> Cambiar mi PIN</h3>
-            <form id="form-cambiar-pin" class="space-y-3">
-                <div>
-                    <label class="block text-slate-300 mb-1">PIN Actual</label>
-                    <div class="relative">
-                        <input type="password" id="pin-actual" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none pr-10">
-                        <button type="button" onclick="togglePass('pin-actual', 'icon-pin-act')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
-                            <i id="icon-pin-act" class="fa-solid fa-eye text-xs"></i>
-                        </button>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-slate-300 mb-1">Nuevo PIN</label>
-                    <div class="relative">
-                        <input type="password" id="pin-nuevo" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none pr-10" placeholder="Mínimo 4 números">
-                        <button type="button" onclick="togglePass('pin-nuevo', 'icon-pin-nuev')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
-                            <i id="icon-pin-nuev" class="fa-solid fa-eye text-xs"></i>
-                        </button>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-slate-300 mb-1">Confirmar Nuevo PIN</label>
-                    <input type="password" id="pin-confirmar" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none">
-                </div>
-                <div class="flex justify-end gap-2 mt-5">
-                    <button type="button" onclick="cerrarModalCambiarPin()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Cancelar</button>
-                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition">Actualizar PIN</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL USUARIO ADMIN -->
-    <div id="modal-usuario" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
-        <div class="glass-panel p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700">
-            <h3 id="modal-titulo" class="text-base font-bold mb-4 text-emerald-400">Registrar / Editar Usuario</h3>
-            <form id="form-usuario" class="space-y-3 text-xs">
-                <input type="hidden" id="edit-antiguo">
-                <div>
-                    <label class="block text-slate-300 mb-1">Nombre de Usuario</label>
-                    <input type="text" id="input-u-nombre" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" placeholder="ej. Ricardo">
-                </div>
-                <div>
-                    <label class="block text-slate-300 mb-1">PIN de Acceso</label>
-                    <div class="relative">
-                        <input type="password" id="input-u-pin" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none pr-10">
-                        <button type="button" onclick="togglePass('input-u-pin', 'icon-modal-pin')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
-                            <i id="icon-modal-pin" class="fa-solid fa-eye text-xs"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-slate-300 mb-1">Tipo de Pago</label>
-                        <select id="input-u-tipopago" onchange="actualizarLabelMonto()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
-                            <option value="Horas">Horas</option>
-                            <option value="Gasolina">Gasolina</option>
-                            <option value="Fijo">Fijo</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label id="label-monto-tarifa" class="block text-slate-300 mb-1">Tarifa por Hora ($)</label>
-                        <input type="number" id="input-u-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="1.5">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-slate-300 mb-1">Cargo / Área</label>
-                        <input type="text" id="input-u-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="Operaciones" placeholder="ej. Operaciones, Planta">
-                    </div>
-                    <div>
-                        <label class="block text-slate-300 mb-1">Rol en Sistema</label>
-                        <select id="input-u-rol" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
-                            <option value="trabajador">Trabajador</option>
-                            <option value="admin">Administrador</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="flex justify-end gap-2 mt-5">
-                    <button type="button" onclick="cerrarModalUsuario()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Cancelar</button>
-                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition">Guardar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL REGISTRO MANUAL O FORMATO SIMPLE FÁCIL -->
-    <div id="modal-manual" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
-        <div class="glass-panel p-6 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-700">
-            <h3 class="text-base font-bold mb-3 text-emerald-400"><i class="fa-solid fa-clock mr-2"></i>Agregar Horas (Individual o Carga Fácil)</h3>
+@app.post("/api/marcar")
+def marcar(req: LoginRequest):
+    db = leer_db()
+    usuarios = db.get("usuarios", {})
+    u_encontrado = None
+    for u in usuarios:
+        if u.lower() == req.usuario.strip().lower():
+            u_encontrado = u
+            break
             
-            <div class="flex border-b border-slate-700 mb-4 text-xs font-medium">
-                <button type="button" onclick="cambiarModoManual('individual')" id="tab-ind" class="pb-2 px-3 border-b-2 border-emerald-500 text-emerald-400">Registro Individual</button>
-                <button type="button" onclick="cambiarModoManual('simple')" id="tab-simple" class="pb-2 px-3 border-b-2 border-transparent text-slate-400 hover:text-white">Carga Súper Fácil (Líneas)</button>
-            </div>
-
-            <form id="form-manual" class="space-y-3 text-xs">
-                <div id="seccion-individual">
-                    <div class="mb-2">
-                        <label class="block text-slate-300 mb-1">Seleccionar Trabajador</label>
-                        <select id="manual-usuario" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none"></select>
-                    </div>
-                    <div class="mb-2">
-                        <label class="block text-slate-300 mb-1">Entrada (ej. 14-10-2026 05:52 PM)</label>
-                        <input type="text" id="manual-entrada" placeholder="14-10-2026 05:52 PM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
-                    </div>
-                    <div class="mb-2">
-                        <label class="block text-slate-300 mb-1">Salida (ej. 15-10-2026 12:02 AM)</label>
-                        <input type="text" id="manual-salida" placeholder="15-10-2026 12:02 AM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
-                    </div>
-                    <div class="flex items-center gap-2 pt-1">
-                        <input type="checkbox" id="manual-continua" class="w-4 h-4 accent-emerald-600">
-                        <label for="manual-continua" class="text-slate-300">¿Es turno CONTINÚA?</label>
-                    </div>
-                </div>
-
-                <div id="seccion-simple" class="hidden">
-                    <label class="block text-slate-300 mb-1">Pega tus registros (Trabajador | Entrada | Salida):</label>
-                    <textarea id="manual-texto-simple" rows="7" placeholder="Ronald | 14-10-2026 05:52 PM | 15-10-2026 12:02 AM
-Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 font-mono text-[11px] text-emerald-300 focus:ring-1 focus:ring-emerald-500 focus:outline-none"></textarea>
-                </div>
-
-                <div class="flex justify-end gap-2 mt-5">
-                    <button type="button" onclick="cerrarModalManual()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Cancelar</button>
-                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition">Procesar y Guardar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- SCRIPT -->
-    <script>
-        const canvas = document.getElementById('matrix-bg');
-        const ctx = canvas.getContext('2d');
-
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+    if not u_encontrado or usuarios[u_encontrado]["pin"] != req.pin:
+        raise HTTPException(status_code=400, detail="Credenciales inválidas")
+    
+    asistencias = db.get("asistencias", [])
+    activo = None
+    for r in asistencias:
+        if r["usuario"].lower() == u_encontrado.lower() and r["salida"] is None:
+            activo = r
+            break
+            
+    hora_actual = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
+    
+    if activo:
+        if activo.get("receso_inicio") and not activo.get("receso_fin"):
+            activo["receso_fin"] = hora_actual
+        else:
+            activo["salida"] = hora_actual
+    else:
+        nuevo_id = max([r["id"] for r in asistencias], default=0) + 1
+        nuevo_reg = {
+            "id": nuevo_id,
+            "usuario": u_encontrado,
+            "entrada": hora_actual,
+            "receso_inicio": None,
+            "receso_fin": None,
+            "salida": None,
+            "es_continua": False
         }
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+        asistencias.append(nuevo_reg)
+        
+    db["asistencias"] = asistencias
+    escribir_db(db)
+    return {"mensaje": "Acción registrada con éxito"}
 
-        const characters = '01ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()';
-        const fontSize = 14;
-        let columns = canvas.width / fontSize;
-        let drops = [];
-        for (let i = 0; i < columns; i++) { drops[i] = 1; }
-
-        function drawMatrix() {
-            ctx.fillStyle = 'rgba(5, 8, 17, 0.08)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#10b981';
-            ctx.font = fontSize + 'px monospace';
-
-            for (let i = 0; i < drops.length; i++) {
-                const text = characters.charAt(Math.floor(Math.random() * characters.length));
-                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) { drops[i] = 0; }
-                drops[i]++;
-            }
+@app.post("/api/receso")
+def receso(req: LoginRequest):
+    db = leer_db()
+    usuarios = db.get("usuarios", {})
+    u_encontrado = None
+    for u in usuarios:
+        if u.lower() == req.usuario.strip().lower():
+            u_encontrado = u
+            break
+            
+    if not u_encontrado or usuarios[u_encontrado]["pin"] != req.pin:
+        raise HTTPException(status_code=400, detail="Credenciales inválidas")
+    
+    asistencias = db.get("asistencias", [])
+    activo = None
+    for r in asistencias:
+        if r["usuario"].lower() == u_encontrado.lower() and r["salida"] is None:
+            activo = r
+            break
+            
+    if not activo:
+        raise HTTPException(status_code=400, detail="No tienes ningún turno activo para pausar.")
+        
+    hora_actual = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
+    
+    if not activo.get("receso_inicio"):
+        activo["receso_inicio"] = hora_actual
+    elif not activo.get("receso_fin"):
+        activo["receso_fin"] = hora_actual
+    else:
+        nuevo_id = max([r["id"] for r in asistencias], default=0) + 1
+        nuevo_reg = {
+            "id": nuevo_id,
+            "usuario": u_encontrado,
+            "entrada": hora_actual,
+            "receso_inicio": None,
+            "receso_fin": None,
+            "salida": None,
+            "es_continua": True
         }
-        setInterval(drawMatrix, 35);
+        activo["salida"] = hora_actual
+        asistencias.append(nuevo_reg)
 
-        function toggleMenuConfig() {
-            const menu = document.getElementById('menu-config');
-            menu.classList.toggle('hidden');
+    db["asistencias"] = asistencias
+    escribir_db(db)
+    return {"mensaje": "Receso procesado con éxito"}
+
+@app.get("/api/admin/datos")
+def admin_datos():
+    db = leer_db()
+    return {"usuarios": db.get("usuarios", {}), "asistencias": db.get("asistencias", [])}
+
+@app.post("/api/admin/restaurar-respaldo")
+def restaurar_respaldo():
+    if os.path.exists(BACKUP_FILE):
+        try:
+            with open(BACKUP_FILE, "r", encoding="utf-8") as f_back:
+                datos_backup = json.load(f_back)
+            with open(DB_FILE, "w", encoding="utf-8") as f:
+                json.dump(datos_backup, f, indent=2, ensure_ascii=False)
+                f.flush()
+                os.fsync(f.fileno())
+            return {"mensaje": "Respaldo restaurado con éxito"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error al restaurar respaldo: {str(e)}")
+    raise HTTPException(status_code=404, detail="No se encontró ningún archivo de respaldo (database_backup.json)")
+
+@app.post("/api/admin/registro-manual")
+def admin_registro_manual(req: RegistroManualRequest):
+    db = leer_db()
+    asistencias = db.get("asistencias", [])
+    usuarios = db.get("usuarios", {})
+    nombre_usuario = req.usuario.strip()
+    
+    usuario_real = None
+    for u in usuarios:
+        if u.lower() == nombre_usuario.lower():
+            usuario_real = u
+            break
+            
+    if not usuario_real:
+        usuario_real = nombre_usuario.capitalize()
+        tipo = "Gasolina" if usuario_real.lower() == "planta" else "Horas"
+        tarifa = 0.0 if tipo == "Gasolina" else 1.5
+        usuarios[usuario_real] = {
+            "pin": "1234",
+            "rol_sistema": "trabajador",
+            "tipo_pago": tipo,
+            "monto_fijo": 0.0,
+            "tarifa_hora": tarifa,
+            "area": "Operaciones"
         }
-
-        function cerrarMenuConfig() {
-            const menu = document.getElementById('menu-config');
-            if(menu) menu.classList.add('hidden');
-        }
-
-        window.addEventListener('click', (e) => {
-            const menu = document.getElementById('menu-config');
-            const btn = e.target.closest('button');
-            if (menu && !menu.contains(e.target) && (!btn || !btn.getAttribute('onclick')?.includes('toggleMenuConfig'))) {
-                menu.classList.add('hidden');
-            }
-        });
-
-        let modoManualActual = 'individual';
-        function cambiarModoManual(modo) {
-            modoManualActual = modo;
-            const tabInd = document.getElementById('tab-ind');
-            const tabSimple = document.getElementById('tab-simple');
-            const secInd = document.getElementById('seccion-individual');
-            const secSimple = document.getElementById('seccion-simple');
-
-            if(modo === 'individual') {
-                tabInd.className = "pb-2 px-3 border-b-2 border-emerald-500 text-emerald-400";
-                tabSimple.className = "pb-2 px-3 border-b-2 border-transparent text-slate-400 hover:text-white";
-                secInd.classList.remove('hidden');
-                secSimple.classList.add('hidden');
-            } else {
-                tabSimple.className = "pb-2 px-3 border-b-2 border-emerald-500 text-emerald-400";
-                tabInd.className = "pb-2 px-3 border-b-2 border-transparent text-slate-400 hover:text-white";
-                secSimple.classList.remove('hidden');
-                secInd.classList.add('hidden');
-            }
-        }
-
-        let currentUser = null;
-        let sessionTimer = null;
-        let globalAdminData = null;
-        let registrosGlobalesTrabajador = [];
-        let totalHorasCalculadasTrabajador = 0;
-
-        function togglePass(inputId, iconId) {
-            const input = document.getElementById(inputId);
-            const icon = document.getElementById(iconId);
-            if (input.type === "password") {
-                input.type = "text";
-                icon.classList.remove("fa-eye");
-                icon.classList.add("fa-eye-slash");
-            } else {
-                input.type = "password";
-                icon.classList.remove("fa-eye-slash");
-                icon.classList.add("fa-eye");
-            }
-        }
-
-        function abrirModalCambiarPin() {
-            document.getElementById('form-cambiar-pin').reset();
-            document.getElementById('modal-cambiar-pin').classList.remove('hidden');
-        }
-
-        function cerrarModalCambiarPin() {
-            document.getElementById('modal-cambiar-pin').classList.add('hidden');
-        }
-
-        document.getElementById('form-cambiar-pin').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const pinAct = document.getElementById('pin-actual').value;
-            const pinNuev = document.getElementById('pin-nuevo').value;
-            const pinConf = document.getElementById('pin-confirmar').value;
-
-            if(pinNuev !== pinConf) {
-                alert("El nuevo PIN y la confirmación no coinciden.");
-                return;
-            }
-
-            try {
-                const res = await fetch('/api/cambiar-pin', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ usuario: currentUser.usuario, pin_actual: pinAct, pin_nuevo: pinNuev })
-                });
-                const data = await res.json();
-                if(res.ok) {
-                    alert("¡Tu PIN ha sido actualizado con éxito!");
-                    currentUser.pin = pinNuev;
-                    localStorage.setItem('timetracker_user', JSON.stringify(currentUser));
-                    cerrarModalCambiarPin();
-                } else {
-                    alert(data.detail || "Error al actualizar el PIN.");
-                }
-            } catch(err) {
-                alert("Error de conexión al cambiar el PIN.");
-            }
-        });
-
-        function actualizarLabelMonto() {
-            const tipo = document.getElementById('input-u-tipopago').value.toLowerCase();
-            const label = document.getElementById('label-monto-tarifa');
-            const inputMonto = document.getElementById('input-u-monto');
-            if(tipo === 'horas') {
-                label.textContent = "Tarifa por Hora ($)";
-                inputMonto.value = "1.5";
-            } else if(tipo === 'gasolina') {
-                label.textContent = "Gasolina (1.4L/h × $0.5)";
-                inputMonto.value = "0";
-            } else {
-                label.textContent = "Monto Fijo ($)";
-                inputMonto.value = "300";
-            }
-        }
-
-        function convertirFechaFlex(str) {
-            if(!str) return null;
-            str = str.trim();
-            let regexDMY = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?$/;
-            let match = str.match(regexDMY);
-            if(match) {
-                let d = match[1], m = match[2], y = match[3];
-                let hh = parseInt(match[4]), mm = match[5], ss = match[6] || '00';
-                let ampm = (match[7] || '').toUpperCase();
-                if(ampm === 'PM' && hh < 12) hh += 12;
-                if(ampm === 'AM' && hh === 12) hh = 0;
-                let horaFinal = hh >= 12 ? 'PM' : 'AM';
-                let hh12 = hh % 12 || 12;
-                return `${d}-${m}-${y} ${String(hh12).padStart(2,'0')}:${mm}:${ss} ${horaFinal}`;
-            }
-            return str;
-        }
-
-        function parseFechaHora(str) {
-            if(!str) return null;
-            let partes = str.split(' ');
-            if(partes.length < 3) return new Date(str);
-            let f = partes[0].split('-');
-            if(f.length !== 3) return new Date(str);
-            let d = parseInt(f[0]), m = parseInt(f[1]), y = parseInt(f[2]);
-            let h = partes[1].split(':');
-            let hh = parseInt(h[0]), mm = parseInt(h[1]), ss = parseInt(h[2] || 0);
-            let ampm = partes[2];
-            if(ampm && ampm.toUpperCase() === 'PM' && hh < 12) hh += 12;
-            if(ampm && ampm.toUpperCase() === 'AM' && hh === 12) hh = 0;
-            return new Date(y, m-1, d, hh, mm, ss);
-        }
-
-        function resetSessionTimer(rol) {
-            if (sessionTimer) clearTimeout(sessionTimer);
-            const minutos = (rol === 'admin') ? 10 : 5;
-            sessionTimer = setTimeout(() => {
-                alert("Sesión expirada por inactividad.");
-                cerrarSesion();
-            }, minutos * 60 * 1000);
-        }
-
-        ['click', 'keypress', 'mousemove'].forEach(evt => {
-            document.addEventListener(evt, () => {
-                if (currentUser) resetSessionTimer(currentUser.rol_sistema);
-            });
-        });
-
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const usuario = document.getElementById('login-usuario').value;
-            const pin = document.getElementById('login-pin').value;
-            const errDiv = document.getElementById('login-error');
-            errDiv.classList.add('hidden');
-
-            try {
-                const res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({usuario, pin})
-                });
-                const data = await res.json();
-                if(res.ok) {
-                    currentUser = { usuario: data.usuario, pin: data.pin || pin, rol_sistema: data.rol_sistema };
-                    localStorage.setItem('timetracker_user', JSON.stringify(currentUser));
-                    iniciarVistaSegunRol();
-                } else {
-                    errDiv.textContent = data.detail || 'Error de acceso';
-                    errDiv.classList.remove('hidden');
-                }
-            } catch(err) {
-                errDiv.textContent = 'Error de conexión con el servidor';
-                errDiv.classList.remove('hidden');
-            }
-        });
-
-        function cerrarSesion() {
-            currentUser = null;
-            localStorage.removeItem('timetracker_user');
-            if (sessionTimer) clearTimeout(sessionTimer);
-            document.getElementById('login-screen').classList.remove('hidden');
-            document.getElementById('worker-dashboard').classList.add('hidden');
-            document.getElementById('admin-dashboard').classList.add('hidden');
-            document.getElementById('login-form').reset();
-        }
-
-        function iniciarVistaSegunRol() {
-            document.getElementById('login-screen').classList.add('hidden');
-            resetSessionTimer(currentUser.rol_sistema);
-
-            if (currentUser.rol_sistema === 'admin') {
-                document.getElementById('admin-dashboard').classList.remove('hidden');
-                document.getElementById('worker-dashboard').classList.add('hidden');
-                cargarAdminDatos();
-            } else {
-                document.getElementById('worker-dashboard').classList.remove('hidden');
-                document.getElementById('admin-dashboard').classList.add('hidden');
-                document.getElementById('worker-title').textContent = `Trabajador: ${currentUser.usuario}`;
-                cargarPanelTrabajador();
-            }
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const saved = localStorage.getItem('timetracker_user');
-            if (saved) {
-                try {
-                    currentUser = JSON.parse(saved);
-                    iniciarVistaSegunRol();
-                } catch(e) { cerrarSesion(); }
-            }
-        });
-
-        async function ejecutarAccionMarcar() {
-            try {
-                const res = await fetch('/api/marcar', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
-                });
-                if(res.ok) {
-                    cargarPanelTrabajador();
-                } else {
-                    const data = await res.json();
-                    alert(data.detail || 'Error al registrar turno');
-                }
-            } catch(err) { alert('Error de conexión'); }
-        }
-
-        async function ejecutarReceso() {
-            if(!confirm("¿Deseas registrar receso / pausa?")) return;
-            try {
-                const res = await fetch('/api/receso', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
-                });
-                if(res.ok) {
-                    cargarPanelTrabajador();
-                } else {
-                    const data = await res.json();
-                    alert(data.detail || 'Error al procesar receso');
-                }
-            } catch(err) { alert('Error de conexión'); }
-        }
-
-        async function cargarPanelTrabajador() {
-            try {
-                const res = await fetch('/api/mis-horas', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
-                });
-                const data = await res.json();
-                if(res.ok) {
-                    registrosGlobalesTrabajador = data.registros;
-                    renderizarTablaConsolidada(registrosGlobalesTrabajador);
-
-                    let tieneTurnoActivo = false;
-                    let estaEnReceso = false;
-
-                    data.registros.forEach(r => {
-                        if(r.salida === null) {
-                            tieneTurnoActivo = true;
-                            if(r.receso_inicio && !r.receso_fin) estaEnReceso = true;
-                        }
-                    });
-
-                    const btnTurno = document.getElementById('btn-accion-turno');
-                    const iconTurno = document.getElementById('icon-accion-turno');
-                    const textTurno = document.getElementById('text-accion-turno');
-
-                    if(!tieneTurnoActivo) {
-                        btnTurno.className = "bg-emerald-600/90 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1";
-                        iconTurno.className = "fa-solid fa-play text-lg";
-                        textTurno.textContent = "Iniciar Turno";
-                    } else if(estaEnReceso) {
-                        btnTurno.className = "bg-emerald-600/90 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1 animate-pulse";
-                        iconTurno.className = "fa-solid fa-play text-lg";
-                        textTurno.textContent = "Continuar / Reanudar Turno";
-                    } else {
-                        btnTurno.className = "bg-red-600/90 hover:bg-red-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1";
-                        iconTurno.className = "fa-solid fa-stop text-lg";
-                        textTurno.textContent = "Finalizar Turno";
-                    }
-                }
-            } catch(err) {}
-        }
-
-        function renderizarTablaConsolidada(registros) {
-            const tbody = document.getElementById('tabla-mis-horas');
-            tbody.innerHTML = '';
-            if(registros.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-500">No hay registros de horas aún.</td></tr>`;
-                return;
-            }
-
-            registros.sort((a, b) => parseFechaHora(b.entrada) - parseFechaHora(a.entrada));
-
-            let porFecha = {};
-            registros.forEach(r => {
-                let fecha = r.entrada.split(' ')[0];
-                if(!porFecha[fecha]) porFecha[fecha] = [];
-                porFecha[fecha].push(r);
-            });
-
-            for(let [fecha, regs] of Object.entries(porFecha)) {
-                let primeraEntrada = regs[0].entrada;
-                let ultimaSalida = regs[regs.length - 1].salida ? regs[regs.length - 1].salida : null;
-                let totalHorasDia = 0;
-                let enCurso = false;
-
-                regs.forEach(r => {
-                    let dE = parseFechaHora(r.entrada);
-                    let dS = parseFechaHora(r.salida);
-                    if(dE && dS) {
-                        totalHorasDia += Math.max(0, (dS - dE) / (1000 * 60 * 60));
-                    } else if(!r.salida) { enCurso = true; }
-                });
-
-                let salidaTexto = enCurso ? '<span class="text-emerald-400 font-semibold animate-pulse">En Curso</span>' : ultimaSalida;
-                let horasTexto = enCurso && totalHorasDia === 0 ? '-' : `${totalHorasDia.toFixed(2)} hrs`;
-
-                tbody.innerHTML += `
-                    <tr class="border-b border-slate-700/35 hover:bg-slate-800/40">
-                        <td class="py-2 font-medium">${fecha}</td>
-                        <td class="py-2 text-slate-300">${primeraEntrada}</td>
-                        <td class="py-2 text-slate-300">${salidaTexto}</td>
-                        <td class="py-2 text-right text-emerald-300 font-bold">${horasTexto}</td>
-                        <td class="py-2 text-right">
-                            <button onclick='abrirDetallesDia("${fecha}", ${JSON.stringify(regs)})' class="bg-indigo-600/40 hover:bg-indigo-600 text-indigo-300 hover:text-white px-2 py-1 rounded text-[11px] transition">Ver Detalles</button>
-                        </td>
-                    </tr>
-                `;
-            }
-        }
-
-        function abrirDetallesDia(fecha, regs) {
-            document.getElementById('modal-detalles-titulo').textContent = `Detalles de Turnos - ${fecha}`;
-            const tbody = document.getElementById('tabla-modal-detalles');
-            tbody.innerHTML = '';
-
-            regs.forEach((r, idx) => {
-                let dE = parseFechaHora(r.entrada);
-                let dS = parseFechaHora(r.salida);
-                let hrs = (dE && dS) ? Math.max(0, (dS - dE) / (1000 * 60 * 60)) : 0;
-                let salidaTxt = r.salida ? r.salida : '<span class="text-emerald-400">En Curso</span>';
-
-                tbody.innerHTML += `
-                    <tr class="border-b border-slate-700/40">
-                        <td class="py-1.5 font-medium text-indigo-300">Tramo ${idx+1}</td>
-                        <td class="py-1.5 text-slate-300">${r.entrada}</td>
-                        <td class="py-1.5 text-slate-300">${salidaTxt}</td>
-                        <td class="py-1.5 text-right font-bold text-emerald-300">${r.salida ? hrs.toFixed(2) + ' hrs' : '-'}</td>
-                    </tr>
-                `;
-            });
-            document.getElementById('modal-detalles').classList.remove('hidden');
-        }
-
-        function cerrarModalDetalles() { document.getElementById('modal-detalles').classList.add('hidden'); }
-
-        function calcularHorasWorker() {
-            const desde = document.getElementById('worker-desde').value;
-            const hasta = document.getElementById('worker-hasta').value;
-            if(!desde || !hasta) { alert("Selecciona el rango de fechas."); return; }
-            let total = 0;
-            let dDesde = new Date(desde + "T00:00:00");
-            let dHasta = new Date(hasta + "T23:59:59");
-
-            registrosGlobalesTrabajador.forEach(r => {
-                let dE = parseFechaHora(r.entrada);
-                let dS = parseFechaHora(r.salida);
-                if(dE && dE >= dDesde && dE <= dHasta && dS) {
-                    total += Math.max(0, (dS - dE) / (1000 * 60 * 60));
-                }
-            });
-
-            totalHorasCalculadasTrabajador = total;
-            document.getElementById('worker-total-horas-rango').textContent = `${total.toFixed(2)} hrs`;
-            actualizarSimuladorCobro();
-        }
-
-        function actualizarSimuladorCobro() {
-            const tarifaInput = parseFloat(document.getElementById('simulador-tarifa').value) || 0;
-            const totalEstimado = totalHorasCalculadasTrabajador * tarifaInput;
-            document.getElementById('simulador-total-cobro').textContent = `$${totalEstimado.toFixed(2)}`;
-        }
-
-        async function cargarAdminDatos() {
-            try {
-                const res = await fetch('/api/admin/datos');
-                const data = await res.json();
-                if(res.ok) {
-                    globalAdminData = data;
-                    const tU = document.getElementById('tabla-usuarios');
-                    tU.innerHTML = '';
-                    let i = 0;
-                    for(let [u, info] of Object.entries(data.usuarios)) {
-                        i++;
-                        let tipoPago = info.tipo_pago || 'Horas';
-                        let montoMostrar = (tipoPago.toLowerCase() === 'horas') ? info.tarifa_hora : (tipoPago.toLowerCase() === 'gasolina' ? '1.4L/h × $0.5' : info.monto_fijo);
-                        tU.innerHTML += `
-                            <tr class="border-b border-slate-700/30">
-                                <td class="py-1.5 font-medium">${u}</td>
-                                <td class="py-1.5 text-slate-400">
-                                    <span id="pin-text-${i}">••••</span>
-                                    <button onclick="togglePinTabla('${info.pin}', 'pin-text-${i}')" class="ml-2 text-emerald-400 hover:text-white"><i class="fa-solid fa-eye text-[10px]"></i></button>
-                                </td>
-                                <td class="py-1.5 capitalize">${tipoPago}</td>
-                                <td class="py-1.5 text-emerald-300 font-semibold">${typeof montoMostrar === 'number' ? '$' + montoMostrar : montoMostrar}</td>
-                                <td class="py-1.5 text-slate-300 font-medium">${info.area || 'Operaciones'}</td>
-                                <td class="py-1.5 text-right">
-                                    <button onclick="editarUsuario('${u}', '${info.pin}', '${tipoPago}', '${info.monto_fijo || 0}', '${info.tarifa_hora || 1.5}', '${info.area || 'Operaciones'}', '${info.rol_sistema}')" class="text-emerald-400 hover:underline mr-2">Editar</button>
-                                    <button onclick="eliminarUsuario('${u}')" class="text-red-400 hover:underline">Borrar</button>
-                                </td>
-                            </tr>
-                        `;
-                    }
-
-                    // ORDENAR CRONOLÓGICAMENTE (MÁS RECIENTE ARRIBA, MÁS ANTIGUO ABAJO)
-                    let asistenciasOrdenadas = data.asistencias.slice().sort((a, b) => parseFechaHora(b.entrada) - parseFechaHora(a.entrada));
-
-                    const tA = document.getElementById('tabla-asistencias-admin');
-                    tA.innerHTML = '';
-                    asistenciasOrdenadas.forEach(r => {
-                        let dE = parseFechaHora(r.entrada);
-                        let dS = parseFechaHora(r.salida);
-                        let hrs = (dE && dS) ? Math.max(0, (dS - dE) / (1000 * 60 * 60)) : 0;
-                        let salidaHumana = r.salida ? r.salida : '<span class="text-emerald-400 font-semibold animate-pulse">Activo</span>';
-                        let horasTexto = r.salida ? `${hrs.toFixed(2)} hrs` : '-';
-
-                        tA.innerHTML += `
-                            <tr class="border-b border-slate-700/30 hover:bg-slate-800/40">
-                                <td class="py-1.5 font-medium">${r.usuario}</td>
-                                <td class="py-1.5 text-slate-300">${r.entrada}</td>
-                                <td class="py-1.5 text-slate-300">${salidaHumana}</td>
-                                <td class="py-1.5 text-right font-bold text-emerald-300">${horasTexto}</td>
-                                <td class="py-1.5 text-right">
-                                    <button onclick='abrirModalEditarRegistro(${r.id}, "${r.usuario}", "${r.entrada}", "${r.salida || ""}")' class="text-indigo-400 hover:underline mr-2" title="Editar Registro"><i class="fa-solid fa-pen"></i></button>
-                                    <button onclick="eliminarRegistroAdmin(${r.id})" class="text-red-400 hover:underline" title="Eliminar Registro"><i class="fa-solid fa-trash"></i></button>
-                                </td>
-                            </tr>
-                        `;
-                    });
-
-                    const selectManual = document.getElementById('manual-usuario');
-                    selectManual.innerHTML = '';
-                    for(let u in data.usuarios) { selectManual.innerHTML += `<option value="${u}">${u}</option>`; }
-                }
-            } catch(e) {}
-        }
-
-        function abrirModalEditarRegistro(id, usuario, entrada, salida) {
-            document.getElementById('edit-reg-id').value = id;
-            document.getElementById('edit-reg-usuario').value = usuario;
-            document.getElementById('edit-reg-entrada').value = entrada;
-            document.getElementById('edit-reg-salida').value = salida;
-            document.getElementById('modal-editar-registro').classList.remove('hidden');
-        }
-
-        function cerrarModalEditarRegistro() {
-            document.getElementById('modal-editar-registro').classList.add('hidden');
-        }
-
-        document.getElementById('form-editar-registro').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = parseInt(document.getElementById('edit-reg-id').value);
-            const entrada = convertirFechaFlex(document.getElementById('edit-reg-entrada').value);
-            const salidaInput = document.getElementById('edit-reg-salida').value.trim();
-            const salida = salidaInput ? convertirFechaFlex(salidaInput) : null;
-
-            try {
-                const res = await fetch('/api/admin/editar-registro', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ registro_id: id, entrada: entrada, salida: salida })
-                });
-                if(res.ok) {
-                    cerrarModalEditarRegistro();
-                    alert("Registro actualizado con éxito");
-                    cargarAdminDatos();
-                } else {
-                    const data = await res.json();
-                    alert(data.detail || "Error al actualizar registro");
-                }
-            } catch(err) {
-                alert("Error de conexión");
-            }
-        });
-
-        async function eliminarRegistroAdmin(id) {
-            if(!confirm("¿Estás seguro de eliminar este registro de asistencia?")) return;
-            try {
-                const res = await fetch(`/api/admin/eliminar-registro/${id}`, { method: 'DELETE' });
-                if(res.ok) {
-                    cargarAdminDatos();
-                } else {
-                    alert("Error al eliminar el registro.");
-                }
-            } catch(err) {
-                alert("Error de conexión");
-            }
-        }
-
-        function calcularResumenFechas() {
-            if(!globalAdminData) return;
-            const fDesde = document.getElementById('filtro-fecha-desde').value;
-            const fHasta = document.getElementById('filtro-fecha-hasta').value;
-            if(!fDesde || !fHasta) { alert("Selecciona ambas fechas."); return; }
-
-            let dDesde = new Date(fDesde + "T00:00:00");
-            let dHasta = new Date(fHasta + "T23:59:59");
-
-            let resumen = {};
-            for(let u in globalAdminData.usuarios) {
-                resumen[u] = {
-                    tipo_pago: globalAdminData.usuarios[u].tipo_pago || 'Horas',
-                    monto_fijo: globalAdminData.usuarios[u].monto_fijo || 0,
-                    tarifa_hora: globalAdminData.usuarios[u].tarifa_hora !== undefined ? globalAdminData.usuarios[u].tarifa_hora : 1.5,
-                    rol_sistema: globalAdminData.usuarios[u].rol_sistema || 'trabajador',
-                    horas: 0
-                };
-            }
-
-            globalAdminData.asistencias.forEach(r => {
-                let dEntrada = parseFechaHora(r.entrada);
-                let dSalida = parseFechaHora(r.salida);
-                if(dEntrada && dEntrada >= dDesde && dEntrada <= dHasta) {
-                    let hrs = dSalida ? Math.max(0, (dSalida - dEntrada) / (1000 * 60 * 60)) : 0;
-                    if(!resumen[r.usuario]) resumen[r.usuario] = { tipo_pago: 'Horas', monto_fijo: 0, tarifa_hora: 1.5, rol_sistema: 'trabajador', horas: 0 };
-                    resumen[r.usuario].horas += hrs;
-                }
-            });
-
-            const tR = document.getElementById('tabla-resumen-fechas');
-            tR.innerHTML = '';
-            for(let [u, info] of Object.entries(resumen)) {
-                let totalPagar = 0;
-                let tipoLower = info.tipo_pago.toLowerCase();
-                let valorTexto = "";
-
-                if(tipoLower === 'fijo') {
-                    totalPagar = info.monto_fijo;
-                    valorTexto = `$${info.monto_fijo}`;
-                } else if(tipoLower === 'gasolina') {
-                    totalPagar = info.horas * 1.4 * 0.5;
-                    valorTexto = "1.4L/h × $0.5";
-                } else {
-                    totalPagar = info.horas * info.tarifa_hora;
-                    valorTexto = `$${info.tarifa_hora}`;
-                }
-
-                tR.innerHTML += `
-                    <tr class="border-b border-slate-700/30">
-                        <td class="py-1.5 font-medium">${u}</td>
-                        <td class="py-1.5 capitalize">${info.tipo_pago}</td>
-                        <td class="py-1.5 text-emerald-300 font-semibold">${info.horas.toFixed(2)} hrs</td>
-                        <td class="py-1.5">${valorTexto}</td>
-                        <td class="py-1.5 text-right text-emerald-400 font-bold">$${totalPagar.toFixed(2)}</td>
-                    </tr>
-                `;
-            }
-        }
-
-        function togglePinTabla(pinReal, spanId) {
-            const span = document.getElementById(spanId);
-            span.textContent = (span.textContent === "••••") ? pinReal : "••••";
-        }
-
-        function abrirModalUsuario() {
-            document.getElementById('modal-titulo').textContent = "Registrar Nuevo Usuario";
-            document.getElementById('form-usuario').reset();
-            document.getElementById('edit-antiguo').value = "";
-            document.getElementById('input-u-tipopago').value = "Horas";
-            document.getElementById('input-u-area').value = "Operaciones";
-            actualizarLabelMonto();
-            document.getElementById('modal-usuario').classList.remove('hidden');
-        }
-
-        function editarUsuario(u, pin, tipo, monto, tarifa, area, rol) {
-            document.getElementById('modal-titulo').textContent = `Editar Usuario: ${u}`;
-            document.getElementById('edit-antiguo').value = u;
-            document.getElementById('input-u-nombre').value = u;
-            document.getElementById('input-u-pin').value = pin;
-            document.getElementById('input-u-tipopago').value = tipo;
-            document.getElementById('input-u-area').value = area;
-            document.getElementById('input-u-rol').value = rol;
-            actualizarLabelMonto();
-            if(tipo.toLowerCase() === 'horas') document.getElementById('input-u-monto').value = tarifa;
-            else if(tipo.toLowerCase() === 'gasolina') document.getElementById('input-u-monto').value = 0;
-            else document.getElementById('input-u-monto').value = monto;
-            document.getElementById('modal-usuario').classList.remove('hidden');
-        }
-
-        function cerrarModalUsuario() { document.getElementById('modal-usuario').classList.add('hidden'); }
-
-        function abrirModalManual() {
-            document.getElementById('form-manual').reset();
-            cambiarModoManual('individual');
-            document.getElementById('modal-manual').classList.remove('hidden');
-        }
-
-        function cerrarModalManual() { document.getElementById('modal-manual').classList.add('hidden'); }
-
-        document.getElementById('form-usuario').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const tipoPago = document.getElementById('input-u-tipopago').value;
-            const valorInput = parseFloat(document.getElementById('input-u-monto').value) || 0;
-
-            const payload = {
-                usuario_antiguo: document.getElementById('edit-antiguo').value,
-                usuario: document.getElementById('input-u-nombre').value.trim(),
-                pin: document.getElementById('input-u-pin').value,
-                tipo_pago: tipoPago,
-                monto_fijo: tipoPago.toLowerCase() === 'fijo' ? valorInput : 0.0,
-                tarifa_hora: tipoPago.toLowerCase() === 'horas' ? valorInput : 1.5,
-                area: document.getElementById('input-u-area').value || "Operaciones",
-                rol_sistema: document.getElementById('input-u-rol').value
-            };
-
-            const res = await fetch('/api/admin/usuario', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-            if(res.ok) { cerrarModalUsuario(); cargarAdminDatos(); }
-            else { alert('Error al guardar usuario'); }
-        });
-
-        document.getElementById('form-manual').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if(modoManualActual === 'individual') {
-                const entradaFlex = convertirFechaFlex(document.getElementById('manual-entrada').value);
-                const salidaFlex = convertirFechaFlex(document.getElementById('manual-salida').value);
-                const res = await fetch('/api/admin/registro-manual', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        usuario: document.getElementById('manual-usuario').value,
-                        entrada: entradaFlex,
-                        salida: salidaFlex,
-                        es_continua: document.getElementById('manual-continua').checked
-                    })
-                });
-                if(res.ok) { cerrarModalManual(); alert("Guardado"); cargarAdminDatos(); }
-            } else {
-                const texto = document.getElementById('manual-texto-simple').value;
-                const lineas = texto.split('\n');
-                let exitosos = 0;
-                for(let linea of lineas) {
-                    linea = linea.trim();
-                    if(!linea) continue;
-                    let partes = linea.split('|').map(p => p.trim());
-                    if(partes.length >= 3) {
-                        const res = await fetch('/api/admin/registro-manual', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({
-                                usuario: partes[0],
-                                entrada: convertirFechaFlex(partes[1]),
-                                salida: convertirFechaFlex(partes[2]),
-                                es_continua: false
-                            })
-                        });
-                        if(res.ok) exitosos++;
-                    }
-                }
-                cerrarModalManual();
-                alert(`¡Se procesaron ${exitosos} registros con éxito!`);
-                cargarAdminDatos();
-            }
-        });
-
-        async function eliminarUsuario(u) {
-            if(!confirm(`¿Eliminar al usuario ${u}?`)) return;
-            const res = await fetch(`/api/admin/usuario/${u}`, { method: 'DELETE' });
-            if(res.ok) cargarAdminDatos();
-        }
-
-        async function forzarSalida(id) {
-            if(!confirm("¿Finalizar turno?")) return;
-            const horaActual = new Date().toLocaleString();
-            const res = await fetch('/api/admin/ajustar-salida', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({registro_id: id, hora_salida: horaActual})
-            });
-            if(res.ok) cargarAdminDatos();
-        }
-
-        async function exportarExcel() { window.location.href = '/api/admin/exportar-excel'; }
-    </script>
-</body>
-</html>
+        db["usuarios"] = usuarios
+
+    nuevo_id = max([r["id"] for r in asistencias], default=0) + 1
+    nuevo_reg = {
+        "id": nuevo_id,
+        "usuario": usuario_real,
+        "entrada": req.entrada,
+        "receso_inicio": None,
+        "receso_fin": None,
+        "salida": req.salida,
+        "es_continua": req.es_continua
+    }
+    asistencias.append(nuevo_reg)
+    db["asistencias"] = asistencias
+    escribir_db(db)
+    return {"mensaje": "Registro manual guardado con éxito"}
+
+@app.post("/api/admin/editar-registro")
+def admin_editar_registro(req: EditarRegistroRequest):
+    db = leer_db()
+    asistencias = db.get("asistencias", [])
+    encontrado = False
+    for r in asistencias:
+        if r["id"] == req.registro_id:
+            r["entrada"] = req.entrada
+            r["salida"] = req.salida
+            encontrado = True
+            break
+    if not encontrado:
+        raise HTTPException(status_code=404, detail="Registro no encontrado")
+    db["asistencias"] = asistencias
+    escribir_db(db)
+    return {"mensaje": "Registro actualizado correctamente"}
+
+@app.delete("/api/admin/eliminar-registro/{registro_id}")
+def admin_eliminar_registro(registro_id: int):
+    db = leer_db()
+    asistencias = db.get("asistencias", [])
+    nuevas_asistencias = [r for r in asistencias if r["id"] != registro_id]
+    if len(nuevas_asistencias) == len(asistencias):
+        raise HTTPException(status_code=404, detail="Registro no encontrado")
+    db["asistencias"] = nuevas_asistencias
+    escribir_db(db)
+    return {"mensaje": "Registro eliminado"}
+
+@app.post("/api/admin/usuario")
+def admin_guardar_usuario(req: UsuarioAdminRequest):
+    db = leer_db()
+    usuarios = db.get("usuarios", {})
+    nuevo_nombre = req.usuario.strip()
+    
+    if req.usuario_antiguo and req.usuario_antiguo in usuarios and req.usuario_antiguo != nuevo_nombre:
+        del usuarios[req.usuario_antiguo]
+        
+    usuarios[nuevo_nombre] = {
+        "pin": req.pin,
+        "rol_sistema": req.rol_sistema,
+        "tipo_pago": req.tipo_pago,
+        "monto_fijo": req.monto_fijo if req.tipo_pago.lower() == "fijo" else 0.0,
+        "tarifa_hora": req.tarifa_hora if req.tipo_pago.lower() == "horas" else 0.0,
+        "area": req.area
+    }
+    db["usuarios"] = usuarios
+    escribir_db(db)
+    return {"mensaje": "Usuario guardado correctamente"}
+
+@app.delete("/api/admin/usuario/{usuario}")
+def admin_eliminar_usuario(usuario: str):
+    db = leer_db()
+    usuarios = db.get("usuarios", {})
+    u_eliminar = None
+    for u in usuarios:
+        if u.lower() == usuario.lower():
+            u_eliminar = u
+            break
+            
+    if u_eliminar:
+        del usuarios[u_eliminar]
+        db["usuarios"] = usuarios
+        escribir_db(db)
+        return {"mensaje": "Usuario eliminado"}
+    raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+@app.get("/api/admin/exportar-excel")
+def exportar_excel():
+    db = leer_db()
+    asistencias = db.get("asistencias", [])
+    data_rows = []
+    for r in asistencias:
+        data_rows.append({
+            "ID": r["id"],
+            "Usuario": r["usuario"],
+            "Entrada": r["entrada"],
+            "Salida": r["salida"] if r["salida"] else "En Curso",
+            "Es Continua": "Sí" if r["es_continua"] else "No"
+        })
+        
+    df = pd.DataFrame(data_rows)
+    export_path = "reporte_asistencia.xlsx"
+    df.to_excel(export_path, index=False)
+    return FileResponse(export_path, filename="Reporte_Asistencia.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
