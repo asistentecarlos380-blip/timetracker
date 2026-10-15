@@ -95,7 +95,7 @@ def leer_raiz():
             patch_ui = """
             <script>
             document.addEventListener("DOMContentLoaded", () => {
-                // 1. Tuerca global en panel admin
+                // 1. Tuerca global en panel admin y botón para forzar cierre de turno
                 const headerActions = document.querySelector('header') || document.querySelector('.flex.justify-between') || document.querySelector('#panel-admin');
                 if (headerActions && !document.getElementById('btn-config-global')) {
                     const btnConfig = document.createElement('button');
@@ -105,16 +105,26 @@ def leer_raiz():
                     btnConfig.innerHTML = '<i class="fas fa-cog"></i>';
                     btnConfig.onclick = abrirModalConfigGlobal;
                     
+                    const btnCerrarTurnoAdmin = document.createElement('button');
+                    btnCerrarTurnoAdmin.id = 'btn-cerrar-turno-admin';
+                    btnCerrarTurnoAdmin.className = 'bg-rose-900/80 hover:bg-rose-800 text-rose-200 hover:text-white p-2.5 rounded-lg text-sm flex items-center gap-2 shadow transition ml-2 border border-rose-700';
+                    btnCerrarTurnoAdmin.title = 'Cerrar turno activo de un trabajador';
+                    btnCerrarTurnoAdmin.innerHTML = '<i class="fas fa-user-clock"></i> Cerrar Turno Activo';
+                    btnCerrarTurnoAdmin.onclick = abrirModalCerrarTurnoAdmin;
+
                     const btnExcel = document.querySelector('button:has(.fa-file-excel)') || document.querySelector('#exportar-excel') || headerActions.querySelector('button');
                     if (btnExcel && btnExcel.parentNode) {
                         btnExcel.parentNode.insertBefore(btnConfig, btnExcel.nextSibling);
+                        btnExcel.parentNode.insertBefore(btnCerrarTurnoAdmin, btnConfig.nextSibling);
                     }
                 }
 
-                // 2. Cuadro de Total General de Nómina (Ligerísimo y sin bloqueos)
+                // 2. Cuadro de Total General de Nómina EXCLUSIVO para el Administrador (Eliminado del trabajador)
                 setTimeout(() => {
+                    const esAdmin = sessionStorage.getItem('usuario') === 'ADMIN' || localStorage.getItem('usuario') === 'ADMIN' || document.body.textContent.includes('Panel de Administración');
                     const seccionNomina = document.querySelector('#resumen-horas') || document.querySelector('div:has(table)') || document.querySelector('.overflow-x-auto');
-                    if (seccionNomina && !document.getElementById('cuadro-total-nomina-general')) {
+                    
+                    if (esAdmin && seccionNomina && !document.getElementById('cuadro-total-nomina-general')) {
                         const contenedorTotal = document.createElement('div');
                         contenedorTotal.id = 'cuadro-total-nomina-general';
                         contenedorTotal.className = 'mb-4 p-4 bg-slate-900 border border-emerald-500/50 rounded-xl flex items-center justify-between shadow-xl';
@@ -138,7 +148,7 @@ def leer_raiz():
                     }
                 }, 800);
 
-                // 3. Simulador de cobro trabajador
+                // 3. Simulador de cobro trabajador en su menú
                 const observerTrabajador = new MutationObserver(() => {
                     const dropdownMenu = document.querySelector('#menu-config-trabajador') || document.querySelector('.dropdown-menu') || document.querySelector('[role="menu"]') || document.querySelector('.absolute.right-0.mt-2');
                     if (dropdownMenu && !document.getElementById('simulador-cobro-btn')) {
@@ -172,6 +182,59 @@ def leer_raiz():
                 });
 
                 spanTotal.textContent = `$${sumaPrecisa.toFixed(2)}`;
+            }
+
+            function abrirModalCerrarTurnoAdmin() {
+                let modal = document.getElementById('modal-cerrar-turno-admin');
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.id = 'modal-cerrar-turno-admin';
+                    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4';
+                    modal.innerHTML = `
+                        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-6 text-white shadow-2xl">
+                            <h3 class="text-lg font-bold mb-3 flex items-center gap-2 text-rose-400">
+                                <i class="fas fa-user-clock"></i> Forzar Cierre de Turno
+                            </h3>
+                            <p class="text-xs text-slate-400 mb-4">
+                                Selecciona el trabajador al que se le olvidó marcar salida para finalizar su turno actual de inmediato.
+                            </p>
+                            <div class="mb-4">
+                                <label class="block text-xs uppercase font-bold text-slate-400 mb-1">Nombre del Trabajador</label>
+                                <input type="text" id="input-usuario-forzar" placeholder="Ej. Ricardo" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white">
+                            </div>
+                            <div class="flex justify-end gap-3 mt-6">
+                                <button onclick="document.getElementById('modal-cerrar-turno-admin').remove()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm">Cancelar</button>
+                                <button onclick="ejecutarForzarCierre()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 rounded-lg text-sm font-bold">Cerrar Turno</button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(modal);
+                }
+            }
+
+            async function ejecutarForzarCierre() {
+                const usuario = document.getElementById('input-usuario-forzar').value.trim();
+                if (!usuario) {
+                    alert("Por favor ingresa el nombre del trabajador.");
+                    return;
+                }
+                try {
+                    const res = await fetch('/api/admin/forzar-cierre', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ usuario: usuario })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        alert(data.mensaje || "¡Turno cerrado con éxito!");
+                        document.getElementById('modal-cerrar-turno-admin').remove();
+                        location.reload();
+                    } else {
+                        alert(data.detail || "Error al cerrar el turno.");
+                    }
+                } catch(e) {
+                    alert("Error de conexión: " + e);
+                }
             }
 
             function abrirModalConfigGlobal() {
@@ -338,6 +401,9 @@ class CambiarPinRequest(BaseModel):
 class ConfigGlobalRequest(BaseModel):
     tarifa_hora: float
 
+class ForzarCierreRequest(BaseModel):
+    usuario: str
+
 @app.post("/api/login")
 def login(req: LoginRequest):
     u = req.usuario.strip()
@@ -355,6 +421,23 @@ def login(req: LoginRequest):
     if not user_info or str(user_info["pin"]).strip() != p:
         raise HTTPException(status_code=400, detail="Credenciales inválidas")
     return {"usuario": user_info["usuario"], "pin": req.pin, "rol_sistema": user_info.get("rol_sistema", "trabajador")}
+
+@app.post("/api/admin/forzar-cierre")
+def forzar_cierre(req: ForzarCierreRequest):
+    u_real = req.usuario.strip().capitalize()
+    hora_actual = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
+    try:
+        res_activo = supabase.table("asistencias").select("*").ilike("usuario", u_real).is_("salida", "null").execute()
+        if not res_activo.data:
+            raise HTTPException(status_code=400, detail=f"No se encontró ningún turno activo para {u_real}")
+        
+        activo = res_activo.data[0]
+        supabase.table("asistencias").update({"salida": hora_actual}).eq("id", activo["id"]).execute()
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"mensaje": f"¡Turno de {u_real} cerrado correctamente a las {hora_actual}!"}
 
 @app.post("/api/cambiar-pin")
 def cambiar_pin(req: CambiarPinRequest):
