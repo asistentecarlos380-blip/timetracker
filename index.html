@@ -48,7 +48,6 @@
     <div id="view-login">
         <h2>⏰ Control de Asistencia y Planta</h2>
         
-        <!-- Envolvemos en un form con onsubmit para que al presionar Enter funcione automáticamente -->
         <form onsubmit="event.preventDefault(); realizarLogin();">
             <div class="form-group" style="margin-top: 20px;">
                 <label>Nombre de Usuario:</label>
@@ -84,7 +83,6 @@
     <div id="view-admin" class="hidden">
         <h2>🛠️ Panel de Administración y Nómina</h2>
         
-        <!-- SECCIÓN DE RESPALDOS EXCEL -->
         <div class="box-backup">
             <h3 style="margin-top:0; font-size:16px; color:#274e13;">📊 Respaldo en Excel (.xlsx)</h3>
             <p style="font-size:13px; margin: 5px 0 10px 0;">Descarga el archivo Excel para ver, editar o agregar las horas de la semana pasada, y súbelo para restaurar los datos.</p>
@@ -96,7 +94,6 @@
             </div>
         </div>
 
-        <!-- FORMULARIO CREAR / EDITAR USUARIO -->
         <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
             <h3 id="admin-form-title" style="margin-top:0; font-size:16px; color:#333;">➕ Registrar / Configurar Personal o Planta</h3>
             <input type="hidden" id="edit-old-user" value="">
@@ -150,7 +147,6 @@
 
         <hr style="margin:25px 0;">
 
-        <!-- FILTRO QUINCENA -->
         <div class="box-filter">
             <h3 style="margin-top:0; font-size:16px;">💰 Cálculo de Pago por Rango / Quincena (14 días)</h3>
             <div class="form-row">
@@ -166,7 +162,6 @@
             <button onclick="calcularNominaRango()" class="btn-success">🧮 Calcular Reporte y Nómina</button>
         </div>
 
-        <!-- REPORTE FINAL -->
         <div id="resultado-reporte" class="hidden">
             <h3>📊 Reporte Final para Superiores</h3>
             <div id="reporte-texto" class="report-box"></div>
@@ -580,4 +575,23 @@
         textoReporte += `• Horas sin luz: ${horasSinLuzTotal.toFixed(5)} h\n`;
         textoReporte += `• Consumo: 1.4 L/h\n`;
         textoReporte += `• Gasolina consumida: ${litrosGasolina.toFixed(2)} litros\n`;
-        textoReporte
+        textoReporte += `• A $0.50/L: $${costoGasolina.toFixed(2)}\n\n`;
+
+        textoReporte += `💰 Resumen final\n`;
+        textoReporte += `• Pago trabajadores: $${totalTrabajadoresPago.toFixed(2)}\n`;
+        if (totalFijoAdmin > 0) {
+            textoReporte += `• Pago Fijo (${semanasRango.toFixed(1)} sem): $${totalFijoAdmin.toFixed(2)}\n`;
+        }
+        textoReporte += `• Gasolina: $${costoGasolina.toFixed(2)}\n`;
+        textoReporte += `=====================================\n`;
+        textoReporte += `TOTAL GENERAL: $${totalGeneral.toFixed(2)}`;
+
+        document.getElementById('resultado-reporte').classList.remove('hidden');
+        document.getElementById('reporte-texto').innerText = textoReporte;
+
+        renderAdminUI(cacheAdminData, filtrados);
+    }
+</script>
+
+</body>
+</html>
