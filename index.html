@@ -251,6 +251,7 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- TABLA DE PERSONAL Y TARIFAS CON COLUMNA DE CARGO / ÁREA -->
             <div class="glass-panel p-4 rounded-xl shadow-md">
                 <div class="flex justify-between items-center mb-3">
                     <h2 class="text-xs font-semibold text-slate-200">Personal Registrado y Tarifas</h2>
@@ -263,7 +264,8 @@
                                 <th class="py-1">Usuario</th>
                                 <th class="py-1">PIN</th>
                                 <th class="py-1">Pago</th>
-                                <th class="py-1">Tarifa / Monto</th>
+                                <th class="py-1">Tarifa</th>
+                                <th class="py-1">Cargo / Área</th>
                                 <th class="py-1 text-right">Acciones</th>
                             </tr>
                         </thead>
@@ -310,7 +312,7 @@
                     <input type="text" id="input-u-nombre" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                 </div>
                 <div>
-                    <label class="block text-slate-300 mb-1">PIN de Acceso (Admin puede restablecerlo)</label>
+                    <label class="block text-slate-300 mb-1">PIN de Acceso</label>
                     <div class="relative">
                         <input type="password" id="input-u-pin" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none pr-10">
                         <button type="button" onclick="togglePass('input-u-pin', 'icon-modal-pin')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
@@ -328,14 +330,14 @@
                         </select>
                     </div>
                     <div>
-                        <label id="label-monto-tarifa" class="block text-slate-300 mb-1">Tarifa por Hora</label>
+                        <label id="label-monto-tarifa" class="block text-slate-300 mb-1">Tarifa por Hora ($)</label>
                         <input type="number" id="input-u-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="1.5">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-slate-300 mb-1">Área / Departamento</label>
-                        <input type="text" id="input-u-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="Gestión">
+                        <label class="block text-slate-300 mb-1">Cargo / Área</label>
+                        <input type="text" id="input-u-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="Operaciones" placeholder="ej. Operaciones, Planta, Gerencia">
                     </div>
                     <div>
                         <label class="block text-slate-300 mb-1">Rol en Sistema</label>
@@ -895,6 +897,7 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
                         i++;
                         let tipoPago = info.tipo_pago || 'Horas';
                         let montoMostrar = (tipoPago.toLowerCase() === 'horas') ? (info.tarifa_hora !== undefined ? info.tarifa_hora : 1.5) : info.monto_fijo;
+                        let areaMostrar = info.area || 'Operaciones';
 
                         tU.innerHTML += `
                             <tr class="border-b border-slate-700/30">
@@ -905,8 +908,9 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
                                 </td>
                                 <td class="py-1.5 capitalize">${tipoPago}</td>
                                 <td class="py-1.5 text-emerald-300 font-semibold">$${montoMostrar}</td>
+                                <td class="py-1.5 text-slate-300 font-medium">${areaMostrar}</td>
                                 <td class="py-1.5 text-right">
-                                    <button onclick="editarUsuario('${u}', '${info.pin}', '${tipoPago}', '${info.monto_fijo}', '${info.tarifa_hora}', '${info.area}', '${info.rol_sistema}')" class="text-emerald-400 hover:underline mr-2">Editar PIN / Rol</button>
+                                    <button onclick="editarUsuario('${u}', '${info.pin}', '${tipoPago}', '${info.monto_fijo}', '${info.tarifa_hora}', '${areaMostrar}', '${info.rol_sistema}')" class="text-emerald-400 hover:underline mr-2">Editar PIN / Rol</button>
                                     <button onclick="eliminarUsuario('${u}')" class="text-red-400 hover:underline">Borrar</button>
                                 </td>
                             </tr>
@@ -1018,6 +1022,7 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
             document.getElementById('form-usuario').reset();
             document.getElementById('edit-antiguo').value = "";
             document.getElementById('input-u-tipopago').value = "Horas";
+            document.getElementById('input-u-area').value = "Operaciones";
             actualizarLabelMonto();
             document.getElementById('modal-usuario').classList.remove('hidden');
         }
@@ -1028,6 +1033,8 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
             document.getElementById('input-u-nombre').value = u;
             document.getElementById('input-u-pin').value = pin;
             document.getElementById('input-u-tipopago').value = tipo;
+            document.getElementById('input-u-area').value = (area && area !== 'undefined') ? area : "Operaciones";
+            document.getElementById('input-u-rol').value = rol || "trabajador";
             actualizarLabelMonto();
             if(tipo.toLowerCase() === 'horas') {
                 document.getElementById('input-u-monto').value = (tarifa !== 'undefined' && tarifa) ? tarifa : 1.5;
@@ -1063,7 +1070,7 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
                 tipo_pago: tipoPago,
                 monto_fijo: tipoPago.toLowerCase() !== 'horas' ? valorInput : 150,
                 tarifa_hora: tipoPago.toLowerCase() === 'horas' ? valorInput : 1.5,
-                area: "Gestión",
+                area: document.getElementById('input-u-area').value || "Operaciones",
                 rol_sistema: document.getElementById('input-u-rol').value
             };
 
