@@ -539,3 +539,66 @@
             const hNetas = calcularHorasNetas(a.entrada, a.salida, a.receso_inicio, a.receso_fin);
             horasUser[a.usuario] = (horasUser[a.usuario] || 0) + hNetas;
         });
+
+        for (let u in cacheAdminData.usuarios) {
+            const uInfo = cacheAdminData.usuarios[u];
+            const tipo = uInfo.tipo_pago || 'horas';
+
+            if (tipo === 'horas') {
+                let hrs = horasUser[u] || 0;
+                let tarifa = uInfo.tarifa_hora || 1.1;
+                let pago = hrs * tarifa;
+                totalTrabajadoresPago += pago;
+            } else if (tipo === 'fijo') {
+                let montoSemanal = uInfo.monto_fijo || 150;
+                let pagoFijoTotal = montoSemanal * semanasRango;
+                totalFijoAdmin += pagoFijoTotal;
+            } else if (tipo === 'gasolina') {
+                let hrsLuz = horasUser[u] || 0;
+                horasSinLuzTotal += hrsLuz;
+                litrosGasolina += (hrsLuz * 1.4);
+                costoGasolina += (hrsLuz * 1.4 * 0.50);
+            }
+        }
+
+        let totalGeneral = totalTrabajadoresPago + totalFijoAdmin + costoGasolina;
+
+        let textoReporte = `Persona / Concepto             Horas / Cantidad      Pago\n`;
+        textoReporte += `------------------------------------------------------------\n`;
+        
+        for (let u in cacheAdminData.usuarios) {
+            const uInfo = cacheAdminData.usuarios[u];
+            if (uInfo.tipo_pago === 'horas') {
+                let hrs = horasUser[u] || 0;
+                let pago = hrs * (uInfo.tarifa_hora || 1.1);
+                textoReporte += `${u.padEnd(20)} ${hrs.toFixed(5)} h`.padEnd(35) + `$${pago.toFixed(2)}\n`;
+            }
+        }
+
+        textoReporte += `------------------------------------------------------------\n`;
+        textoReporte += `TOTAL trabajadores:           ${Object.values(horasUser).reduce((a,b)=>a+b,0).toFixed(5)} h`.padEnd(35) + `$${totalTrabajadoresPago.toFixed(2)}\n\n`;
+
+        textoReporte += `⛽ Gasolina\n`;
+        textoReporte += `• Horas sin luz: ${horasSinLuzTotal.toFixed(5)} h\n`;
+        textoReporte += `• Consumo: 1.4 L/h\n`;
+        textoReporte += `• Gasolina consumida: ${litrosGasolina.toFixed(2)} litros\n`;
+        textoReporte += `• A $0.50/L: $${costoGasolina.toFixed(2)}\n\n`;
+
+        textoReporte += `💰 Resumen final\n`;
+        textoReporte += `• Pago trabajadores: $${totalTrabajadoresPago.toFixed(2)}\n`;
+        if (totalFijoAdmin > 0) {
+            textoReporte += `• Pago Fijo (${semanasRango.toFixed(1)} sem): $${totalFijoAdmin.toFixed(2)}\n`;
+        }
+        textoReporte += `• Gasolina: $${costoGasolina.toFixed(2)}\n`;
+        textoReporte += `=====================================\n`;
+        textoReporte += `TOTAL GENERAL: $${totalGeneral.toFixed(2)}`;
+
+        document.getElementById('resultado-reporte').classList.remove('hidden');
+        document.getElementById('reporte-texto').innerText = textoReporte;
+
+        renderAdminUI(cacheAdminData, filtrados);
+    }
+</script>
+
+</body>
+</html>
