@@ -67,8 +67,8 @@
             <table class="w-full text-left text-xs">
                 <thead>
                     <tr class="border-b border-slate-700 text-slate-400">
-                        <th class="pb-2">Fecha (Día)</th>
-                        <th class="pb-2 text-right">Estado / Horas</th>
+                        <th class="pb-2">Fecha (Día Inicio)</th>
+                        <th class="pb-2 text-right">Horas Acumuladas</th>
                     </tr>
                 </thead>
                 <tbody id="tabla-mis-horas" class="divide-y divide-slate-700/50">
@@ -97,8 +97,42 @@
             </div>
         </header>
 
+        <!-- SECCIÓN RESUMEN POR RANGO DE FECHAS -->
+        <div class="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow-md mb-6">
+            <h2 class="text-sm font-semibold text-slate-200 mb-3"><i class="fa-solid fa-calendar-days text-indigo-400 mr-2"></i>Resumen de Horas y Cálculo de Nómina por Rango de Fechas</h2>
+            <div class="flex flex-wrap items-end gap-3 mb-4 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Desde (Fecha inicio):</label>
+                    <input type="date" id="filtro-fecha-desde" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Hasta (Fecha fin):</label>
+                    <input type="date" id="filtro-fecha-hasta" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100">
+                </div>
+                <button onclick="calcularResumenFechas()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium transition">
+                    <i class="fa-solid fa-calculator mr-1"></i> Calcular Horas
+                </button>
+            </div>
+            <div class="overflow-x-auto max-h-64">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-slate-400">
+                            <th class="pb-2">Trabajador</th>
+                            <th class="pb-2">Tipo Pago</th>
+                            <th class="pb-2">Horas Totales</th>
+                            <th class="pb-2">Tarifa / Monto</th>
+                            <th class="pb-2 text-right">Total a Pagar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-resumen-fechas" class="divide-y divide-slate-700/50">
+                        <tr><td colspan="5" class="py-4 text-center text-slate-500">Selecciona las fechas y presiona 'Calcular Horas'.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Gestión de Usuarios Completa -->
+            <!-- Personal Registrado -->
             <div class="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow-md">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-sm font-semibold text-slate-200">Personal Registrado y Tarifas</h2>
@@ -123,7 +157,7 @@
                 </div>
             </div>
 
-            <!-- Registro de Asistencias y Actividad -->
+            <!-- Registro de Asistencias -->
             <div class="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow-md flex flex-col">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-sm font-semibold text-slate-200">Asistencias en Tiempo Real</h2>
@@ -172,21 +206,20 @@
                     <div>
                         <label class="block text-slate-300 mb-1">Tipo de Pago</label>
                         <select id="input-u-tipopago" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
-                            <option value="horas">Por Horas</option>
-                            <option value="fijo">Sueldo Fijo</option>
+                            <option value="Horas">Horas</option>
+                            <option value="Gasolina">Gasolina</option>
+                            <option value="Fijo">Fijo</option>
                         </select>
                     </div>
                     <div>
                         <label class="block text-slate-300 mb-1">Monto / Tarifa</label>
-                        <div class="relative">
-                            <input type="number" id="input-u-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none pr-10" value="150">
-                        </div>
+                        <input type="number" id="input-u-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none" value="150">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-slate-300 mb-1">Área / Departamento</label>
-                        <input type="text" id="input-u-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none" value="General">
+                        <input type="text" id="input-u-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none" value="Gestion">
                     </div>
                     <div>
                         <label class="block text-slate-300 mb-1">Rol en Sistema</label>
@@ -208,6 +241,7 @@
     <script>
         let currentUser = null;
         let sessionTimer = null;
+        let globalAdminData = null;
 
         function togglePass(inputId, iconId) {
             const input = document.getElementById(inputId);
@@ -223,6 +257,19 @@
             }
         }
 
+        function parseFechaHora(str) {
+            if(!str) return null;
+            // Formato esperado "YYYY-MM-DD HH:MM:SS AM/PM"
+            let partes = str.split(' ');
+            let f = partes[0].split('-');
+            let h = partes[1].split(':');
+            let ampm = partes[2];
+            let hh = parseInt(h[0]);
+            if(ampm === 'PM' && hh < 12) hh += 12;
+            if(ampm === 'AM' && hh === 12) hh = 0;
+            return new Date(f[0], f[1]-1, f[2], hh, h[1], h[2]);
+        }
+
         function resetSessionTimer(rol) {
             if (sessionTimer) clearTimeout(sessionTimer);
             const minutos = (rol === 'admin') ? 10 : 5;
@@ -235,9 +282,7 @@
 
         ['click', 'keypress', 'mousemove'].forEach(evt => {
             document.addEventListener(evt, () => {
-                if (currentUser) {
-                    resetSessionTimer(currentUser.rol_sistema);
-                }
+                if (currentUser) resetSessionTimer(currentUser.rol_sistema);
             });
         });
 
@@ -318,9 +363,7 @@
                 if(checkRes.ok && checkData.registros.length > 0) {
                     const ultimo = checkData.registros[checkData.registros.length - 1];
                     if(ultimo.salida === null) {
-                        if(!confirm("¿Estás seguro de que quieres finalizar tu turno?")) {
-                            return;
-                        }
+                        if(!confirm("¿Estás seguro de que quieres finalizar tu turno?")) return;
                     }
                 }
             } catch(e) {}
@@ -378,14 +421,34 @@
                         return;
                     }
 
+                    let porDia = {};
                     data.registros.forEach(r => {
+                        let dEntrada = parseFechaHora(r.entrada);
+                        let dSalida = parseFechaHora(r.salida);
+                        let fechaInicioKey = r.entrada.split(' ')[0]; // La fecha de inicio fija el día del turno
+
+                        let hrs = 0;
+                        if(dEntrada && dSalida) {
+                            let diffMs = dSalida - dEntrada;
+                            if(r.receso_inicio && r.receso_fin) {
+                                let dR1 = parseFechaHora(r.receso_inicio);
+                                let dR2 = parseFechaHora(r.receso_fin);
+                                if(dR1 && dR2) diffMs -= (dR2 - dR1);
+                            }
+                            hrs = Math.max(0, diffMs / (1000 * 60 * 60));
+                        }
+                        if(!porDia[fechaInicioKey]) porDia[fechaInicioKey] = 0;
+                        porDia[fechaInicioKey] += hrs;
+                    });
+
+                    for(let [fechaKey, horasTotales] of Object.entries(porDia)) {
                         tbody.innerHTML += `
                             <tr class="border-b border-slate-700/30">
-                                <td class="py-2.5 font-medium">${r.entrada.split(' ')[0]} (Entrada: ${r.entrada.split(' ')[1]} ${r.entrada.split(' ')[2]})</td>
-                                <td class="py-2.5 text-right text-indigo-300">${r.salida ? 'Turno Completo' : 'En Curso / Activo'}</td>
+                                <td class="py-2.5 font-medium">${fechaKey}</td>
+                                <td class="py-2.5 text-right text-indigo-300 font-bold">${horasTotales.toFixed(2)} hrs</td>
                             </tr>
                         `;
-                    });
+                    }
                 }
             } catch(err) {}
         }
@@ -395,6 +458,7 @@
                 const res = await fetch('/api/admin/datos');
                 const data = await res.json();
                 if(res.ok) {
+                    globalAdminData = data;
                     const tU = document.getElementById('tabla-usuarios');
                     tU.innerHTML = '';
                     let i = 0;
@@ -437,13 +501,76 @@
             } catch(e) {}
         }
 
+        function calcularResumenFechas() {
+            if(!globalAdminData) return;
+            const fDesde = document.getElementById('filtro-fecha-desde').value;
+            const fHasta = document.getElementById('filtro-fecha-hasta').value;
+
+            if(!fDesde || !fHasta) {
+                alert("Por favor selecciona ambas fechas (Desde y Hasta).");
+                return;
+            }
+
+            let dDesde = new Date(fDesde + "T00:00:00");
+            let dHasta = new Date(fHasta + "T23:59:59");
+
+            let resumen = {};
+            for(let u in globalAdminData.usuarios) {
+                resumen[u] = {
+                    tipo_pago: globalAdminData.usuarios[u].tipo_pago || 'Horas',
+                    monto_fijo: globalAdminData.usuarios[u].monto_fijo || 150,
+                    horas: 0
+                };
+            }
+
+            globalAdminData.asistencias.forEach(r => {
+                let dEntrada = parseFechaHora(r.entrada);
+                let dSalida = parseFechaHora(r.salida);
+
+                // La regla de fecha asigna todo el turno a la fecha de ENTRADA
+                if(dEntrada && dEntrada >= dDesde && dEntrada <= dHasta) {
+                    let hrs = 0;
+                    if(dSalida) {
+                        let diffMs = dSalida - dEntrada;
+                        if(r.receso_inicio && r.receso_fin) {
+                            let dR1 = parseFechaHora(r.receso_inicio);
+                            let dR2 = parseFechaHora(r.receso_fin);
+                            if(dR1 && dR2) diffMs -= (dR2 - dR1);
+                        }
+                        hrs = Math.max(0, diffMs / (1000 * 60 * 60));
+                    }
+                    if(!resumen[r.usuario]) {
+                        resumen[r.usuario] = { tipo_pago: 'Horas', monto_fijo: 150, horas: 0 };
+                    }
+                    resumen[r.usuario].horas += hrs;
+                }
+            });
+
+            const tR = document.getElementById('tabla-resumen-fechas');
+            tR.innerHTML = '';
+            for(let [u, info] of Object.entries(resumen)) {
+                let totalPagar = 0;
+                if(info.tipo_pago.toLowerCase() === 'fijo' || info.tipo_pago.toLowerCase() === 'gasolina') {
+                    totalPagar = info.monto_fijo;
+                } else {
+                    totalPagar = info.horas * info.monto_fijo;
+                }
+
+                tR.innerHTML += `
+                    <tr class="border-b border-slate-700/30">
+                        <td class="py-2 font-medium">${u}</td>
+                        <td class="py-2 capitalize">${info.tipo_pago}</td>
+                        <td class="py-2 text-indigo-300 font-semibold">${info.horas.toFixed(2)} hrs</td>
+                        <td class="py-2">$${info.monto_fijo}</td>
+                        <td class="py-2 text-right text-emerald-400 font-bold">$${totalPagar.toFixed(2)}</td>
+                    </tr>
+                `;
+            }
+        }
+
         function togglePinTabla(pinReal, spanId) {
             const span = document.getElementById(spanId);
-            if (span.textContent === "••••") {
-                span.textContent = pinReal;
-            } else {
-                span.textContent = "••••";
-            }
+            span.textContent = (span.textContent === "••••") ? pinReal : "••••";
         }
 
         function abrirModalUsuario() {
