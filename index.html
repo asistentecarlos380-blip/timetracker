@@ -309,7 +309,7 @@
                 <input type="hidden" id="edit-antiguo">
                 <div>
                     <label class="block text-slate-300 mb-1">Nombre de Usuario</label>
-                    <input type="text" id="input-u-nombre" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                    <input type="text" id="input-u-nombre" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" placeholder="ej. Ricardo">
                 </div>
                 <div>
                     <label class="block text-slate-300 mb-1">PIN de Acceso</label>
@@ -337,7 +337,7 @@
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-slate-300 mb-1">Cargo / Área</label>
-                        <input type="text" id="input-u-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="Operaciones" placeholder="ej. Operaciones, Planta, Gerencia">
+                        <input type="text" id="input-u-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="Operaciones" placeholder="ej. Operaciones, Planta">
                     </div>
                     <div>
                         <label class="block text-slate-300 mb-1">Rol en Sistema</label>
@@ -391,9 +391,9 @@
                 <!-- CARGA SÚPER FÁCIL (LÍNEA POR LÍNEA) -->
                 <div id="seccion-simple" class="hidden">
                     <label class="block text-slate-300 mb-1">Pega tus registros (Trabajador | Entrada | Salida):</label>
-                    <textarea id="manual-texto-simple" rows="7" placeholder="RICARDO | 15-10-2026 01:15 PM | 16-10-2026 03:24 AM
-RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 font-mono text-[11px] text-emerald-300 focus:ring-1 focus:ring-emerald-500 focus:outline-none"></textarea>
-                    <p class="text-[10px] text-slate-400 mt-1">💡 Ejemplo: <code>RICARDO | 15-10-2026 01:15 PM | 16-10-2026 03:24 AM</code></p>
+                    <textarea id="manual-texto-simple" rows="7" placeholder="Ricardo | 15-10-2026 01:15 PM | 16-10-2026 03:24 AM
+Ronald | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 font-mono text-[11px] text-emerald-300 focus:ring-1 focus:ring-emerald-500 focus:outline-none"></textarea>
+                    <p class="text-[10px] text-slate-400 mt-1">💡 Ejemplo: <code>Ricardo | 15-10-2026 01:15 PM | 16-10-2026 03:24 AM</code></p>
                 </div>
 
                 <div class="flex justify-end gap-2 mt-5">
@@ -535,8 +535,11 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
             if(tipo === 'horas') {
                 label.textContent = "Tarifa por Hora ($)";
                 inputMonto.value = "1.5";
+            } else if(tipo === 'gasolina') {
+                label.textContent = "Gasolina (1.4L/h × $0.5)";
+                inputMonto.value = "0";
             } else {
-                label.textContent = "Monto Fijo / Gasolina ($)";
+                label.textContent = "Monto Fijo ($)";
                 inputMonto.value = "150";
             }
         }
@@ -896,7 +899,7 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
                     for(let [u, info] of Object.entries(data.usuarios)) {
                         i++;
                         let tipoPago = info.tipo_pago || 'Horas';
-                        let montoMostrar = (tipoPago.toLowerCase() === 'horas') ? (info.tarifa_hora !== undefined ? info.tarifa_hora : 1.5) : info.monto_fijo;
+                        let montoMostrar = (tipoPago.toLowerCase() === 'horas') ? (info.tarifa_hora !== undefined ? info.tarifa_hora : 1.5) : (tipoPago.toLowerCase() === 'gasolina' ? '1.4L/h × $0.5' : info.monto_fijo);
                         let areaMostrar = info.area || 'Operaciones';
 
                         tU.innerHTML += `
@@ -907,10 +910,10 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
                                     <button onclick="togglePinTabla('${info.pin}', 'pin-text-${i}')" class="ml-2 text-emerald-400 hover:text-white" title="Ver / Ocultar PIN"><i class="fa-solid fa-eye text-[10px]"></i></button>
                                 </td>
                                 <td class="py-1.5 capitalize">${tipoPago}</td>
-                                <td class="py-1.5 text-emerald-300 font-semibold">$${montoMostrar}</td>
+                                <td class="py-1.5 text-emerald-300 font-semibold">${typeof montoMostrar === 'number' ? '$' + montoMostrar : montoMostrar}</td>
                                 <td class="py-1.5 text-slate-300 font-medium">${areaMostrar}</td>
                                 <td class="py-1.5 text-right">
-                                    <button onclick="editarUsuario('${u}', '${info.pin}', '${tipoPago}', '${info.monto_fijo}', '${info.tarifa_hora}', '${areaMostrar}', '${info.rol_sistema}')" class="text-emerald-400 hover:underline mr-2">Editar PIN / Rol</button>
+                                    <button onclick="editarUsuario('${u}', '${info.pin}', '${tipoPago}', '${info.monto_fijo || 0}', '${info.tarifa_hora || 1.5}', '${areaMostrar}', '${info.rol_sistema}')" class="text-emerald-400 hover:underline mr-2">Editar PIN / Rol</button>
                                     <button onclick="eliminarUsuario('${u}')" class="text-red-400 hover:underline">Borrar</button>
                                 </td>
                             </tr>
@@ -992,12 +995,18 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
             tR.innerHTML = '';
             for(let [u, info] of Object.entries(resumen)) {
                 let totalPagar = 0;
-                let valorTarifa = (info.tipo_pago.toLowerCase() === 'horas') ? info.tarifa_hora : info.monto_fijo;
-                
-                if(info.tipo_pago.toLowerCase() === 'fijo' || info.tipo_pago.toLowerCase() === 'gasolina') {
+                let tipoLower = info.tipo_pago.toLowerCase();
+                let valorTarifaTexto = "";
+
+                if(tipoLower === 'gasolina') {
+                    totalPagar = info.horas * 1.4 * 0.5;
+                    valorTarifaTexto = "1.4L/h × $0.5";
+                } else if(tipoLower === 'fijo') {
                     totalPagar = info.monto_fijo;
+                    valorTarifaTexto = `$${info.monto_fijo}`;
                 } else {
                     totalPagar = info.horas * info.tarifa_hora;
+                    valorTarifaTexto = `$${info.tarifa_hora}`;
                 }
 
                 tR.innerHTML += `
@@ -1005,7 +1014,7 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
                         <td class="py-1.5 font-medium">${u}</td>
                         <td class="py-1.5 capitalize">${info.tipo_pago}</td>
                         <td class="py-1.5 text-emerald-300 font-semibold">${info.horas.toFixed(2)} hrs</td>
-                        <td class="py-1.5">$${valorTarifa}</td>
+                        <td class="py-1.5">${valorTarifaTexto}</td>
                         <td class="py-1.5 text-right text-emerald-400 font-bold">$${totalPagar.toFixed(2)}</td>
                     </tr>
                 `;
@@ -1038,6 +1047,8 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
             actualizarLabelMonto();
             if(tipo.toLowerCase() === 'horas') {
                 document.getElementById('input-u-monto').value = (tarifa !== 'undefined' && tarifa) ? tarifa : 1.5;
+            } else if(tipo.toLowerCase() === 'gasolina') {
+                document.getElementById('input-u-monto').value = 0;
             } else {
                 document.getElementById('input-u-monto').value = monto;
             }
@@ -1061,14 +1072,14 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
         document.getElementById('form-usuario').addEventListener('submit', async (e) => {
             e.preventDefault();
             const tipoPago = document.getElementById('input-u-tipopago').value;
-            const valorInput = parseFloat(document.getElementById('input-u-monto').value) || 1.5;
+            const valorInput = parseFloat(document.getElementById('input-u-monto').value) || 0;
 
             const payload = {
                 usuario_antiguo: document.getElementById('edit-antiguo').value,
-                usuario: document.getElementById('input-u-nombre').value,
+                usuario: document.getElementById('input-u-nombre').value.trim(),
                 pin: document.getElementById('input-u-pin').value,
                 tipo_pago: tipoPago,
-                monto_fijo: tipoPago.toLowerCase() !== 'horas' ? valorInput : 150,
+                monto_fijo: tipoPago.toLowerCase() === 'fijo' ? valorInput : 0.0,
                 tarifa_hora: tipoPago.toLowerCase() === 'horas' ? valorInput : 1.5,
                 area: document.getElementById('input-u-area').value || "Operaciones",
                 rol_sistema: document.getElementById('input-u-rol').value
