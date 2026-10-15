@@ -14,7 +14,7 @@ def inicializar_bd():
     if not os.path.exists(DB_FILE):
         datos_iniciales = {
             "usuarios": {
-                "ADMIN": {"pin": "1234", "rol_sistema": "admin", "tipo_pago": "Fijo", "monto_fijo": 150.0, "tarifa_hora": 0.0, "area": "Gerencia"},
+                "ADMIN": {"pin": "1234", "rol_sistema": "admin", "tipo_pago": "Fijo", "monto_fijo": 0.0, "tarifa_hora": 0.0, "area": "Gerencia"},
                 "Ricardo": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
                 "Ronald": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
                 "Lisander": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
@@ -82,7 +82,6 @@ class CambiarPinRequest(BaseModel):
 def login(req: LoginRequest):
     db = leer_db()
     usuarios = db.get("usuarios", {})
-    
     usuario_encontrado = None
     for u in usuarios:
         if u.lower() == req.usuario.strip().lower():
@@ -96,25 +95,159 @@ def login(req: LoginRequest):
     
     return {
         "usuario": usuario_encontrado,
+        "pin": req.pin,
         "rol_sistema": usuarios[usuario_encontrado].get("rol_sistema", "trabajador")
     }
+
+@app.post("/api/cambiar-pin")
+def cambiar_pin(req: CambiarPinRequest):
+    db = leer_db()
+    usuarios = db.get("usuarios", {})
+    u_encontrado = None
+    for u in usuarios:
+        if u.lower() == req.usuario.strip().lower():
+            u_encontrado = u
+            break
+
+    if not u_encontrado:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    if usuarios[u_encontrado]["pin"] != req.pin_actual:
+        raise HTTPException(status_code=400, detail="El PIN actual es incorrecto")
+    
+    if not req.pin_nuevo or len(req.pin_nuevo.strip()) < 4:
+        raise HTTPException(status_code=400, detail="El nuevo PIN debe tener al menos 4 caracteres")
+    
+    usuarios[u_encontrado]["pin"] = req.pin_nuevo.strip()
+    db["usuarios"] = usuarios
+    escribir_db(db)
+    return {"mensaje": "PIN actualizado correctamente"}
+
+@app.post("/api/mis-horas")
+def mis_horas(req: LoginRequest):
+    db = leer_db()
+    usuarios = db.get("usuarios", {})
+    u_encontrado = None
+    for u in usuarios:
+        if u.lower() == req.usuario.strip().lower():
+            u_encontrado = u
+            break
+            
+    if not u_encontrado or usuarios[u_encontrado]["pin"] != req.pin:
+        raise HTTPException(status_code=400, detail="Credenciales inválidas")
+    
+    registros = [r for r in db.get("asistencias", []) if r["usuario"].lower() == req.usuario.strip().lower()]
+    return {"registros": registros}
+
+@app.post("/api/marcar")
+def marcar(req: LoginRequest):
+    db = leer_db()
+    usuarios = db.get("usuarios", {})
+    u_encontrado = None
+    for u in usuarios:
+        if u.lower() == req.usuario.strip().lower():
+            u_encontrado = u
+            break
+            
+    if not u_encontrado or usuarios[u_encontrado]["pin"] != req.pin:
+        raise HTTPException(status_code=400, detail="Credenciales inválidas")
+    
+    asistencias = db.get("asistencias", [])
+    activo = None
+    for r in asistencias:
+        if r["usuario"].lower() == u_encontrado.lower() and r["salida"] is None:
+            activo = r
+            break
+            
+    hora_actual = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
+    
+    if activo:
+        if activo.get("receso_inicio") and not activo.get("receso_fin"):
+            activo["receso_fin"] = hora_actual
+        else:
+            activo["salida"] = hora_actual
+    else:
+        nuevo_id = max([r["id"] for r in asistencias], default=0) + 1
+        nuevo_reg = {
+            "id": nuevo_id,
+            "usuario": u_encontrado,
+            "entrada": hora_actual,
+            "receso_inicio": None,
+            "receso_fin": None,
+            "salida": None,
+            "es_continua": False
+        }
+        asistencias.append(nuevo_reg)
+        
+    db["asistencias"] = asistencias
+    escribir_db(db)
+    return {"mensaje": "Acción registrada con éxito"}
+
+@app.post("/api/receso")
+def receso(req: LoginRequest):
+    db = leer_db()
+    usuarios = db.get("usuarios", {})
+    u_encontrado = None
+    for u in usuarios:
+        if u.lower() == req.usuario.strip().lower():
+            u_encontrado = u
+            break
+            
+    if not u_encontrado or usuarios[u_encontrado]["pin"] != req.pin:
+        raise HTTPException(status_code=400, detail="Credenciales inválidas")
+    
+    asistencias = db.get("asistencias", [])
+    activo = None
+    for r in asistencias:
+        if r["usuario"].lower() == u_encontrado.lower() and r["salida"] is None:
+            activo = r
+            break
+            
+    if not activo:
+        raise HTTPException(status_code=400, detail="No tienes ningún turno activo para pausar.")
+        
+    hora_actual = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
+    
+    if not activo.get("receso_inicio"):
+        activo["receso_inicio"] = hora_actual
+    elif not activo.get("receso_fin"):
+        activo["receso_fin"] = hora_actual
+    else:
+        nuevo_id = max([r["id"] for r in asistencias], default=0) + 1
+        nuevo_reg = {
+            "id": nuevo_id,
+            "usuario": u_encontrado,
+            "entrada": hora_actual,
+            "receso_inicio": None,
+            "receso_fin": None,
+            "salida": None,
+            "es_continua": True
+        }
+        activo["salida"] = hora_actual
+        asistencias.append(nuevo_reg)
+
+    db["asistencias"] = asistencias
+    escribir_db(db)
+    return {"mensaje": "Receso procesado con éxito"}
+
+@app.get("/api/admin/datos")
+def admin_datos():
+    db = leer_db()
+    return {"usuarios": db.get("usuarios", {}), "asistencias": db.get("asistencias", [])}
 
 @app.post("/api/admin/registro-manual")
 def admin_registro_manual(req: RegistroManualRequest):
     db = leer_db()
     asistencias = db.get("asistencias", [])
     usuarios = db.get("usuarios", {})
-    
     nombre_usuario = req.usuario.strip()
     
-    # Buscar si existe ignorando mayúsculas/minúsculas
     usuario_real = None
     for u in usuarios:
         if u.lower() == nombre_usuario.lower():
             usuario_real = u
             break
             
-    # Si el usuario no existe, crearlo automáticamente
     if not usuario_real:
         usuario_real = nombre_usuario.capitalize()
         tipo = "Gasolina" if usuario_real.lower() == "planta" else "Horas"
@@ -143,11 +276,6 @@ def admin_registro_manual(req: RegistroManualRequest):
     db["asistencias"] = asistencias
     escribir_db(db)
     return {"mensaje": "Registro manual guardado con éxito"}
-
-@app.get("/api/admin/datos")
-def admin_datos():
-    db = leer_db()
-    return {"usuarios": db.get("usuarios", {}), "asistencias": db.get("asistencias", [])}
 
 @app.post("/api/admin/usuario")
 def admin_guardar_usuario(req: UsuarioAdminRequest):
@@ -186,3 +314,22 @@ def admin_eliminar_usuario(usuario: str):
         escribir_db(db)
         return {"mensaje": "Usuario eliminado"}
     raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+@app.get("/api/admin/exportar-excel")
+def exportar_excel():
+    db = leer_db()
+    asistencias = db.get("asistencias", [])
+    data_rows = []
+    for r in asistencias:
+        data_rows.append({
+            "ID": r["id"],
+            "Usuario": r["usuario"],
+            "Entrada": r["entrada"],
+            "Salida": r["salida"] if r["salida"] else "En Curso",
+            "Es Continua": "Sí" if r["es_continua"] else "No"
+        })
+        
+    df = pd.DataFrame(data_rows)
+    export_path = "reporte_asistencia.xlsx"
+    df.to_excel(export_path, index=False)
+    return FileResponse(export_path, filename="Reporte_Asistencia.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
