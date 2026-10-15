@@ -71,7 +71,7 @@
                 <h1 class="text-lg font-bold text-emerald-400" id="worker-title">Panel de Trabajador</h1>
                 <p class="text-xs text-slate-300">Control personal de turnos y recesos</p>
             </div>
-            <div class="flex gap-2 items-center">
+            <div class="flex items-center gap-3">
                 <!-- BOTÓN CONFIGURACIÓN / TUERCA -->
                 <div class="relative">
                     <button onclick="toggleMenuConfig()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white p-2 rounded-lg text-xs font-medium transition border border-slate-700 flex items-center justify-center" title="Configuración y Simulador">
@@ -932,7 +932,6 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
                 let valorTexto = "";
 
                 if(tipoLower === 'fijo') {
-                    // CÁLCULO DIRECTO PARA PAGO FIJO ($300 PARA EL ADMIN)
                     totalPagar = info.monto_fijo;
                     valorTexto = `$${info.monto_fijo}`;
                 } else if(tipoLower === 'gasolina') {
