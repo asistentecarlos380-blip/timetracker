@@ -63,7 +63,7 @@
         </div>
 
         <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-grow shadow-md overflow-x-auto">
-            <h2 class="text-sm font-semibold mb-3 text-slate-300">Tus Registros y Horas (Últimos 14 días / Quincenal)</h2>
+            <h2 class="text-sm font-semibold mb-3 text-slate-300">Tus Registros y Horas (Quincenal / 14 días)</h2>
             <table class="w-full text-left text-xs">
                 <thead>
                     <tr class="border-b border-slate-700 text-slate-400">
@@ -88,6 +88,9 @@
                 <p class="text-xs text-slate-400">Panel de Administración y Gestión Completa</p>
             </div>
             <div class="flex gap-2 items-center">
+                <button onclick="abrirModalManual()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-plus-circle"></i> Agregar Horas Manuales
+                </button>
                 <label class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-blue-500/30 cursor-pointer flex items-center gap-1.5">
                     <i class="fa-solid fa-file-import"></i> Restaurar Excel
                     <input type="file" id="input-importar-excel" accept=".xlsx" class="hidden" onchange="importarExcel(event)">
@@ -239,6 +242,37 @@
         </div>
     </div>
 
+    <!-- MODAL REGISTRO MANUAL DE HORAS -->
+    <div id="modal-manual" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl w-full max-w-md shadow-2xl">
+            <h3 class="text-base font-bold mb-4 text-indigo-400"><i class="fa-solid fa-clock mr-2"></i>Agregar Registro Manual (Días Anteriores)</h3>
+            <form id="form-manual" class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-300 mb-1">Seleccionar Trabajador</label>
+                    <select id="manual-usuario" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                        <!-- Dinámico -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-300 mb-1">Fecha y Hora de Entrada (ej. 2026-10-01 08:00:00 AM)</label>
+                    <input type="text" id="manual-entrada" required placeholder="2026-10-01 08:00:00 AM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-slate-300 mb-1">Fecha y Hora de Salida (ej. 2026-10-01 05:00:00 PM)</label>
+                    <input type="text" id="manual-salida" required placeholder="2026-10-01 05:00:00 PM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div class="flex items-center gap-2 pt-1">
+                    <input type="checkbox" id="manual-continua" class="w-4 h-4 accent-indigo-600">
+                    <label for="manual-continua" class="text-slate-300">¿Es turno CONTINÚA (segundo tramo de receso)?</label>
+                </div>
+                <div class="flex justify-end gap-2 mt-5">
+                    <button type="button" onclick="cerrarModalManual()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Cancelar</button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg transition">Guardar Registro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- SCRIPT DE CONTROL -->
     <script>
         let currentUser = null;
@@ -355,6 +389,26 @@
 
         async function ejecutarAccionMarcar() {
             try {
+                // Verificar si tiene turno activo para pedir confirmación de salida
+                const checkRes = await fetch('/api/mis-horas', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
+                });
+                const checkData = await checkRes.json();
+                if(checkRes.ok && checkData.registros.length > 0) {
+                    const ultimo = checkData.registros[checkData.registros.length - 1];
+                    if(ultimo.salida === null) {
+                        if(!confirm("¿Estás seguro de que deseas FINALIZAR tu turno?")) return;
+                    } else {
+                        if(!confirm("¿Estás seguro de que deseas INICIAR un nuevo turno?")) return;
+                    }
+                } else {
+                    if(!confirm("¿Estás seguro de que deseas INICIAR tu turno?")) return;
+                }
+            } catch(e) {}
+
+            try {
                 const res = await fetch('/api/marcar', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -373,6 +427,8 @@
         }
 
         async function ejecutarReceso() {
+            if(!confirm("¿Estás seguro de que deseas registrar pausa o continuación por receso?")) return;
+
             try {
                 const res = await fetch('/api/receso', {
                     method: 'POST',
@@ -408,7 +464,6 @@
                         return;
                     }
 
-                    // Determinar estado actual del turno para cambiar colores de botones dinámicamente
                     let tieneTurnoActivo = false;
                     let estaEnReceso = false;
 
@@ -440,23 +495,20 @@
                         `;
                     });
 
-                    // Actualizar diseño y colores de botones según estado
+                    // Colores de botones según estado exacto
                     const btnTurno = document.getElementById('btn-accion-turno');
                     const iconTurno = document.getElementById('icon-accion-turno');
                     const textTurno = document.getElementById('text-accion-turno');
 
                     if(!tieneTurnoActivo) {
-                        // Estado: Fuera de turno -> Botón Verde (Iniciar Turno)
                         btnTurno.className = "bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2";
                         iconTurno.className = "fa-solid fa-play text-xl";
                         textTurno.textContent = "Iniciar Turno";
                     } else if(estaEnReceso) {
-                        // Estado: En receso -> Botón Verde (Continuar Turno)
                         btnTurno.className = "bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2 animate-pulse";
                         iconTurno.className = "fa-solid fa-forward text-xl";
                         textTurno.textContent = "Continuar Turno";
                     } else {
-                        // Estado: Trabajando activo -> Botón Rojo (Finalizar Turno)
                         btnTurno.className = "bg-red-600 hover:bg-red-500 text-white p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2";
                         iconTurno.className = "fa-solid fa-stop text-xl";
                         textTurno.textContent = "Finalizar Turno";
@@ -513,6 +565,13 @@
                             </tr>
                         `;
                     });
+
+                    // Llenar select de trabajadores en modal manual
+                    const selectManual = document.getElementById('manual-usuario');
+                    selectManual.innerHTML = '';
+                    for(let u in data.usuarios) {
+                        selectManual.innerHTML += `<option value="${u}">${u}</option>`;
+                    }
                 }
             } catch(e) {}
         }
@@ -535,6 +594,7 @@
                 resumen[u] = {
                     tipo_pago: globalAdminData.usuarios[u].tipo_pago || 'Horas',
                     monto_fijo: globalAdminData.usuarios[u].monto_fijo || 150,
+                    tarifa_hora: globalAdminData.usuarios[u].tarifa_hora || 1.5,
                     horas: 0
                 };
             }
@@ -549,7 +609,7 @@
                         hrs = Math.max(0, (dSalida - dEntrada) / (1000 * 60 * 60));
                     }
                     if(!resumen[r.usuario]) {
-                        resumen[r.usuario] = { tipo_pago: 'Horas', monto_fijo: 150, horas: 0 };
+                        resumen[r.usuario] = { tipo_pago: 'Horas', monto_fijo: 150, tarifa_hora: 1.5, horas: 0 };
                     }
                     resumen[r.usuario].horas += hrs;
                 }
@@ -559,10 +619,12 @@
             tR.innerHTML = '';
             for(let [u, info] of Object.entries(resumen)) {
                 let totalPagar = 0;
+                let valorTarifa = info.tipo_pago.toLowerCase() === 'horas' ? info.tarifa_hora : info.monto_fijo;
+                
                 if(info.tipo_pago.toLowerCase() === 'fijo' || info.tipo_pago.toLowerCase() === 'gasolina') {
                     totalPagar = info.monto_fijo;
                 } else {
-                    totalPagar = info.horas * info.monto_fijo;
+                    totalPagar = info.horas * info.tarifa_hora;
                 }
 
                 tR.innerHTML += `
@@ -570,7 +632,7 @@
                         <td class="py-2 font-medium">${u}</td>
                         <td class="py-2 capitalize">${info.tipo_pago}</td>
                         <td class="py-2 text-indigo-300 font-semibold">${info.horas.toFixed(2)} hrs</td>
-                        <td class="py-2">$${info.monto_fijo}</td>
+                        <td class="py-2">$${valorTarifa}</td>
                         <td class="py-2 text-right text-emerald-400 font-bold">$${totalPagar.toFixed(2)}</td>
                     </tr>
                 `;
@@ -596,13 +658,20 @@
             document.getElementById('input-u-pin').value = pin;
             document.getElementById('input-u-tipopago').value = tipo;
             document.getElementById('input-u-monto').value = monto;
-            document.getElementById('input-u-area').value = area;
-            document.getElementById('input-u-rol').value = rol;
             document.getElementById('modal-usuario').classList.remove('hidden');
         }
 
         function cerrarModalUsuario() {
             document.getElementById('modal-usuario').classList.add('hidden');
+        }
+
+        function abrirModalManual() {
+            document.getElementById('form-manual').reset();
+            document.getElementById('modal-manual').classList.remove('hidden');
+        }
+
+        function cerrarModalManual() {
+            document.getElementById('modal-manual').classList.add('hidden');
         }
 
         document.getElementById('form-usuario').addEventListener('submit', async (e) => {
@@ -612,10 +681,10 @@
                 usuario: document.getElementById('input-u-nombre').value,
                 pin: document.getElementById('input-u-pin').value,
                 tipo_pago: document.getElementById('input-u-tipopago').value,
-                monto_fijo: parseFloat(document.getElementById('input-u-monto').value) || 0,
+                monto_fijo: parseFloat(document.getElementById('input-u-monto').value) || 150,
                 tarifa_hora: 1.5,
-                area: document.getElementById('input-u-area').value,
-                rol_sistema: document.getElementById('input-u-rol').value
+                area: "Gestión",
+                rol_sistema: "trabajador"
             };
 
             const res = await fetch('/api/admin/usuario', {
@@ -631,6 +700,29 @@
             }
         });
 
+        document.getElementById('form-manual').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                usuario: document.getElementById('manual-usuario').value,
+                entrada: document.getElementById('manual-entrada').value,
+                salida: document.getElementById('manual-salida').value,
+                es_continua: document.getElementById('manual-continua').checked
+            };
+
+            const res = await fetch('/api/admin/registro-manual', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            if(res.ok) {
+                cerrarModalManual();
+                alert("Registro manual agregado con éxito");
+                cargarAdminDatos();
+            } else {
+                alert('Error al agregar registro manual');
+            }
+        });
+
         async function eliminarUsuario(u) {
             if(!confirm(`¿Eliminar al usuario ${u}?`)) return;
             const res = await fetch(`/api/admin/usuario/${u}`, { method: 'DELETE' });
@@ -638,8 +730,8 @@
         }
 
         async function forzarSalida(id) {
-            const horaActual = new Date().toLocaleString();
             if(!confirm("¿Deseas finalizar este turno activo?")) return;
+            const horaActual = new Date().toLocaleString();
             const res = await fetch('/api/admin/ajustar-salida', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
