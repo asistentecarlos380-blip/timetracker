@@ -6,42 +6,63 @@
     <title>Control de Asistencia</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Fondo Matrix Animado */
+        canvas#matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            background: #090d16;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(51, 65, 85, 0.6);
+        }
+    </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between">
+<body class="text-slate-100 min-h-screen flex flex-col justify-between relative overflow-x-hidden">
+
+    <!-- CANVAS MATRIX BACKGROUND -->
+    <canvas id="matrix-bg"></canvas>
 
     <!-- LOGIN SCREEN -->
-    <div id="login-screen" class="flex items-center justify-center flex-grow p-4">
-        <div class="bg-slate-800 border border-slate-700 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+    <div id="login-screen" class="flex items-center justify-center flex-grow p-4 z-10">
+        <div class="glass-panel p-8 rounded-2xl shadow-2xl w-full max-w-md">
             <div class="text-center mb-6">
-                <i class="fa-solid fa-clock-rotate-left text-indigo-500 text-4xl mb-2"></i>
+                <i class="fa-solid fa-shield-halved text-emerald-500 text-4xl mb-2 animate-pulse"></i>
                 <h1 class="text-2xl font-bold tracking-wide">Control de Asistencia</h1>
-                <p class="text-xs text-slate-400 mt-1">Ingresa tus credenciales para continuar</p>
+                <p class="text-xs text-slate-400 mt-1">Sistema de fichaje y gestión segura</p>
             </div>
             <form id="login-form" class="space-y-4">
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1">Usuario</label>
-                    <input type="text" id="login-usuario" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="Tu nombre de usuario">
+                    <input type="text" id="login-usuario" required class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Tu nombre de usuario">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1">PIN</label>
                     <div class="relative">
-                        <input type="password" id="login-pin" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none pr-10" placeholder="••••">
+                        <input type="password" id="login-pin" required class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-10" placeholder="••••">
                         <button type="button" onclick="togglePass('login-pin', 'icon-login-pin')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
                             <i id="icon-login-pin" class="fa-solid fa-eye text-xs"></i>
                         </button>
                     </div>
                 </div>
-                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-lg transition text-sm shadow-lg shadow-indigo-600/30">Ingresar al Sistema</button>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg transition text-sm shadow-lg shadow-emerald-600/30">Ingresar al Sistema</button>
             </form>
             <div id="login-error" class="mt-4 text-center text-xs text-red-400 hidden"></div>
         </div>
     </div>
 
     <!-- WORKER DASHBOARD -->
-    <div id="worker-dashboard" class="hidden flex-grow flex flex-col p-4 max-w-4xl mx-auto w-full">
-        <header class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex justify-between items-center mb-6 shadow-md">
+    <div id="worker-dashboard" class="hidden flex-grow flex flex-col p-4 max-w-4xl mx-auto w-full z-10">
+        <header class="glass-panel p-4 rounded-xl flex justify-between items-center mb-6 shadow-md">
             <div>
-                <h1 class="text-lg font-bold text-indigo-400" id="worker-title">Panel de Trabajador</h1>
+                <h1 class="text-lg font-bold text-emerald-400" id="worker-title">Panel de Trabajador</h1>
                 <p class="text-xs text-slate-400">Control personal de turnos y recesos</p>
             </div>
             <button onclick="cerrarSesion()" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-red-500/30">Cerrar Sesión</button>
@@ -56,24 +77,24 @@
                 <i class="fa-solid fa-mug-hot text-xl"></i>
                 <span id="text-receso">Pausar / Receso</span>
             </button>
-            <button onclick="cargarPanelTrabajador()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2">
-                <i class="fa-solid fa-rotate text-xl text-indigo-400"></i>
+            <button onclick="cargarPanelTrabajador()" class="glass-panel hover:bg-slate-800 text-slate-200 p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2">
+                <i class="fa-solid fa-rotate text-xl text-emerald-400"></i>
                 <span>Actualizar Datos</span>
             </button>
         </div>
 
-        <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-grow shadow-md overflow-x-auto">
+        <div class="glass-panel rounded-xl p-4 flex-grow shadow-md overflow-x-auto">
             <h2 class="text-sm font-semibold mb-3 text-slate-300">Tus Registros y Horas (Quincenal / 14 días)</h2>
             <table class="w-full text-left text-xs">
                 <thead>
-                    <tr class="border-b border-slate-700 text-slate-400">
+                    <tr class="border-b border-slate-700/60 text-slate-400">
                         <th class="pb-2">Fecha (Día)</th>
                         <th class="pb-2">Entrada</th>
                         <th class="pb-2">Salida</th>
                         <th class="pb-2 text-right">Horas Trabajadas</th>
                     </tr>
                 </thead>
-                <tbody id="tabla-mis-horas" class="divide-y divide-slate-700/50">
+                <tbody id="tabla-mis-horas" class="divide-y divide-slate-700/40">
                     <!-- Dinámico -->
                 </tbody>
             </table>
@@ -81,14 +102,14 @@
     </div>
 
     <!-- ADMIN DASHBOARD -->
-    <div id="admin-dashboard" class="hidden flex-grow flex flex-col p-4 max-w-7xl mx-auto w-full">
-        <header class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex justify-between items-center mb-6 shadow-md">
+    <div id="admin-dashboard" class="hidden flex-grow flex flex-col p-4 max-w-7xl mx-auto w-full z-10">
+        <header class="glass-panel p-4 rounded-xl flex justify-between items-center mb-6 shadow-md">
             <div>
-                <h1 class="text-lg font-bold text-indigo-400">Control de Asistencia</h1>
+                <h1 class="text-lg font-bold text-emerald-400">Control de Asistencia</h1>
                 <p class="text-xs text-slate-400">Panel de Administración y Gestión Completa</p>
             </div>
-            <div class="flex gap-2 items-center">
-                <button onclick="abrirModalManual()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+            <div class="flex gap-2 items-center flex-wrap">
+                <button onclick="abrirModalManual()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow">
                     <i class="fa-solid fa-plus-circle"></i> Agregar Horas Manuales
                 </button>
                 <label class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-blue-500/30 cursor-pointer flex items-center gap-1.5">
@@ -103,25 +124,25 @@
         </header>
 
         <!-- SECCIÓN RESUMEN POR RANGO DE FECHAS -->
-        <div class="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow-md mb-6">
-            <h2 class="text-sm font-semibold text-slate-200 mb-3"><i class="fa-solid fa-calendar-days text-indigo-400 mr-2"></i>Resumen de Horas y Cálculo de Nómina (Quincenal / 14 días)</h2>
+        <div class="glass-panel p-5 rounded-xl shadow-md mb-6">
+            <h2 class="text-sm font-semibold text-slate-200 mb-3"><i class="fa-solid fa-calendar-days text-emerald-400 mr-2"></i>Resumen de Horas y Cálculo de Nómina (Quincenal / 14 días)</h2>
             <div class="flex flex-wrap items-end gap-3 mb-4 text-xs">
                 <div>
                     <label class="block text-slate-400 mb-1">Desde (Fecha inicio):</label>
-                    <input type="date" id="filtro-fecha-desde" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100">
+                    <input type="date" id="filtro-fecha-desde" class="bg-slate-900/90 border border-slate-700 rounded-lg px-3 py-2 text-slate-100">
                 </div>
                 <div>
                     <label class="block text-slate-400 mb-1">Hasta (Fecha fin):</label>
-                    <input type="date" id="filtro-fecha-hasta" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100">
+                    <input type="date" id="filtro-fecha-hasta" class="bg-slate-900/90 border border-slate-700 rounded-lg px-3 py-2 text-slate-100">
                 </div>
-                <button onclick="calcularResumenFechas()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium transition">
+                <button onclick="calcularResumenFechas()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium transition shadow">
                     <i class="fa-solid fa-calculator mr-1"></i> Calcular Horas
                 </button>
             </div>
             <div class="overflow-x-auto max-h-64">
                 <table class="w-full text-left text-xs">
                     <thead>
-                        <tr class="border-b border-slate-700 text-slate-400">
+                        <tr class="border-b border-slate-700/60 text-slate-400">
                             <th class="pb-2">Trabajador</th>
                             <th class="pb-2">Tipo Pago</th>
                             <th class="pb-2">Horas Totales</th>
@@ -129,7 +150,7 @@
                             <th class="pb-2 text-right">Total a Pagar</th>
                         </tr>
                     </thead>
-                    <tbody id="tabla-resumen-fechas" class="divide-y divide-slate-700/50">
+                    <tbody id="tabla-resumen-fechas" class="divide-y divide-slate-700/40">
                         <tr><td colspan="5" class="py-4 text-center text-slate-500">Selecciona las fechas y presiona 'Calcular Horas'.</td></tr>
                     </tbody>
                 </table>
@@ -138,15 +159,15 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Personal Registrado -->
-            <div class="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow-md">
+            <div class="glass-panel p-5 rounded-xl shadow-md">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-sm font-semibold text-slate-200">Personal Registrado y Tarifas</h2>
-                    <button onclick="abrirModalUsuario()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">+ Nuevo Usuario</button>
+                    <button onclick="abrirModalUsuario()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">+ Nuevo Usuario</button>
                 </div>
                 <div class="overflow-x-auto max-h-96">
                     <table class="w-full text-left text-xs">
                         <thead>
-                            <tr class="border-b border-slate-700 text-slate-400">
+                            <tr class="border-b border-slate-700/60 text-slate-400">
                                 <th class="pb-2">Usuario</th>
                                 <th class="pb-2">PIN</th>
                                 <th class="pb-2">Tipo Pago</th>
@@ -155,7 +176,7 @@
                                 <th class="pb-2 text-right">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody id="tabla-usuarios" class="divide-y divide-slate-700/50">
+                        <tbody id="tabla-usuarios" class="divide-y divide-slate-700/40">
                             <!-- Dinámico -->
                         </tbody>
                     </table>
@@ -163,15 +184,15 @@
             </div>
 
             <!-- Registro de Asistencias -->
-            <div class="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow-md flex flex-col">
+            <div class="glass-panel p-5 rounded-xl shadow-md flex flex-col">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-sm font-semibold text-slate-200">Asistencias en Tiempo Real</h2>
-                    <button onclick="cargarAdminDatos()" class="text-xs text-indigo-400 hover:underline"><i class="fa-solid fa-rotate mr-1"></i> Actualizar</button>
+                    <button onclick="cargarAdminDatos()" class="text-xs text-emerald-400 hover:underline"><i class="fa-solid fa-rotate mr-1"></i> Actualizar</button>
                 </div>
                 <div class="overflow-x-auto max-h-96 flex-grow">
                     <table class="w-full text-left text-xs">
                         <thead>
-                            <tr class="border-b border-slate-700 text-slate-400">
+                            <tr class="border-b border-slate-700/60 text-slate-400">
                                 <th class="pb-2">Usuario</th>
                                 <th class="pb-2">Entrada</th>
                                 <th class="pb-2">Receso / Estado</th>
@@ -179,7 +200,7 @@
                                 <th class="pb-2 text-right">Acción</th>
                             </tr>
                         </thead>
-                        <tbody id="tabla-asistencias-admin" class="divide-y divide-slate-700/50">
+                        <tbody id="tabla-asistencias-admin" class="divide-y divide-slate-700/40">
                             <!-- Dinámico -->
                         </tbody>
                     </table>
@@ -189,19 +210,19 @@
     </div>
 
     <!-- MODAL USUARIO -->
-    <div id="modal-usuario" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl w-full max-w-md shadow-2xl">
-            <h3 id="modal-titulo" class="text-base font-bold mb-4 text-indigo-400">Registrar / Editar Usuario</h3>
+    <div id="modal-usuario" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+        <div class="glass-panel p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700">
+            <h3 id="modal-titulo" class="text-base font-bold mb-4 text-emerald-400">Registrar / Editar Usuario</h3>
             <form id="form-usuario" class="space-y-3 text-xs">
                 <input type="hidden" id="edit-antiguo">
                 <div>
                     <label class="block text-slate-300 mb-1">Nombre de Usuario</label>
-                    <input type="text" id="input-u-nombre" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                    <input type="text" id="input-u-nombre" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                 </div>
                 <div>
                     <label class="block text-slate-300 mb-1">PIN de Acceso</label>
                     <div class="relative">
-                        <input type="password" id="input-u-pin" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none pr-10">
+                        <input type="password" id="input-u-pin" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none pr-10">
                         <button type="button" onclick="togglePass('input-u-pin', 'icon-modal-pin')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
                             <i id="icon-modal-pin" class="fa-solid fa-eye text-xs"></i>
                         </button>
@@ -210,7 +231,7 @@
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-slate-300 mb-1">Tipo de Pago</label>
-                        <select id="input-u-tipopago" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                        <select id="input-u-tipopago" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                             <option value="Horas">Horas</option>
                             <option value="Gasolina">Gasolina</option>
                             <option value="Fijo">Fijo</option>
@@ -218,17 +239,17 @@
                     </div>
                     <div>
                         <label class="block text-slate-300 mb-1">Monto / Tarifa</label>
-                        <input type="number" id="input-u-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none" value="1.5">
+                        <input type="number" id="input-u-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="1.5">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-slate-300 mb-1">Área / Departamento</label>
-                        <input type="text" id="input-u-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none" value="Gestión">
+                        <input type="text" id="input-u-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="Gestión">
                     </div>
                     <div>
                         <label class="block text-slate-300 mb-1">Rol en Sistema</label>
-                        <select id="input-u-rol" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                        <select id="input-u-rol" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                             <option value="trabajador">Trabajador</option>
                             <option value="admin">Administrador</option>
                         </select>
@@ -236,45 +257,84 @@
                 </div>
                 <div class="flex justify-end gap-2 mt-5">
                     <button type="button" onclick="cerrarModalUsuario()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Cancelar</button>
-                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg transition">Guardar</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition">Guardar</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- MODAL REGISTRO MANUAL DE HORAS -->
-    <div id="modal-manual" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl w-full max-w-md shadow-2xl">
-            <h3 class="text-base font-bold mb-4 text-indigo-400"><i class="fa-solid fa-clock mr-2"></i>Agregar Registro Manual (Días Anteriores)</h3>
+    <div id="modal-manual" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+        <div class="glass-panel p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700">
+            <h3 class="text-base font-bold mb-4 text-emerald-400"><i class="fa-solid fa-clock mr-2"></i>Agregar Registro Manual (Días Anteriores)</h3>
             <form id="form-manual" class="space-y-3 text-xs">
                 <div>
                     <label class="block text-slate-300 mb-1">Seleccionar Trabajador</label>
-                    <select id="manual-usuario" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                    <select id="manual-usuario" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                         <!-- Dinámico -->
                     </select>
                 </div>
                 <div>
                     <label class="block text-slate-300 mb-1">Fecha y Hora de Entrada (ej. 2026-10-01 08:00:00 AM)</label>
-                    <input type="text" id="manual-entrada" required placeholder="2026-10-01 08:00:00 AM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                    <input type="text" id="manual-entrada" required placeholder="2026-10-01 08:00:00 AM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                 </div>
                 <div>
                     <label class="block text-slate-300 mb-1">Fecha y Hora de Salida (ej. 2026-10-01 05:00:00 PM)</label>
-                    <input type="text" id="manual-salida" required placeholder="2026-10-01 05:00:00 PM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                    <input type="text" id="manual-salida" required placeholder="2026-10-01 05:00:00 PM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                 </div>
                 <div class="flex items-center gap-2 pt-1">
-                    <input type="checkbox" id="manual-continua" class="w-4 h-4 accent-indigo-600">
+                    <input type="checkbox" id="manual-continua" class="w-4 h-4 accent-emerald-600">
                     <label for="manual-continua" class="text-slate-300">¿Es turno CONTINÚA (segundo tramo de receso)?</label>
                 </div>
                 <div class="flex justify-end gap-2 mt-5">
                     <button type="button" onclick="cerrarModalManual()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Cancelar</button>
-                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg transition">Guardar Registro</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition">Guardar Registro</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- SCRIPT DE CONTROL -->
+    <!-- SCRIPT DE CONTROL Y MATRIX -->
     <script>
+        // ANIMACIÓN MATRIX BACKGROUND
+        const canvas = document.getElementById('matrix-bg');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const characters = '01ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()';
+        const fontSize = 14;
+        let columns = canvas.width / fontSize;
+        let drops = [];
+        for (let i = 0; i < columns; i++) {
+            drops[i] = 1;
+        }
+
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(9, 13, 22, 0.08)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#10b981'; // Color verde esmeralda hacker
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = characters.charAt(Math.floor(Math.random() * characters.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 35);
+
+        // LÓGICA DE LA APLICACIÓN
         let currentUser = null;
         let sessionTimer = null;
         let globalAdminData = null;
@@ -389,7 +449,6 @@
 
         async function ejecutarAccionMarcar() {
             try {
-                // Verificar si tiene turno activo para pedir confirmación de salida
                 const checkRes = await fetch('/api/mis-horas', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -414,11 +473,10 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
                 });
-                const data = await res.json();
                 if(res.ok) {
-                    alert(data.mensaje);
                     cargarPanelTrabajador();
                 } else {
+                    const data = await res.json();
                     alert(data.detail || 'Error al registrar turno');
                 }
             } catch(err) {
@@ -435,11 +493,10 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
                 });
-                const data = await res.json();
                 if(res.ok) {
-                    alert(data.mensaje);
                     cargarPanelTrabajador();
                 } else {
+                    const data = await res.json();
                     alert(data.detail || 'Error al procesar receso');
                 }
             } catch(err) {
@@ -490,12 +547,11 @@
                                 <td class="py-2.5 font-medium">${r.entrada.split(' ')[0]} ${tipoLabel}</td>
                                 <td class="py-2.5 text-slate-300">${r.entrada}</td>
                                 <td class="py-2.5 text-slate-300">${salidaTexto}</td>
-                                <td class="py-2.5 text-right text-indigo-300 font-bold">${horasTexto}</td>
+                                <td class="py-2.5 text-right text-emerald-300 font-bold">${horasTexto}</td>
                             </tr>
                         `;
                     });
 
-                    // Colores de botones según estado exacto
                     const btnTurno = document.getElementById('btn-accion-turno');
                     const iconTurno = document.getElementById('icon-accion-turno');
                     const textTurno = document.getElementById('text-accion-turno');
@@ -533,13 +589,13 @@
                                 <td class="py-2 font-medium">${u}</td>
                                 <td class="py-2 text-slate-400">
                                     <span id="pin-text-${i}">••••</span>
-                                    <button onclick="togglePinTabla('${info.pin}', 'pin-text-${i}')" class="ml-2 text-indigo-400 hover:text-white"><i class="fa-solid fa-eye text-[10px]"></i></button>
+                                    <button onclick="togglePinTabla('${info.pin}', 'pin-text-${i}')" class="ml-2 text-emerald-400 hover:text-white"><i class="fa-solid fa-eye text-[10px]"></i></button>
                                 </td>
                                 <td class="py-2 capitalize">${info.tipo_pago}</td>
                                 <td class="py-2">${info.monto_fijo}</td>
                                 <td class="py-2">${info.area}</td>
                                 <td class="py-2 text-right">
-                                    <button onclick="editarUsuario('${u}', '${info.pin}', '${info.tipo_pago}', '${info.monto_fijo}', '${info.tarifa_hora}', '${info.area}', '${info.rol_sistema}')" class="text-indigo-400 hover:underline mr-2">Editar</button>
+                                    <button onclick="editarUsuario('${u}', '${info.pin}', '${info.tipo_pago}', '${info.monto_fijo}', '${info.tarifa_hora}', '${info.area}', '${info.rol_sistema}')" class="text-emerald-400 hover:underline mr-2">Editar</button>
                                     <button onclick="eliminarUsuario('${u}')" class="text-red-400 hover:underline">Borrar</button>
                                 </td>
                             </tr>
@@ -566,7 +622,6 @@
                         `;
                     });
 
-                    // Llenar select de trabajadores en modal manual
                     const selectManual = document.getElementById('manual-usuario');
                     selectManual.innerHTML = '';
                     for(let u in data.usuarios) {
@@ -631,7 +686,7 @@
                     <tr class="border-b border-slate-700/30">
                         <td class="py-2 font-medium">${u}</td>
                         <td class="py-2 capitalize">${info.tipo_pago}</td>
-                        <td class="py-2 text-indigo-300 font-semibold">${info.horas.toFixed(2)} hrs</td>
+                        <td class="py-2 text-emerald-300 font-semibold">${info.horas.toFixed(2)} hrs</td>
                         <td class="py-2">$${valorTarifa}</td>
                         <td class="py-2 text-right text-emerald-400 font-bold">$${totalPagar.toFixed(2)}</td>
                     </tr>
