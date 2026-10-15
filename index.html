@@ -93,6 +93,7 @@
             </button>
         </div>
 
+        <!-- SECCIÓN DE CÁLCULO DE PERÍODO Y SIMULADOR EDITABLE PARA EL TRABAJADOR -->
         <div class="glass-panel p-3 rounded-xl mb-4 shadow-md flex flex-wrap items-center justify-between gap-3 text-xs">
             <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-semibold text-emerald-400"><i class="fa-solid fa-calculator mr-1"></i>Rango (14 días):</span>
@@ -101,8 +102,19 @@
                 <input type="date" id="worker-hasta" class="bg-slate-900/80 border border-slate-700/80 rounded px-2 py-1 text-slate-200">
                 <button onclick="calcularHorasWorker()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded font-medium transition">Calcular</button>
             </div>
-            <div class="bg-slate-900/70 border border-slate-700/80 px-3 py-1.5 rounded-lg">
-                <span class="text-slate-300">Total Período:</span> <strong id="worker-total-horas-rango" class="text-emerald-400 text-sm">0.00 hrs</strong>
+            
+            <div class="flex items-center gap-3 flex-wrap">
+                <div class="bg-slate-900/70 border border-slate-700/80 px-3 py-1.5 rounded-lg">
+                    <span class="text-slate-300">Total Período:</span> <strong id="worker-total-horas-rango" class="text-emerald-400 text-sm">0.00 hrs</strong>
+                </div>
+                
+                <!-- SIMULADOR EDITABLE PRIVADO -->
+                <div class="bg-slate-900/90 border border-indigo-500/40 px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-inner">
+                    <span class="text-indigo-300 font-medium" title="Prueba un valor para calcular tu estimado personal"><i class="fa-solid fa-flask mr-1"></i>Simulador $:</span>
+                    <input type="number" id="simulador-tarifa" value="1.5" step="0.1" oninput="actualizarSimuladorCobro()" class="w-12 bg-slate-800 border border-indigo-500/50 rounded px-1 text-center text-white font-bold text-xs focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                    <span class="text-slate-400">/h =</span>
+                    <strong id="simulador-total-cobro" class="text-indigo-300 text-sm font-bold">$0.00</strong>
+                </div>
             </div>
         </div>
 
@@ -441,6 +453,7 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
         let sessionTimer = null;
         let globalAdminData = null;
         let registrosGlobalesTrabajador = [];
+        let totalHorasCalculadasTrabajador = 0;
 
         function togglePass(inputId, iconId) {
             const input = document.getElementById(inputId);
@@ -645,7 +658,7 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
         }
 
         async function ejecutarReceso() {
-            if(!confirm("¿Deseas registrar pausa o continuación por receso?")) return;
+            if(!confirm("¿Deseas registrar receso / pausa?")) return;
             try {
                 const res = await fetch('/api/receso', {
                     method: 'POST',
@@ -687,14 +700,16 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
                     const iconTurno = document.getElementById('icon-accion-turno');
                     const textTurno = document.getElementById('text-accion-turno');
 
+                    // LÓGICA DE BOTONES SEPARADA:
                     if(!tieneTurnoActivo) {
                         btnTurno.className = "bg-emerald-600/90 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1";
                         iconTurno.className = "fa-solid fa-play text-lg";
                         textTurno.textContent = "Iniciar Turno";
                     } else if(estaEnReceso) {
+                        // SI ESTÁ EN RECESO, EL BOTÓN PRINCIPAL VERDE PERMITE REANUDAR
                         btnTurno.className = "bg-emerald-600/90 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1 animate-pulse";
-                        iconTurno.className = "fa-solid fa-forward text-lg";
-                        textTurno.textContent = "Continuar Turno";
+                        iconTurno.className = "fa-solid fa-play text-lg";
+                        textTurno.textContent = "Continuar / Reanudar Turno";
                     } else {
                         btnTurno.className = "bg-red-600/90 hover:bg-red-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1";
                         iconTurno.className = "fa-solid fa-stop text-lg";
@@ -780,12 +795,26 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
             const hasta = document.getElementById('worker-hasta').value;
             if(!desde || !hasta) { alert("Selecciona el rango de fechas."); return; }
             let total = 0;
+            let dDesde = new Date(desde + "T00:00:00");
+            let dHasta = new Date(hasta + "T23:59:59");
+
             registrosGlobalesTrabajador.forEach(r => {
                 let dE = parseFechaHora(r.entrada);
                 let dS = parseFechaHora(r.salida);
-                if(dE && dS) { total += Math.max(0, (dS - dE) / (1000 * 60 * 60)); }
+                if(dE && dE >= dDesde && dE <= dHasta && dS) {
+                    total += Math.max(0, (dS - dE) / (1000 * 60 * 60));
+                }
             });
+
+            totalHorasCalculadasTrabajador = total;
             document.getElementById('worker-total-horas-rango').textContent = `${total.toFixed(2)} hrs`;
+            actualizarSimuladorCobro();
+        }
+
+        function actualizarSimuladorCobro() {
+            const tarifaInput = parseFloat(document.getElementById('simulador-tarifa').value) || 0;
+            const totalEstimado = totalHorasCalculadasTrabajador * tarifaInput;
+            document.getElementById('simulador-total-cobro').textContent = `$${totalEstimado.toFixed(2)}`;
         }
 
         async function cargarAdminDatos() {
