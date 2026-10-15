@@ -37,6 +37,8 @@
         .box-filter { background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
         .box-backup { background: #e2f0d9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
         .report-box { background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 8px; margin-top: 20px; white-space: pre-wrap; font-family: monospace; font-size: 14px; }
+        .dot-online { height: 10px; width: 10px; background-color: #28a745; border-radius: 50%; display: inline-block; margin-right: 6px; box-shadow: 0 0 4px #28a745; }
+        .dot-offline { height: 10px; width: 10px; background-color: #dc3545; border-radius: 50%; display: inline-block; margin-right: 6px; }
     </style>
 </head>
 <body>
@@ -47,7 +49,7 @@
         <h2>⏰ Control de Asistencia y Planta</h2>
         <div class="form-group" style="margin-top: 20px;">
             <label>Nombre de Usuario:</label>
-            <input type="text" id="login-user" placeholder="Ej: Ricardo, admin, horas_sin_luz">
+            <input type="text" id="login-user" placeholder="Ej: Ricardo, admin, Luz">
         </div>
         <div class="form-group">
             <label>PIN de Acceso:</label>
@@ -58,7 +60,7 @@
         <div id="login-msg"></div>
     </div>
 
-    <!-- VISTA TRABAJADOR / PLANTA (SU PANEL PERSONAL) -->
+    <!-- VISTA TRABAJADOR / PLANTA -->
     <div id="view-worker" class="hidden">
         <h2 id="worker-title">📋 Panel de Trabajador</h2>
         
@@ -77,10 +79,10 @@
     <div id="view-admin" class="hidden">
         <h2>🛠️ Panel de Administración y Nómina</h2>
         
-        <!-- SECCIÓN DE RESPALDOS EXCEL / JSON -->
+        <!-- SECCIÓN DE RESPALDOS -->
         <div class="box-backup">
             <h3 style="margin-top:0; font-size:16px; color:#274e13;">💾 Respaldo y Seguridad de Datos</h3>
-            <p style="font-size:13px; margin: 5px 0 10px 0;">Guarda una copia de seguridad en tu computadora para evitar perder datos al actualizar el sistema.</p>
+            <p style="font-size:13px; margin: 5px 0 10px 0;">Guarda o importa copias de seguridad de las dos semanas de trabajo.</p>
             <div class="btn-grid" style="margin-top:0;">
                 <button onclick="exportarRespaldo()" class="btn-success">📥 Exportar Respaldo (PC)</button>
                 <label class="btn-info" style="display:block; text-align:center; padding:11px; border-radius:6px; cursor:pointer; color:white; font-weight:bold; font-size:15px; margin:0;">
@@ -138,7 +140,7 @@
             <button onclick="cancelarEdicion()" class="btn-danger hidden" id="btn-cancel-edit" style="margin-top:5px;">Cancelar Edición</button>
         </div>
 
-        <h4 style="margin-bottom:5px;">Usuarios y Planta Registrados</h4>
+        <h4 style="margin-bottom:5px;">Usuarios y Planta Registrados (🟢 En Turno | 🔴 Fuera de Turno)</h4>
         <div id="list-usuarios" style="overflow-x:auto;"></div>
 
         <hr style="margin:25px 0;">
@@ -346,6 +348,14 @@
     }
 
     function renderAdminUI(data, filtradosAsis = null) {
+        // Identificar qué usuarios tienen un turno abierto (en línea)
+        let usuariosEnTurno = new Set();
+        data.asistencias.forEach(a => {
+            if (!a.salida) {
+                usuariosEnTurno.add(a.usuario.toLowerCase());
+            }
+        });
+
         let htmlU = '<table><tr><th>Usuario</th><th>PIN</th><th>Tipo</th><th>Detalle Config</th><th>Permiso</th><th>Acción</th></tr>';
         for (let u in data.usuarios) {
             const user = data.usuarios[u];
@@ -353,8 +363,11 @@
             if (user.tipo_pago === 'fijo') detalle = `Fijo: $${(user.monto_fijo || 0).toFixed(2)} / semana`;
             if (user.tipo_pago === 'gasolina') detalle = `Planta (1.4L/h @ $0.50/L)`;
 
+            let enLinea = usuariosEnTurno.has(u.toLowerCase());
+            let dotHtml = enLinea ? '<span class="dot-online" title="En Turno"></span>' : '<span class="dot-offline" title="Fuera de Turno"></span>';
+
             htmlU += `<tr>
-                <td><b>${u}</b></td>
+                <td>${dotHtml}<b>${u}</b></td>
                 <td>${user.pin}</td>
                 <td><b>${user.tipo_pago || 'horas'}</b></td>
                 <td>${detalle}</td>
