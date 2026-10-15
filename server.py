@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 import os
 import json
@@ -19,7 +19,7 @@ def load_data():
     if not os.path.exists(DATA_FILE):
         return {
             "usuarios": {
-                "admin": {"pin": "9999", "rol_sistema": "admin", "area": "Administración", "tarifa_hora": 2.0}
+                "admin": {"pin": "9999", "tipo_pago": "fijo", "monto_fijo": 150.0, "tarifa_hora": 0.0, "area": "Administración", "rol_sistema": "admin"}
             },
             "asistencias": []
         }
@@ -27,14 +27,14 @@ def load_data():
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
             if "usuarios" not in data:
-                data["usuarios"] = {"admin": {"pin": "9999", "rol_sistema": "admin", "area": "Administración", "tarifa_hora": 2.0}}
+                data["usuarios"] = {"admin": {"pin": "9999", "tipo_pago": "fijo", "monto_fijo": 150.0, "tarifa_hora": 0.0, "area": "Administración", "rol_sistema": "admin"}}
             if "asistencias" not in data:
                 data["asistencias"] = []
             return data
     except:
         return {
             "usuarios": {
-                "admin": {"pin": "9999", "rol_sistema": "admin", "area": "Administración", "tarifa_hora": 2.0}
+                "admin": {"pin": "9999", "tipo_pago": "fijo", "monto_fijo": 150.0, "tarifa_hora": 0.0, "area": "Administración", "rol_sistema": "admin"}
             },
             "asistencias": []
         }
@@ -51,9 +51,11 @@ class UserReq(BaseModel):
     usuario_antiguo: str = ""
     usuario: str
     pin: str
-    rol_sistema: str = "trabajador"
+    tipo_pago: str = "horas"
+    monto_fijo: float = 150.0
+    tarifa_hora: float = 1.1
     area: str = "General"
-    tarifa_hora: float = 1.0
+    rol_sistema: str = "trabajador"
 
 class CheckoutReq(BaseModel):
     registro_id: int
@@ -85,8 +87,7 @@ def login(req: LoginReq):
         "status": "ok",
         "usuario": user_key,
         "rol_sistema": u_info.get("rol_sistema", "trabajador"),
-        "area": u_info.get("area", "General"),
-        "tarifa_hora": u_info.get("tarifa_hora", 1.0)
+        "tipo_pago": u_info.get("tipo_pago", "horas")
     }
 
 @app.post("/api/marcar")
@@ -123,7 +124,7 @@ def marcar(req: LoginReq):
     }
     data["asistencias"].append(nuevo_reg)
     save_data(data)
-    return {"status": "entrada", "mensaje": f"Entrada registrada a las {ahora}"}
+    return {"status": "entrada", "mensaje": f"Registro iniciado a las {ahora}"}
 
 @app.post("/api/receso")
 def gestionar_receso(req: LoginReq):
@@ -152,7 +153,7 @@ def gestionar_receso(req: LoginReq):
                 save_data(data)
                 return {"status": "receso_fin", "mensaje": f"Receso finalizado a las {ahora}"}
             else:
-                raise HTTPException(status_code=400, detail="Ya registraste un receso en este turno")
+                raise HTTPException(status_code=400, detail="Ya registraste un receso")
 
     raise HTTPException(status_code=400, detail="No tienes un turno activo abierto")
 
@@ -183,19 +184,19 @@ def guardar_usuario(req: UserReq):
     nombre_antiguo = req.usuario_antiguo.strip()
     nombre_nuevo = req.usuario.strip()
 
-    # Si se renombró el usuario
     if nombre_antiguo and nombre_antiguo in data["usuarios"] and nombre_antiguo != nombre_nuevo:
         data["usuarios"][nombre_nuevo] = data["usuarios"].pop(nombre_antiguo)
-        # Actualizar asistencias asociadas
         for reg in data["asistencias"]:
             if reg["usuario"].lower() == nombre_antiguo.lower():
                 reg["usuario"] = nombre_nuevo
 
     data["usuarios"][nombre_nuevo] = {
         "pin": req.pin.strip(),
-        "rol_sistema": req.rol_sistema.strip(),
+        "tipo_pago": req.tipo_pago,
+        "monto_fijo": req.monto_fijo,
+        "tarifa_hora": req.tarifa_hora,
         "area": req.area.strip(),
-        "tarifa_hora": req.tarifa_hora
+        "rol_sistema": req.rol_sistema.strip()
     }
     save_data(data)
     return {"status": "ok"}
@@ -217,6 +218,14 @@ def ajustar_salida(req: CheckoutReq):
             save_data(data)
             return {"status": "ok", "mensaje": "Hora de salida actualizada"}
     raise HTTPException(status_code=404, detail="Registro no encontrado")
+
+# API Admin: Importar Base de Datos completa
+@app.post("/api/admin/importar")
+def importar_datos(nuevo_estado: dict):
+    if "usuarios" not in nuevo_estado or "asistencias" not in nuevo_estado:
+        raise HTTPException(status_code=400, detail="Formato de respaldo inválido")
+    save_data(nuevo_estado)
+    return {"status": "ok", "mensaje": "Base de datos restaurada correctamente"}
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
