@@ -2,16 +2,53 @@
   "usuarios": {
     "admin": {
       "pin": "9999",
-      "rol_sistema": "admin",
+      "tipo_pago": "fijo",
+      "monto_fijo": 150.0,
+      "tarifa_hora": 0.0,
       "area": "Administración",
-      "tarifa_hora": 2.0
+      "rol_sistema": "admin"
     },
     "user": {
       "pin": "1234",
-      "rol_sistema": "trabajador",
+      "tipo_pago": "horas",
+      "monto_fijo": 150.0,
+      "tarifa_hora": 1.5,
       "area": "Ventas",
-      "tarifa_hora": 1.5
+      "rol_sistema": "trabajador"
+    },
+    "Luz": {
+      "pin": "1234",
+      "tipo_pago": "gasolina",
+      "monto_fijo": 150.0,
+      "tarifa_hora": 1.1,
+      "area": "Planta",
+      "rol_sistema": "trabajador"
     }
   },
-  "asistencias": []
+  "asistencias": [
+    {
+      "id": 1,
+      "usuario": "user",
+      "entrada": "2026-10-05 08:00:00 AM",
+      "receso_inicio": "2026-10-05 12:00:00 PM",
+      "receso_fin": "2026-10-05 01:00:00 PM",
+      "salida": "2026-10-05 05:00:00 PM"
+    },
+    {
+      "id": 2,
+      "usuario": "user",
+      "entrada": "2026-10-06 08:00:00 AM",
+      "receso_inicio": null,
+      "receso_fin": null,
+      "salida": "2026-10-06 04:00:00 PM"
+    },
+    {
+      "id": 3,
+      "usuario": "Luz",
+      "entrada": "2026-10-07 02:00:00 PM",
+      "receso_inicio": null,
+      "receso_fin": null,
+      "salida": "2026-10-07 08:00:00 PM"
+    }
+  ]
 }
