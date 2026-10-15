@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Fondo Matrix Animado */
+        /* Fondo Matrix Animado General */
         canvas#matrix-bg {
             position: fixed;
             top: 0;
@@ -15,39 +15,50 @@
             width: 100vw;
             height: 100vh;
             z-index: -1;
-            background: #090d16;
+            background: #050811;
         }
-        /* Paneles con alta transparencia para mostrar el fondo Matrix */
+
+        /* Estilo para Paneles Traslúcidos (Glassmorphism) */
         .glass-panel {
-            background: rgba(9, 13, 22, 0.45);
+            background: rgba(15, 23, 42, 0.65);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(51, 65, 85, 0.4);
+            border: 1px solid rgba(51, 65, 85, 0.5);
+        }
+
+        /* Cuadro de Login Traslúcido Especial con Borde Verde */
+        .glass-login-card {
+            background: rgba(10, 16, 30, 0.65);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.15);
         }
     </style>
 </head>
 <body class="text-slate-100 min-h-screen flex flex-col justify-between relative overflow-x-hidden">
 
-    <!-- CANVAS MATRIX BACKGROUND -->
+    <!-- CANVAS MATRIX BACKGROUND GENERAL -->
     <canvas id="matrix-bg"></canvas>
 
     <!-- LOGIN SCREEN -->
     <div id="login-screen" class="flex items-center justify-center flex-grow p-4 z-10">
-        <div class="glass-panel p-8 rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="glass-login-card p-8 rounded-2xl shadow-2xl w-full max-w-md">
             <div class="text-center mb-6">
-                <i class="fa-solid fa-shield-halved text-emerald-500 text-4xl mb-2 animate-pulse"></i>
-                <h1 class="text-2xl font-bold tracking-wide">Control de Asistencia</h1>
+                <!-- Escudo de Seguridad de la imagen original -->
+                <i class="fa-solid fa-shield-halved text-emerald-500 text-5xl mb-3 animate-pulse"></i>
+                <h1 class="text-2xl font-bold tracking-wide text-white">Control de Asistencia</h1>
                 <p class="text-xs text-slate-300 mt-1">Sistema de fichaje y gestión segura</p>
             </div>
             <form id="login-form" class="space-y-4">
                 <div>
                     <label class="block text-xs font-medium text-slate-200 mb-1">Usuario</label>
-                    <input type="text" id="login-usuario" required class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Tu nombre de usuario">
+                    <input type="text" id="login-usuario" required class="w-full bg-slate-900/70 border border-slate-700/80 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Tu nombre de usuario">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-200 mb-1">PIN</label>
                     <div class="relative">
-                        <input type="password" id="login-pin" required class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-10" placeholder="••••">
+                        <input type="password" id="login-pin" required class="w-full bg-slate-900/70 border border-slate-700/80 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-10" placeholder="••••">
                         <button type="button" onclick="togglePass('login-pin', 'icon-login-pin')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
                             <i id="icon-login-pin" class="fa-solid fa-eye text-xs"></i>
                         </button>
@@ -66,44 +77,44 @@
                 <h1 class="text-lg font-bold text-emerald-400" id="worker-title">Panel de Trabajador</h1>
                 <p class="text-xs text-slate-300">Control personal de turnos y recesos</p>
             </div>
-            <button onclick="cerrarSesion()" class="bg-red-600/30 hover:bg-red-600 text-red-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-red-500/40">Cerrar Sesión</button>
+            <button onclick="cerrarSesion()" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-red-500/30">Cerrar Sesión</button>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-            <button id="btn-accion-turno" onclick="ejecutarAccionMarcar()" class="bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1">
+            <button id="btn-accion-turno" onclick="ejecutarAccionMarcar()" class="bg-emerald-600/90 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1">
                 <i id="icon-accion-turno" class="fa-solid fa-play text-lg"></i>
                 <span id="text-accion-turno" class="text-xs">Iniciar Turno</span>
             </button>
-            <button id="btn-receso" onclick="ejecutarReceso()" class="bg-amber-600 hover:bg-amber-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1">
-                <i id="icon-receso" class="fa-solid fa-mug-hot text-lg"></i>
-                <span id="text-receso" class="text-xs">Pausar / Receso</span>
+            <button id="btn-receso" onclick="ejecutarReceso()" class="bg-amber-600/90 hover:bg-amber-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1">
+                <i class="fa-solid fa-mug-hot text-lg"></i>
+                <span class="text-xs">Pausar / Receso</span>
             </button>
-            <button onclick="cargarPanelTrabajador()" class="glass-panel hover:bg-slate-800/60 text-slate-200 p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1">
+            <button onclick="cargarPanelTrabajador()" class="glass-panel hover:bg-slate-800/80 text-slate-200 p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1">
                 <i class="fa-solid fa-rotate text-lg text-emerald-400"></i>
                 <span class="text-xs">Actualizar Datos</span>
             </button>
         </div>
 
-        <!-- APARTADO COMPACTO DE RANGO DE FECHAS Y TOTAL DE HORAS -->
+        <!-- APARTADO RANGO DE FECHAS Y TOTAL DE HORAS -->
         <div class="glass-panel p-3 rounded-xl mb-4 shadow-md flex flex-wrap items-center justify-between gap-3 text-xs">
             <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-semibold text-emerald-400"><i class="fa-solid fa-calculator mr-1"></i>Rango (14 días):</span>
-                <input type="date" id="worker-desde" class="bg-slate-900/60 border border-slate-700 rounded px-2 py-1 text-slate-200">
-                <span class="text-slate-300">a</span>
-                <input type="date" id="worker-hasta" class="bg-slate-900/60 border border-slate-700 rounded px-2 py-1 text-slate-200">
+                <input type="date" id="worker-desde" class="bg-slate-900/80 border border-slate-700/80 rounded px-2 py-1 text-slate-200">
+                <span class="text-slate-400">a</span>
+                <input type="date" id="worker-hasta" class="bg-slate-900/80 border border-slate-700/80 rounded px-2 py-1 text-slate-200">
                 <button onclick="calcularHorasWorker()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded font-medium transition">Calcular</button>
             </div>
-            <div class="bg-slate-900/60 border border-slate-700 px-3 py-1.5 rounded-lg">
+            <div class="bg-slate-900/70 border border-slate-700/80 px-3 py-1.5 rounded-lg">
                 <span class="text-slate-300">Total Período:</span> <strong id="worker-total-horas-rango" class="text-emerald-400 text-sm">0.00 hrs</strong>
             </div>
         </div>
 
-        <!-- TABLA COMPACTA (UNA LÍNEA POR DÍA) -->
+        <!-- TABLA COMPACTA CON TRASLUCIDEZ -->
         <div class="glass-panel rounded-xl p-3 flex-grow shadow-md overflow-x-auto max-h-[380px]">
-            <h2 class="text-xs font-semibold mb-2 text-slate-200">Resumen Diario Consolidado</h2>
+            <h2 class="text-xs font-semibold mb-2 text-slate-300">Resumen Diario Consolidado</h2>
             <table class="w-full text-left text-xs">
                 <thead>
-                    <tr class="border-b border-slate-700/60 text-slate-300">
+                    <tr class="border-b border-slate-700/60 text-slate-400">
                         <th class="py-1.5">Fecha</th>
                         <th class="py-1.5">Primera Entrada</th>
                         <th class="py-1.5">Última Salida</th>
@@ -119,16 +130,16 @@
     </div>
 
     <!-- MODAL DETALLES DEL DÍA -->
-    <div id="modal-detalles" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div id="modal-detalles" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
         <div class="glass-panel p-5 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-700 text-xs">
             <div class="flex justify-between items-center mb-3">
                 <h3 id="modal-detalles-titulo" class="font-bold text-emerald-400 text-sm">Detalles del Turno</h3>
-                <button onclick="cerrarModalDetalles()" class="text-slate-300 hover:text-white font-bold text-sm"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="cerrarModalDetalles()" class="text-slate-400 hover:text-white font-bold text-sm"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="overflow-x-auto max-h-64">
                 <table class="w-full text-left">
                     <thead>
-                        <tr class="border-b border-slate-700 text-slate-300">
+                        <tr class="border-b border-slate-700 text-slate-400">
                             <th class="py-1">Tramo</th>
                             <th class="py-1">Entrada</th>
                             <th class="py-1">Salida</th>
@@ -157,28 +168,27 @@
                 <button onclick="abrirModalManual()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow">
                     <i class="fa-solid fa-plus-circle"></i> Agregar Horas Manuales
                 </button>
-                <label class="bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-blue-500/40 cursor-pointer flex items-center gap-1.5">
+                <label class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-blue-500/30 cursor-pointer flex items-center gap-1.5">
                     <i class="fa-solid fa-file-import"></i> Restaurar Excel
                     <input type="file" id="input-importar-excel" accept=".xlsx" class="hidden" onchange="importarExcel(event)">
                 </label>
                 <button onclick="exportarExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow">
                     <i class="fa-solid fa-file-excel"></i> Exportar Excel
                 </button>
-                <button onclick="cerrarSesion()" class="bg-red-600/30 hover:bg-red-600 text-red-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-red-500/40">Cerrar Sesión</button>
+                <button onclick="cerrarSesion()" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-red-500/30">Cerrar Sesión</button>
             </div>
         </header>
 
-        <!-- SECCIÓN RESUMEN POR RANGO DE FECHAS -->
         <div class="glass-panel p-4 rounded-xl shadow-md mb-4">
             <h2 class="text-xs font-semibold text-slate-200 mb-2"><i class="fa-solid fa-calendar-days text-emerald-400 mr-1"></i>Resumen de Horas y Cálculo de Nómina (Quincenal / 14 días)</h2>
             <div class="flex flex-wrap items-end gap-3 mb-3 text-xs">
                 <div>
-                    <label class="block text-slate-300 mb-1">Desde (Fecha inicio):</label>
-                    <input type="date" id="filtro-fecha-desde" class="bg-slate-900/60 border border-slate-700 rounded px-2 py-1 text-slate-100">
+                    <label class="block text-slate-400 mb-1">Desde (Fecha inicio):</label>
+                    <input type="date" id="filtro-fecha-desde" class="bg-slate-900/80 border border-slate-700/80 rounded px-2 py-1 text-slate-100">
                 </div>
                 <div>
-                    <label class="block text-slate-300 mb-1">Hasta (Fecha fin):</label>
-                    <input type="date" id="filtro-fecha-hasta" class="bg-slate-900/60 border border-slate-700 rounded px-2 py-1 text-slate-100">
+                    <label class="block text-slate-400 mb-1">Hasta (Fecha fin):</label>
+                    <input type="date" id="filtro-fecha-hasta" class="bg-slate-900/80 border border-slate-700/80 rounded px-2 py-1 text-slate-100">
                 </div>
                 <button onclick="calcularResumenFechas()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded font-medium transition shadow">
                     <i class="fa-solid fa-calculator mr-1"></i> Calcular Horas
@@ -187,7 +197,7 @@
             <div class="overflow-x-auto max-h-52">
                 <table class="w-full text-left text-xs">
                     <thead>
-                        <tr class="border-b border-slate-700/60 text-slate-300">
+                        <tr class="border-b border-slate-700/60 text-slate-400">
                             <th class="py-1">Trabajador</th>
                             <th class="py-1">Tipo Pago</th>
                             <th class="py-1">Horas Totales</th>
@@ -196,14 +206,13 @@
                         </tr>
                     </thead>
                     <tbody id="tabla-resumen-fechas" class="divide-y divide-slate-700/40">
-                        <tr><td colspan="5" class="py-3 text-center text-slate-400">Selecciona las fechas y presiona 'Calcular Horas'.</td></tr>
+                        <tr><td colspan="5" class="py-3 text-center text-slate-500">Selecciona las fechas y presiona 'Calcular Horas'.</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <!-- Personal Registrado -->
             <div class="glass-panel p-4 rounded-xl shadow-md">
                 <div class="flex justify-between items-center mb-3">
                     <h2 class="text-xs font-semibold text-slate-200">Personal Registrado y Tarifas</h2>
@@ -212,7 +221,7 @@
                 <div class="overflow-x-auto max-h-64">
                     <table class="w-full text-left text-xs">
                         <thead>
-                            <tr class="border-b border-slate-700/60 text-slate-300">
+                            <tr class="border-b border-slate-700/60 text-slate-400">
                                 <th class="py-1">Usuario</th>
                                 <th class="py-1">PIN</th>
                                 <th class="py-1">Pago</th>
@@ -227,7 +236,6 @@
                 </div>
             </div>
 
-            <!-- Registro de Asistencias -->
             <div class="glass-panel p-4 rounded-xl shadow-md flex flex-col">
                 <div class="flex justify-between items-center mb-3">
                     <h2 class="text-xs font-semibold text-slate-200">Asistencias en Tiempo Real</h2>
@@ -236,7 +244,7 @@
                 <div class="overflow-x-auto max-h-64 flex-grow">
                     <table class="w-full text-left text-xs">
                         <thead>
-                            <tr class="border-b border-slate-700/60 text-slate-300">
+                            <tr class="border-b border-slate-700/60 text-slate-400">
                                 <th class="py-1">Usuario</th>
                                 <th class="py-1">Entrada</th>
                                 <th class="py-1">Estado</th>
@@ -254,19 +262,19 @@
     </div>
 
     <!-- MODAL USUARIO -->
-    <div id="modal-usuario" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div id="modal-usuario" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
         <div class="glass-panel p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700">
             <h3 id="modal-titulo" class="text-base font-bold mb-4 text-emerald-400">Registrar / Editar Usuario</h3>
             <form id="form-usuario" class="space-y-3 text-xs">
                 <input type="hidden" id="edit-antiguo">
                 <div>
                     <label class="block text-slate-300 mb-1">Nombre de Usuario</label>
-                    <input type="text" id="input-u-nombre" required class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                    <input type="text" id="input-u-nombre" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                 </div>
                 <div>
                     <label class="block text-slate-300 mb-1">PIN de Acceso</label>
                     <div class="relative">
-                        <input type="password" id="input-u-pin" required class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none pr-10">
+                        <input type="password" id="input-u-pin" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none pr-10">
                         <button type="button" onclick="togglePass('input-u-pin', 'icon-modal-pin')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
                             <i id="icon-modal-pin" class="fa-solid fa-eye text-xs"></i>
                         </button>
@@ -275,7 +283,7 @@
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-slate-300 mb-1">Tipo de Pago</label>
-                        <select id="input-u-tipopago" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                        <select id="input-u-tipopago" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                             <option value="Horas">Horas</option>
                             <option value="Gasolina">Gasolina</option>
                             <option value="Fijo">Fijo</option>
@@ -283,17 +291,17 @@
                     </div>
                     <div>
                         <label class="block text-slate-300 mb-1">Monto / Tarifa</label>
-                        <input type="number" id="input-u-monto" step="0.01" required class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="1.5">
+                        <input type="number" id="input-u-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="1.5">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-slate-300 mb-1">Área / Departamento</label>
-                        <input type="text" id="input-u-area" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="Gestión">
+                        <input type="text" id="input-u-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="Gestión">
                     </div>
                     <div>
                         <label class="block text-slate-300 mb-1">Rol en Sistema</label>
-                        <select id="input-u-rol" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                        <select id="input-u-rol" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                             <option value="trabajador">Trabajador</option>
                             <option value="admin">Administrador</option>
                         </select>
@@ -308,23 +316,23 @@
     </div>
 
     <!-- MODAL REGISTRO MANUAL DE HORAS -->
-    <div id="modal-manual" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div id="modal-manual" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
         <div class="glass-panel p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700">
             <h3 class="text-base font-bold mb-4 text-emerald-400"><i class="fa-solid fa-clock mr-2"></i>Agregar Registro Manual (Días Anteriores)</h3>
             <form id="form-manual" class="space-y-3 text-xs">
                 <div>
                     <label class="block text-slate-300 mb-1">Seleccionar Trabajador</label>
-                    <select id="manual-usuario" required class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                    <select id="manual-usuario" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                         <!-- Dinámico -->
                     </select>
                 </div>
                 <div>
                     <label class="block text-slate-300 mb-1">Fecha y Hora de Entrada (ej. 2026-10-01 08:00:00 AM)</label>
-                    <input type="text" id="manual-entrada" required placeholder="2026-10-01 08:00:00 AM" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                    <input type="text" id="manual-entrada" required placeholder="2026-10-01 08:00:00 AM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                 </div>
                 <div>
                     <label class="block text-slate-300 mb-1">Fecha y Hora de Salida (ej. 2026-10-01 05:00:00 PM)</label>
-                    <input type="text" id="manual-salida" required placeholder="2026-10-01 05:00:00 PM" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                    <input type="text" id="manual-salida" required placeholder="2026-10-01 05:00:00 PM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                 </div>
                 <div class="flex items-center gap-2 pt-1">
                     <input type="checkbox" id="manual-continua" class="w-4 h-4 accent-emerald-600">
@@ -340,6 +348,7 @@
 
     <!-- SCRIPT DE CONTROL Y MATRIX -->
     <script>
+        // ANIMACIÓN MATRIX BACKGROUND GENERAL
         const canvas = document.getElementById('matrix-bg');
         const ctx = canvas.getContext('2d');
 
@@ -359,7 +368,7 @@
         }
 
         function drawMatrix() {
-            ctx.fillStyle = 'rgba(9, 13, 22, 0.08)';
+            ctx.fillStyle = 'rgba(5, 8, 17, 0.08)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             ctx.fillStyle = '#10b981';
@@ -377,8 +386,10 @@
         }
         setInterval(drawMatrix, 35);
 
+        // LÓGICA DEL SISTEMA
         let currentUser = null;
         let sessionTimer = null;
+        let globalAdminData = null;
         let registrosGlobalesTrabajador = [];
 
         function togglePass(inputId, iconId) {
@@ -393,6 +404,18 @@
                 icon.classList.remove("fa-eye-slash");
                 icon.classList.add("fa-eye");
             }
+        }
+
+        function parseFechaHora(str) {
+            if(!str) return null;
+            let partes = str.split(' ');
+            let f = partes[0].split('-');
+            let h = partes[1].split(':');
+            let ampm = partes[2];
+            let hh = parseInt(h[0]);
+            if(ampm === 'PM' && hh < 12) hh += 12;
+            if(ampm === 'AM' && hh === 12) hh = 0;
+            return new Date(f[0], f[1]-1, f[2], hh, h[1], h[2]);
         }
 
         function resetSessionTimer(rol) {
@@ -451,3 +474,487 @@
 
         function iniciarVistaSegunRol() {
             document.getElementById('login-screen').classList.add('hidden');
+            resetSessionTimer(currentUser.rol_sistema);
+
+            if (currentUser.rol_sistema === 'admin') {
+                document.getElementById('admin-dashboard').classList.remove('hidden');
+                document.getElementById('worker-dashboard').classList.add('hidden');
+                cargarAdminDatos();
+            } else {
+                document.getElementById('worker-dashboard').classList.remove('hidden');
+                document.getElementById('admin-dashboard').classList.add('hidden');
+                document.getElementById('worker-title').textContent = `Trabajador: ${currentUser.usuario}`;
+                cargarPanelTrabajador();
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('timetracker_user');
+            if (saved) {
+                try {
+                    currentUser = JSON.parse(saved);
+                    iniciarVistaSegunRol();
+                } catch(e) {
+                    cerrarSesion();
+                }
+            }
+        });
+
+        async function ejecutarAccionMarcar() {
+            try {
+                const checkRes = await fetch('/api/mis-horas', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
+                });
+                const checkData = await checkRes.json();
+                if(checkRes.ok && checkData.registros.length > 0) {
+                    const ultimo = checkData.registros[checkData.registros.length - 1];
+                    if(ultimo.salida === null) {
+                        if(!confirm("¿Estás seguro de que deseas FINALIZAR tu turno?")) return;
+                    } else {
+                        if(!confirm("¿Estás seguro de que deseas INICIAR un nuevo turno?")) return;
+                    }
+                } else {
+                    if(!confirm("¿Estás seguro de que deseas INICIAR tu turno?")) return;
+                }
+            } catch(e) {}
+
+            try {
+                const res = await fetch('/api/marcar', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
+                });
+                if(res.ok) {
+                    cargarPanelTrabajador();
+                } else {
+                    const data = await res.json();
+                    alert(data.detail || 'Error al registrar turno');
+                }
+            } catch(err) {
+                alert('Error de conexión');
+            }
+        }
+
+        async function ejecutarReceso() {
+            if(!confirm("¿Estás seguro de que deseas registrar pausa o continuación por receso?")) return;
+
+            try {
+                const res = await fetch('/api/receso', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
+                });
+                if(res.ok) {
+                    cargarPanelTrabajador();
+                } else {
+                    const data = await res.json();
+                    alert(data.detail || 'Error al procesar receso');
+                }
+            } catch(err) {
+                alert('Error de conexión');
+            }
+        }
+
+        async function cargarPanelTrabajador() {
+            try {
+                const res = await fetch('/api/mis-horas', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    registrosGlobalesTrabajador = data.registros;
+                    renderizarTablaConsolidada(registrosGlobalesTrabajador);
+
+                    let tieneTurnoActivo = false;
+                    let estaEnReceso = false;
+
+                    data.registros.forEach(r => {
+                        if(r.salida === null) {
+                            tieneTurnoActivo = true;
+                            if(r.receso_inicio && !r.receso_fin) {
+                                estaEnReceso = true;
+                            }
+                        }
+                    });
+
+                    const btnTurno = document.getElementById('btn-accion-turno');
+                    const iconTurno = document.getElementById('icon-accion-turno');
+                    const textTurno = document.getElementById('text-accion-turno');
+
+                    if(!tieneTurnoActivo) {
+                        btnTurno.className = "bg-emerald-600/90 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1";
+                        iconTurno.className = "fa-solid fa-play text-lg";
+                        textTurno.textContent = "Iniciar Turno";
+                    } else if(estaEnReceso) {
+                        btnTurno.className = "bg-emerald-600/90 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1 animate-pulse";
+                        iconTurno.className = "fa-solid fa-forward text-lg";
+                        textTurno.textContent = "Continuar Turno";
+                    } else {
+                        btnTurno.className = "bg-red-600/90 hover:bg-red-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1";
+                        iconTurno.className = "fa-solid fa-stop text-lg";
+                        textTurno.textContent = "Finalizar Turno";
+                    }
+                }
+            } catch(err) {}
+        }
+
+        function renderizarTablaConsolidada(registros) {
+            const tbody = document.getElementById('tabla-mis-horas');
+            tbody.innerHTML = '';
+            
+            if(registros.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-500">No hay registros de horas aún.</td></tr>`;
+                return;
+            }
+
+            let porFecha = {};
+            registros.forEach(r => {
+                let fecha = r.entrada.split(' ')[0];
+                if(!porFecha[fecha]) porFecha[fecha] = [];
+                porFecha[fecha].push(r);
+            });
+
+            for(let [fecha, regs] of Object.entries(porFecha)) {
+                let primeraEntrada = regs[0].entrada;
+                let ultimaSalida = regs[regs.length - 1].salida;
+                let totalHorasDia = 0;
+                let enCurso = false;
+
+                regs.forEach(r => {
+                    let dE = parseFechaHora(r.entrada);
+                    let dS = parseFechaHora(r.salida);
+                    if(dE && dS) {
+                        totalHorasDia += Math.max(0, (dS - dE) / (1000 * 60 * 60));
+                    } else if(!r.salida) {
+                        enCurso = true;
+                    }
+                });
+
+                let salidaTexto = enCurso ? '<span class="text-emerald-400 font-semibold animate-pulse">En Curso</span>' : ultimaSalida;
+                let horasTexto = enCurso && totalHorasDia === 0 ? '-' : `${totalHorasDia.toFixed(2)} hrs`;
+
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-700/35 hover:bg-slate-800/40">
+                        <td class="py-2 font-medium">${fecha}</td>
+                        <td class="py-2 text-slate-300">${primeraEntrada}</td>
+                        <td class="py-2 text-slate-300">${salidaTexto}</td>
+                        <td class="py-2 text-right text-emerald-300 font-bold">${horasTexto}</td>
+                        <td class="py-2 text-right">
+                            <button onclick='abrirDetallesDia("${fecha}", ${JSON.stringify(regs)})' class="bg-indigo-600/40 hover:bg-indigo-600 text-indigo-300 hover:text-white px-2 py-1 rounded text-[11px] transition">Ver Detalles</button>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function abrirDetallesDia(fecha, regs) {
+            document.getElementById('modal-detalles-titulo').textContent = `Detalles de Turnos - ${fecha}`;
+            const tbody = document.getElementById('tabla-modal-detalles');
+            tbody.innerHTML = '';
+
+            regs.forEach((r, idx) => {
+                let dE = parseFechaHora(r.entrada);
+                let dS = parseFechaHora(r.salida);
+                let hrs = 0;
+                if(dE && dS) hrs = Math.max(0, (dS - dE) / (1000 * 60 * 60));
+
+                let tramoNombre = r.es_continua ? `Tramo ${idx+1} (Continúa)` : `Tramo ${idx+1}`;
+                let salidaTxt = r.salida ? r.salida : '<span class="text-emerald-400">En Curso</span>';
+                let hrsTxt = r.salida ? `${hrs.toFixed(2)} hrs` : '-';
+
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-700/40">
+                        <td class="py-1.5 font-medium text-indigo-300">${tramoNombre}</td>
+                        <td class="py-1.5 text-slate-300">${r.entrada}</td>
+                        <td class="py-1.5 text-slate-300">${salidaTxt}</td>
+                        <td class="py-1.5 text-right font-bold text-emerald-300">${hrsTxt}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('modal-detalles').classList.remove('hidden');
+        }
+
+        function cerrarModalDetalles() {
+            document.getElementById('modal-detalles').classList.add('hidden');
+        }
+
+        function calcularHorasWorker() {
+            const desde = document.getElementById('worker-desde').value;
+            const hasta = document.getElementById('worker-hasta').value;
+
+            if(!desde || !hasta) {
+                alert("Selecciona el rango de fechas (Desde y Hasta).");
+                return;
+            }
+
+            let dDesde = new Date(desde + "T00:00:00");
+            let dHasta = new Date(hasta + "T23:59:59");
+            let total = 0;
+
+            registrosGlobalesTrabajador.forEach(r => {
+                let dE = parseFechaHora(r.entrada);
+                let dS = parseFechaHora(r.salida);
+                if(dE && dE >= dDesde && dE <= dHasta && dS) {
+                    total += Math.max(0, (dS - dE) / (1000 * 60 * 60));
+                }
+            });
+
+            document.getElementById('worker-total-horas-rango').textContent = `${total.toFixed(2)} hrs`;
+        }
+
+        async function cargarAdminDatos() {
+            try {
+                const res = await fetch('/api/admin/datos');
+                const data = await res.json();
+                if(res.ok) {
+                    globalAdminData = data;
+                    const tU = document.getElementById('tabla-usuarios');
+                    tU.innerHTML = '';
+                    let i = 0;
+                    for(let [u, info] of Object.entries(data.usuarios)) {
+                        i++;
+                        tU.innerHTML += `
+                            <tr class="border-b border-slate-700/30">
+                                <td class="py-1.5 font-medium">${u}</td>
+                                <td class="py-1.5 text-slate-400">
+                                    <span id="pin-text-${i}">••••</span>
+                                    <button onclick="togglePinTabla('${info.pin}', 'pin-text-${i}')" class="ml-2 text-emerald-400 hover:text-white"><i class="fa-solid fa-eye text-[10px]"></i></button>
+                                </td>
+                                <td class="py-1.5 capitalize">${info.tipo_pago}</td>
+                                <td class="py-1.5">${info.monto_fijo}</td>
+                                <td class="py-1.5 text-right">
+                                    <button onclick="editarUsuario('${u}', '${info.pin}', '${info.tipo_pago}', '${info.monto_fijo}', '${info.tarifa_hora}', '${info.area}', '${info.rol_sistema}')" class="text-emerald-400 hover:underline mr-2">Editar</button>
+                                    <button onclick="eliminarUsuario('${u}')" class="text-red-400 hover:underline">Borrar</button>
+                                </td>
+                            </tr>
+                        `;
+                    }
+
+                    const tA = document.getElementById('tabla-asistencias-admin');
+                    tA.innerHTML = '';
+                    data.asistencias.slice().reverse().forEach(r => {
+                        let estadoReceso = 'Sin receso';
+                        if(r.receso_inicio && !r.receso_fin) estadoReceso = '<span class="text-amber-400 font-semibold">En Receso</span>';
+                        else if(r.receso_fin) estadoReceso = '<span class="text-emerald-400">Completado</span>';
+
+                        tA.innerHTML += `
+                            <tr class="border-b border-slate-700/30">
+                                <td class="py-1.5 font-medium">${r.usuario} ${r.es_continua ? '(Cont.)' : ''}</td>
+                                <td class="py-1.5 text-slate-300">${r.entrada}</td>
+                                <td class="py-1.5">${estadoReceso}</td>
+                                <td class="py-1.5 text-slate-300">${r.salida || '<span class="text-emerald-400 font-semibold animate-pulse">Activo</span>'}</td>
+                                <td class="py-1.5 text-right">
+                                    ${!r.salida ? `<button onclick="forzarSalida(${r.id})" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-2 py-0.5 rounded text-[10px] transition">Finalizar</button>` : '-'}
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    const selectManual = document.getElementById('manual-usuario');
+                    selectManual.innerHTML = '';
+                    for(let u in data.usuarios) {
+                        selectManual.innerHTML += `<option value="${u}">${u}</option>`;
+                    }
+                }
+            } catch(e) {}
+        }
+
+        function calcularResumenFechas() {
+            if(!globalAdminData) return;
+            const fDesde = document.getElementById('filtro-fecha-desde').value;
+            const fHasta = document.getElementById('filtro-fecha-hasta').value;
+
+            if(!fDesde || !fHasta) {
+                alert("Por favor selecciona ambas fechas (Desde y Hasta).");
+                return;
+            }
+
+            let dDesde = new Date(fDesde + "T00:00:00");
+            let dHasta = new Date(fHasta + "T23:59:59");
+
+            let resumen = {};
+            for(let u in globalAdminData.usuarios) {
+                resumen[u] = {
+                    tipo_pago: globalAdminData.usuarios[u].tipo_pago || 'Horas',
+                    monto_fijo: globalAdminData.usuarios[u].monto_fijo || 150,
+                    tarifa_hora: globalAdminData.usuarios[u].tarifa_hora || 1.5,
+                    horas: 0
+                };
+            }
+
+            globalAdminData.asistencias.forEach(r => {
+                let dEntrada = parseFechaHora(r.entrada);
+                let dSalida = parseFechaHora(r.salida);
+
+                if(dEntrada && dEntrada >= dDesde && dEntrada <= dHasta) {
+                    let hrs = 0;
+                    if(dSalida) {
+                        hrs = Math.max(0, (dSalida - dEntrada) / (1000 * 60 * 60));
+                    }
+                    if(!resumen[r.usuario]) {
+                        resumen[r.usuario] = { tipo_pago: 'Horas', monto_fijo: 150, tarifa_hora: 1.5, horas: 0 };
+                    }
+                    resumen[r.usuario].horas += hrs;
+                }
+            });
+
+            const tR = document.getElementById('tabla-resumen-fechas');
+            tR.innerHTML = '';
+            for(let [u, info] of Object.entries(resumen)) {
+                let totalPagar = 0;
+                let valorTarifa = info.tipo_pago.toLowerCase() === 'horas' ? info.tarifa_hora : info.monto_fijo;
+                
+                if(info.tipo_pago.toLowerCase() === 'fijo' || info.tipo_pago.toLowerCase() === 'gasolina') {
+                    totalPagar = info.monto_fijo;
+                } else {
+                    totalPagar = info.horas * info.tarifa_hora;
+                }
+
+                tR.innerHTML += `
+                    <tr class="border-b border-slate-700/30">
+                        <td class="py-1.5 font-medium">${u}</td>
+                        <td class="py-1.5 capitalize">${info.tipo_pago}</td>
+                        <td class="py-1.5 text-emerald-300 font-semibold">${info.horas.toFixed(2)} hrs</td>
+                        <td class="py-1.5">$${valorTarifa}</td>
+                        <td class="py-1.5 text-right text-emerald-400 font-bold">$${totalPagar.toFixed(2)}</td>
+                    </tr>
+                `;
+            }
+        }
+
+        function togglePinTabla(pinReal, spanId) {
+            const span = document.getElementById(spanId);
+            span.textContent = (span.textContent === "••••") ? pinReal : "••••";
+        }
+
+        function abrirModalUsuario() {
+            document.getElementById('modal-titulo').textContent = "Registrar Nuevo Usuario";
+            document.getElementById('form-usuario').reset();
+            document.getElementById('edit-antiguo').value = "";
+            document.getElementById('modal-usuario').classList.remove('hidden');
+        }
+
+        function editarUsuario(u, pin, tipo, monto, tarifa, area, rol) {
+            document.getElementById('modal-titulo').textContent = `Editar Usuario: ${u}`;
+            document.getElementById('edit-antiguo').value = u;
+            document.getElementById('input-u-nombre').value = u;
+            document.getElementById('input-u-pin').value = pin;
+            document.getElementById('input-u-tipopago').value = tipo;
+            document.getElementById('input-u-monto').value = monto;
+            document.getElementById('modal-usuario').classList.remove('hidden');
+        }
+
+        function cerrarModalUsuario() {
+            document.getElementById('modal-usuario').classList.add('hidden');
+        }
+
+        function abrirModalManual() {
+            document.getElementById('form-manual').reset();
+            document.getElementById('modal-manual').classList.remove('hidden');
+        }
+
+        function cerrarModalManual() {
+            document.getElementById('modal-manual').classList.add('hidden');
+        }
+
+        document.getElementById('form-usuario').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                usuario_antiguo: document.getElementById('edit-antiguo').value,
+                usuario: document.getElementById('input-u-nombre').value,
+                pin: document.getElementById('input-u-pin').value,
+                tipo_pago: document.getElementById('input-u-tipopago').value,
+                monto_fijo: parseFloat(document.getElementById('input-u-monto').value) || 150,
+                tarifa_hora: 1.5,
+                area: "Gestión",
+                rol_sistema: "trabajador"
+            };
+
+            const res = await fetch('/api/admin/usuario', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            if(res.ok) {
+                cerrarModalUsuario();
+                cargarAdminDatos();
+            } else {
+                alert('Error al guardar usuario');
+            }
+        });
+
+        document.getElementById('form-manual').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                usuario: document.getElementById('manual-usuario').value,
+                entrada: document.getElementById('manual-entrada').value,
+                salida: document.getElementById('manual-salida').value,
+                es_continua: document.getElementById('manual-continua').checked
+            };
+
+            const res = await fetch('/api/admin/registro-manual', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            if(res.ok) {
+                cerrarModalManual();
+                alert("Registro manual agregado con éxito");
+                cargarAdminDatos();
+            } else {
+                alert('Error al agregar registro manual');
+            }
+        });
+
+        async function eliminarUsuario(u) {
+            if(!confirm(`¿Eliminar al usuario ${u}?`)) return;
+            const res = await fetch(`/api/admin/usuario/${u}`, { method: 'DELETE' });
+            if(res.ok) cargarAdminDatos();
+        }
+
+        async function forzarSalida(id) {
+            if(!confirm("¿Deseas finalizar este turno activo?")) return;
+            const horaActual = new Date().toLocaleString();
+            const res = await fetch('/api/admin/ajustar-salida', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({registro_id: id, hora_salida: horaActual})
+            });
+            if(res.ok) cargarAdminDatos();
+        }
+
+        async function exportarExcel() {
+            window.location.href = '/api/admin/exportar-excel';
+        }
+
+        async function importarExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+                const res = await fetch('/api/admin/importar-excel', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.mensaje);
+                    cargarAdminDatos();
+                } else {
+                    alert(data.detail || 'Error al importar Excel');
+                }
+            } catch (e) {
+                alert('Error de conexión al importar');
+            }
+            event.target.value = '';
+        }
+    </script>
+</body>
+</html>
