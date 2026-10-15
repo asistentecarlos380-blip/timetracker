@@ -52,21 +52,11 @@ class CambiarPinRequest(BaseModel):
 
 @app.post("/api/login")
 def login(req: LoginRequest):
-    try:
-        # Traemos todos los usuarios para depurar con total seguridad
-        res = supabase.table("usuarios").select("*").execute()
-        user_info = None
-        for u in res.data:
-            if u["usuario"].strip().lower() == req.usuario.strip().lower():
-                user_info = u
-                break
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error en BD: {str(e)}")
-        
-    if not user_info:
-        nombres_en_bd = [u['usuario'] for u in res.data] if res.data else []
-        raise HTTPException(status_code=400, detail=f"Usuarios actuales en BD: {nombres_en_bd}")
+    res = supabase.table("usuarios").select("*").ilike("usuario", req.usuario.strip()).execute()
+    if not res.data:
+        raise HTTPException(status_code=400, detail="Usuario no encontrado")
     
+    user_info = res.data[0]
     if str(user_info["pin"]).strip() != str(req.pin).strip():
         raise HTTPException(status_code=400, detail="PIN incorrecto")
     
