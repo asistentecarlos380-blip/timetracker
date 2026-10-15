@@ -92,7 +92,7 @@ def leer_raiz():
         with open("index.html", "r", encoding="utf-8") as f:
             content = f.read()
             
-            # Inyectar tuerca de configuración (solo icono, igual al panel trabajador) y versión v1.1.0
+            # Inyectar SOLO la tuerca de configuración global en el panel admin (respetando intacta la tuerca original del trabajador)
             patch_ui = """
             <script>
             document.addEventListener("DOMContentLoaded", () => {
@@ -241,13 +241,14 @@ def mis_horas(req: LoginRequest):
         except Exception:
             return {"registros": []}
             
-    # Búsqueda infalible sin distinción de mayúsculas ni formato capitalizado
+    # Búsqueda robusta y universal para que devuelva el historial exacto al trabajador
     try:
         res_all = supabase.table("asistencias").select("*").execute()
         registros_filtrados = []
         if res_all.data:
             for r in res_all.data:
-                if str(r.get("usuario", "")).strip().lower() == u.lower():
+                usr_reg = str(r.get("usuario", "")).strip().lower()
+                if usr_reg == u.lower():
                     registros_filtrados.append(r)
         return {"registros": registros_filtrados}
     except Exception:
