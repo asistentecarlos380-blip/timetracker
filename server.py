@@ -86,23 +86,6 @@ HISTORIAL_INICIAL = [
     {"usuario": "Lisander", "entrada": "05-10-2026 12:00:00 PM", "salida": "06-10-2026 12:02:00 AM", "es_continua": False}
 ]
 
-def eliminar_duplicados_bd():
-    try:
-        res = supabase.table("asistencias").select("*").execute()
-        if res.data:
-            vistos = set()
-            ids_a_borrar = []
-            for r in res.data:
-                clave = (str(r.get("usuario", "")).strip().lower(), str(r.get("entrada", "")).strip(), str(r.get("salida", "")).strip())
-                if clave in vistos:
-                    ids_a_borrar.append(r["id"])
-                else:
-                    vistos.add(clave)
-            for rid in ids_a_borrar:
-                supabase.table("asistencias").delete().eq("id", rid).execute()
-    except Exception:
-        pass
-
 @app.get("/", response_class=HTMLResponse)
 def leer_raiz():
     if os.path.exists("index.html"):
@@ -128,8 +111,8 @@ def leer_raiz():
                     }
                 }
 
-                // 2. Cuadro de Total General de Nómina en el panel admin
-                const observerNomina = new MutationObserver(() => {
+                // 2. Cuadro de Total General de Nómina (Ligerísimo y sin bloqueos)
+                setTimeout(() => {
                     const seccionNomina = document.querySelector('#resumen-horas') || document.querySelector('div:has(table)') || document.querySelector('.overflow-x-auto');
                     if (seccionNomina && !document.getElementById('cuadro-total-nomina-general')) {
                         const contenedorTotal = document.createElement('div');
@@ -147,17 +130,13 @@ def leer_raiz():
                             </div>
                             <div class="text-right">
                                 <span id="monto-total-nomina-general" class="text-2xl font-black text-emerald-400">$0.00</span>
+                                <button onclick="calcularSumaTotalNomina()" class="block text-xs text-emerald-400 hover:underline mt-1">Actualizar Total</button>
                             </div>
                         `;
                         seccionNomina.parentNode.insertBefore(contenedorTotal, seccionNomina);
-                        
-                        // Observar cambios en la tabla para recalcular automáticamente al hacer clic en "Calcular Horas"
-                        const observerTabla = new MutationObserver(calcularSumaTotalNomina);
-                        observerTabla.observe(seccionNomina, { childList: true, subtree: true });
+                        calcularSumaTotalNomina();
                     }
-                    calcularSumaTotalNomina();
-                });
-                observerNomina.observe(document.body, { childList: true, subtree: true });
+                }, 800);
 
                 // 3. Simulador de cobro trabajador
                 const observerTrabajador = new MutationObserver(() => {
@@ -176,27 +155,10 @@ def leer_raiz():
                 observerTrabajador.observe(document.body, { childList: true, subtree: true });
             });
 
-            function calcularSumaTotalNomina() {
+            window.calcularSumaTotalNomina = function() {
                 const spanTotal = document.getElementById('monto-total-nomina-general');
                 if (!spanTotal) return;
 
-                let sumaTotal = 0;
-                // Buscar todas las celdas o elementos de montos a pagar (que empiezan con '$')
-                const elementosMonto = document.querySelectorAll('td, span, div');
-                elementosMonto.forEach(el => {
-                    const txt = el.textContent.trim();
-                    if (txt.startsWith('$') && !txt.includes('Total') && !txt.includes('General')) {
-                        const val = parseFloat(txt.replace('$', '').trim());
-                        if (!isNaN(val) && val < 50000) {
-                            // Sumar solo los montos de la tabla de resumen de nómina
-                            if (el.closest('table') || el.closest('.grid') || el.closest('.overflow-x-auto')) {
-                                sumaTotal += val;
-                            }
-                        }
-                    }
-                });
-
-                // Si hay duplicación visual en celdas, tomar un enfoque más preciso buscando en la última columna de la tabla de resumen
                 let sumaPrecisa = 0;
                 document.querySelectorAll('tr').forEach(tr => {
                     const celdas = tr.querySelectorAll('td');
@@ -209,13 +171,7 @@ def leer_raiz():
                     }
                 });
 
-                if (sumaPrecisa > 0) {
-                    spanTotal.textContent = `$${sumaPrecisa.toFixed(2)}`;
-                } else if (sumaTotal > 0) {
-                    spanTotal.textContent = `$${(sumaTotal / 2).toFixed(2)}`; // Evitar duplicados si lee celdas repetidas
-                } else {
-                    spanTotal.textContent = '$0.00';
-                }
+                spanTotal.textContent = `$${sumaPrecisa.toFixed(2)}`;
             }
 
             function abrirModalConfigGlobal() {
@@ -410,35 +366,22 @@ def cambiar_pin(req: CambiarPinRequest):
 
 @app.post("/api/mis-horas")
 def mis_horas(req: LoginRequest):
-    eliminar_duplicados_bd()
     u = req.usuario.strip()
     if u.lower() == "admin" and str(req.pin).strip() == "1234":
         try:
             res_a = supabase.table("asistencias").select("*").execute()
-            unicos = []
-            vistos = set()
-            if res_a.data:
-                for r in res_a.data:
-                    k = (str(r.get("usuario","")).lower(), str(r.get("entrada","")), str(r.get("salida","")))
-                    if k not in vistos:
-                        vistos.add(k)
-                        unicos.append(r)
-            return {"registros": unicos}
+            return {"registros": res_a.data if res_a.data else []}
         except Exception:
             return {"registros": []}
             
     try:
         res_all = supabase.table("asistencias").select("*").execute()
         registros_filtrados = []
-        vistos = set()
         if res_all.data:
             for r in res_all.data:
                 usr_reg = str(r.get("usuario", "")).strip().lower()
                 if usr_reg == u.lower():
-                    k = (str(r.get("entrada","")), str(r.get("salida","")))
-                    if k not in vistos:
-                        vistos.add(k)
-                        registros_filtrados.append(r)
+                    registros_filtrados.append(r)
         return {"registros": registros_filtrados}
     except Exception:
         return {"registros": []}
@@ -491,7 +434,6 @@ def receso(req: LoginRequest):
 
 @app.get("/api/admin/datos")
 def admin_datos():
-    eliminar_duplicados_bd()
     usuarios_dict = PERSONAL_FIJO.copy()
     try:
         res_u = supabase.table("usuarios").select("*").execute()
@@ -505,14 +447,7 @@ def admin_datos():
     try:
         res_a = supabase.table("asistencias").select("*").execute()
         if res_a.data and len(res_a.data) > 0:
-            unicos = []
-            vistos = set()
-            for r in res_a.data:
-                k = (str(r.get("usuario","")).lower(), str(r.get("entrada","")), str(r.get("salida","")))
-                if k not in vistos:
-                    vistos.add(k)
-                    unicos.append(r)
-            asistencias_list = unicos
+            asistencias_list = res_a.data
         else:
             supabase.table("asistencias").insert(HISTORIAL_INICIAL).execute()
             res_a_nuevas = supabase.table("asistencias").select("*").execute()
@@ -586,15 +521,7 @@ def admin_eliminar_usuario(usuario: str):
 def exportar_excel():
     try:
         res_a = supabase.table("asistencias").select("*").execute()
-        unicos = []
-        vistos = set()
-        if res_a.data:
-            for r in res_a.data:
-                k = (str(r.get("usuario","")).lower(), str(r.get("entrada","")), str(r.get("salida","")))
-                if k not in vistos:
-                    vistos.add(k)
-                    unicos.append(r)
-        data_rows = [{"ID": r["id"], "Usuario": r["usuario"], "Entrada": r["entrada"], "Salida": r["salida"] if r["salida"] else "En Curso", "Es Continua": "Sí" if r["es_continua"] else "No"} for r in unicos]
+        data_rows = [{"ID": r["id"], "Usuario": r["usuario"], "Entrada": r["entrada"], "Salida": r["salida"] if r["salida"] else "En Curso", "Es Continua": "Sí" if r["es_continua"] else "No"} for r in res_a.data] if res_a.data else []
     except Exception:
         data_rows = []
     df = pd.DataFrame(data_rows)
