@@ -183,14 +183,6 @@ def leer_raiz():
             function abrirSimuladorTrabajador() {
                 let modal = document.getElementById('modal-simulador-trabajador');
                 if (!modal) {
-                    // Obtener el total de horas del periodo actual desde la interfaz si está disponible
-                    let totalHorasTxt = "0.00";
-                    let elHoras = document.querySelector('#total-periodo, .total-periodo, [id*="periodo"]') || Array.from(document.querySelectorAll('span, div')).find(el => el.textContent.includes('hrs'));
-                    if (elHoras) {
-                        let match = elHoras.textContent.match(/([0-9]+\.[0-9]+)/);
-                        if (match) totalHorasTxt = match[1];
-                    }
-
                     modal = document.createElement('div');
                     modal.id = 'modal-simulador-trabajador';
                     modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4';
@@ -200,7 +192,7 @@ def leer_raiz():
                                 <i class="fas fa-calculator"></i> Simulador de Cobro
                             </h3>
                             <p class="text-xs text-slate-400 mb-4">
-                                Ingresa una tarifa referencial y visualiza tu cálculo estimado para este periodo (uso personal).
+                                Ingresa tu tarifa referencial y calcula automáticamente el total acumulado en base a tus horas registradas en pantalla.
                             </p>
                             
                             <!-- Área 1: Modificar Tarifa de Referencia -->
@@ -213,7 +205,7 @@ def leer_raiz():
                             <div class="mb-5 bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center">
                                 <span class="block text-xs uppercase font-bold text-slate-400 mb-1">2. Total Estimado a Cobrar</span>
                                 <span id="resultado-simulado-total" class="text-2xl font-black text-emerald-400">$0.00</span>
-                                <span id="info-horas-base" class="block text-xs text-slate-400 mt-1">Basado en tu periodo actual</span>
+                                <span id="info-horas-base" class="block text-xs text-slate-400 mt-1">Suma total de horas en pantalla</span>
                             </div>
 
                             <div class="flex justify-end gap-3">
@@ -222,7 +214,6 @@ def leer_raiz():
                         </div>
                     `;
                     document.body.appendChild(modal);
-                    window.horasSimuladasBase = parseFloat(totalHorasTxt) || 0;
                     calcularTotalSimulado();
                 }
             }
@@ -234,18 +225,32 @@ def leer_raiz():
                 if (!tarifaInput || !resultadoSpan) return;
 
                 const tarifa = parseFloat(tarifaInput.value) || 0;
-                let horas = window.horasSimuladasBase || 0;
 
-                // Intentar capturar de nuevo por si cambió en pantalla
-                let elHoras = document.querySelector('#total-periodo, .total-periodo') || Array.from(document.querySelectorAll('span, div')).find(el => el.textContent.includes('hrs'));
-                if (elHoras) {
-                    let match = elHoras.textContent.match(/([0-9]+\.[0-9]+)/);
-                    if (match) horas = parseFloat(match[1]) || horas;
+                // Sumar automáticamente TODAS las horas que aparecen en la tabla de resumen del trabajador (ej: "22.60 hrs")
+                let sumaHorasTotales = 0;
+                const elementosHoras = document.querySelectorAll('td, span, div');
+                elementosHoras.forEach(el => {
+                    const txt = el.textContent.trim();
+                    if (txt.endsWith('hrs')) {
+                        const val = parseFloat(txt.replace('hrs', '').trim());
+                        if (!isNaN(val) && val < 200) { // filtro lógico para evitar sumar años o IDs
+                            sumaHorasTotales += val;
+                        }
+                    }
+                });
+
+                // Si por alguna razón no detecta las de la tabla, intentar buscar el total del periodo
+                if (sumaHorasTotales === 0) {
+                    const elPeriodo = document.querySelector('#total-periodo, .total-periodo');
+                    if (elPeriodo) {
+                        const match = elPeriodo.textContent.match(/([0-9]+\.[0-9]+)/);
+                        if (match) sumaHorasTotales = parseFloat(match[1]) || 0;
+                    }
                 }
 
-                const total = tarifa * horas;
+                const total = tarifa * sumaHorasTotales;
                 resultadoSpan.textContent = `$${total.toFixed(2)}`;
-                infoHoras.textContent = `Calculado sobre ${horas.toFixed(2)} hrs del periodo`;
+                infoHoras.textContent = `Suma de ${sumaHorasTotales.toFixed(2)} hrs mostradas`;
             }
             </script>
             """
