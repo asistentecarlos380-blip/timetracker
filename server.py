@@ -95,6 +95,7 @@ def leer_raiz():
             patch_ui = """
             <script>
             document.addEventListener("DOMContentLoaded", () => {
+                // 1. Tuerca global en panel admin
                 const headerActions = document.querySelector('header') || document.querySelector('.flex.justify-between') || document.querySelector('#panel-admin');
                 if (headerActions && !document.getElementById('btn-config-global')) {
                     const btnConfig = document.createElement('button');
@@ -109,6 +110,22 @@ def leer_raiz():
                         btnExcel.parentNode.insertBefore(btnConfig, btnExcel.nextSibling);
                     }
                 }
+
+                // 2. Simulador de cobro en el menú del trabajador
+                const observer = new MutationObserver(() => {
+                    const dropdownMenu = document.querySelector('#menu-config-trabajador') || document.querySelector('.dropdown-menu') || document.querySelector('[role="menu"]') || document.querySelector('.absolute.right-0.mt-2');
+                    if (dropdownMenu && !document.getElementById('simulador-cobro-btn')) {
+                        if (!dropdownMenu.innerHTML.includes('Simulador')) {
+                            const itemSimulador = document.createElement('a');
+                            itemSimulador.id = 'simulador-cobro-btn';
+                            itemSimulador.className = 'block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white cursor-pointer flex items-center gap-2';
+                            itemSimulador.innerHTML = '<i class="fas fa-calculator text-emerald-400"></i> Simulador de Cobro';
+                            itemSimulador.onclick = abrirSimuladorTrabajador;
+                            dropdownMenu.appendChild(itemSimulador);
+                        }
+                    }
+                });
+                observer.observe(document.body, { childList: true, subtree: true });
             });
 
             function abrirModalConfigGlobal() {
@@ -161,6 +178,74 @@ def leer_raiz():
                 } catch(e) {
                     alert("Error de conexión: " + e);
                 }
+            }
+
+            function abrirSimuladorTrabajador() {
+                let modal = document.getElementById('modal-simulador-trabajador');
+                if (!modal) {
+                    // Obtener el total de horas del periodo actual desde la interfaz si está disponible
+                    let totalHorasTxt = "0.00";
+                    let elHoras = document.querySelector('#total-periodo, .total-periodo, [id*="periodo"]') || Array.from(document.querySelectorAll('span, div')).find(el => el.textContent.includes('hrs'));
+                    if (elHoras) {
+                        let match = elHoras.textContent.match(/([0-9]+\.[0-9]+)/);
+                        if (match) totalHorasTxt = match[1];
+                    }
+
+                    modal = document.createElement('div');
+                    modal.id = 'modal-simulador-trabajador';
+                    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4';
+                    modal.innerHTML = `
+                        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-sm w-full p-6 text-white shadow-2xl">
+                            <h3 class="text-lg font-bold mb-3 flex items-center gap-2 text-emerald-400">
+                                <i class="fas fa-calculator"></i> Simulador de Cobro
+                            </h3>
+                            <p class="text-xs text-slate-400 mb-4">
+                                Ingresa una tarifa referencial y visualiza tu cálculo estimado para este periodo (uso personal).
+                            </p>
+                            
+                            <!-- Área 1: Modificar Tarifa de Referencia -->
+                            <div class="mb-4">
+                                <label class="block text-xs uppercase font-bold text-slate-400 mb-1">1. Tarifa Referencial ($ / hora)</label>
+                                <input type="number" step="0.1" id="input-tarifa-ref" value="1.5" oninput="calcularTotalSimulado()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-bold text-lg">
+                            </div>
+
+                            <!-- Área 2: Total Simulado Calculado -->
+                            <div class="mb-5 bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center">
+                                <span class="block text-xs uppercase font-bold text-slate-400 mb-1">2. Total Estimado a Cobrar</span>
+                                <span id="resultado-simulado-total" class="text-2xl font-black text-emerald-400">$0.00</span>
+                                <span id="info-horas-base" class="block text-xs text-slate-400 mt-1">Basado en tu periodo actual</span>
+                            </div>
+
+                            <div class="flex justify-end gap-3">
+                                <button onclick="document.getElementById('modal-simulador-trabajador').remove()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold">Cerrar</button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(modal);
+                    window.horasSimuladasBase = parseFloat(totalHorasTxt) || 0;
+                    calcularTotalSimulado();
+                }
+            }
+
+            function calcularTotalSimulado() {
+                const tarifaInput = document.getElementById('input-tarifa-ref');
+                const resultadoSpan = document.getElementById('resultado-simulado-total');
+                const infoHoras = document.getElementById('info-horas-base');
+                if (!tarifaInput || !resultadoSpan) return;
+
+                const tarifa = parseFloat(tarifaInput.value) || 0;
+                let horas = window.horasSimuladasBase || 0;
+
+                // Intentar capturar de nuevo por si cambió en pantalla
+                let elHoras = document.querySelector('#total-periodo, .total-periodo') || Array.from(document.querySelectorAll('span, div')).find(el => el.textContent.includes('hrs'));
+                if (elHoras) {
+                    let match = elHoras.textContent.match(/([0-9]+\.[0-9]+)/);
+                    if (match) horas = parseFloat(match[1]) || horas;
+                }
+
+                const total = tarifa * horas;
+                resultadoSpan.textContent = `$${total.toFixed(2)}`;
+                infoHoras.textContent = `Calculado sobre ${horas.toFixed(2)} hrs del periodo`;
             }
             </script>
             """
