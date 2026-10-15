@@ -77,7 +77,12 @@
                 <h1 class="text-lg font-bold text-emerald-400" id="worker-title">Panel de Trabajador</h1>
                 <p class="text-xs text-slate-300">Control personal de turnos y recesos</p>
             </div>
-            <button onclick="cerrarSesion()" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-red-500/30">Cerrar Sesión</button>
+            <div class="flex gap-2">
+                <button onclick="abrirModalCambiarPin()" class="bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-indigo-500/30 flex items-center gap-1">
+                    <i class="fa-solid fa-key"></i> Cambiar mi PIN
+                </button>
+                <button onclick="cerrarSesion()" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-red-500/30">Cerrar Sesión</button>
+            </div>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
@@ -124,6 +129,41 @@
                     <!-- Dinámico -->
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- MODAL CAMBIAR PIN TRABAJADOR -->
+    <div id="modal-cambiar-pin" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+        <div class="glass-panel p-6 rounded-2xl w-full max-w-sm shadow-2xl border border-slate-700 text-xs">
+            <h3 class="text-base font-bold mb-4 text-emerald-400 flex items-center gap-2"><i class="fa-solid fa-key"></i> Cambiar mi PIN</h3>
+            <form id="form-cambiar-pin" class="space-y-3">
+                <div>
+                    <label class="block text-slate-300 mb-1">PIN Actual</label>
+                    <div class="relative">
+                        <input type="password" id="pin-actual" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none pr-10">
+                        <button type="button" onclick="togglePass('pin-actual', 'icon-pin-act')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                            <i id="icon-pin-act" class="fa-solid fa-eye text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-300 mb-1">Nuevo PIN</label>
+                    <div class="relative">
+                        <input type="password" id="pin-nuevo" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none pr-10" placeholder="Mínimo 4 números">
+                        <button type="button" onclick="togglePass('pin-nuevo', 'icon-pin-nuev')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                            <i id="icon-pin-nuev" class="fa-solid fa-eye text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-300 mb-1">Confirmar Nuevo PIN</label>
+                    <input type="password" id="pin-confirmar" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                </div>
+                <div class="flex justify-end gap-2 mt-5">
+                    <button type="button" onclick="cerrarModalCambiarPin()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Cancelar</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition">Actualizar PIN</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -223,7 +263,7 @@
                                 <th class="py-1">Usuario</th>
                                 <th class="py-1">PIN</th>
                                 <th class="py-1">Pago</th>
-                                <th class="py-1">Monto / Tarifa</th>
+                                <th class="py-1">Tarifa / Monto</th>
                                 <th class="py-1 text-right">Acciones</th>
                             </tr>
                         </thead>
@@ -259,7 +299,7 @@
         </div>
     </div>
 
-    <!-- MODAL USUARIO -->
+    <!-- MODAL USUARIO ADMIN -->
     <div id="modal-usuario" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
         <div class="glass-panel p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700">
             <h3 id="modal-titulo" class="text-base font-bold mb-4 text-emerald-400">Registrar / Editar Usuario</h3>
@@ -270,7 +310,7 @@
                     <input type="text" id="input-u-nombre" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                 </div>
                 <div>
-                    <label class="block text-slate-300 mb-1">PIN de Acceso</label>
+                    <label class="block text-slate-300 mb-1">PIN de Acceso (Admin puede restablecerlo)</label>
                     <div class="relative">
                         <input type="password" id="input-u-pin" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none pr-10">
                         <button type="button" onclick="togglePass('input-u-pin', 'icon-modal-pin')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
@@ -281,14 +321,14 @@
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-slate-300 mb-1">Tipo de Pago</label>
-                        <select id="input-u-tipopago" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                        <select id="input-u-tipopago" onchange="actualizarLabelMonto()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                             <option value="Horas">Horas</option>
                             <option value="Gasolina">Gasolina</option>
                             <option value="Fijo">Fijo</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-slate-300 mb-1">Monto / Tarifa</label>
+                        <label id="label-monto-tarifa" class="block text-slate-300 mb-1">Tarifa por Hora</label>
                         <input type="number" id="input-u-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="1.5">
                     </div>
                 </div>
@@ -333,7 +373,7 @@
                         </select>
                     </div>
                     <div class="mb-2">
-                        <label class="block text-slate-300 mb-1">Entrada (ej. 15-10-2026 01:15 PM o 13:15)</label>
+                        <label class="block text-slate-300 mb-1">Entrada (ej. 15-10-2026 01:15 PM)</label>
                         <input type="text" id="manual-entrada" placeholder="15-10-2026 01:15 PM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                     </div>
                     <div class="mb-2">
@@ -348,7 +388,7 @@
 
                 <!-- CARGA SÚPER FÁCIL (LÍNEA POR LÍNEA) -->
                 <div id="seccion-simple" class="hidden">
-                    <label class="block text-slate-300 mb-1">Pega tus registros (Trabajador | Entrada | Salida con formato DD-MM-YYYY):</label>
+                    <label class="block text-slate-300 mb-1">Pega tus registros (Trabajador | Entrada | Salida):</label>
                     <textarea id="manual-texto-simple" rows="7" placeholder="RICARDO | 15-10-2026 01:15 PM | 16-10-2026 03:24 AM
 RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 font-mono text-[11px] text-emerald-300 focus:ring-1 focus:ring-emerald-500 focus:outline-none"></textarea>
                     <p class="text-[10px] text-slate-400 mt-1">💡 Ejemplo: <code>RICARDO | 15-10-2026 01:15 PM | 16-10-2026 03:24 AM</code></p>
@@ -442,7 +482,63 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
             }
         }
 
-        // CONVERTIDOR INTELIGENTE PARA ENTRADA Y LOTE (DD-MM-YYYY)
+        function abrirModalCambiarPin() {
+            document.getElementById('form-cambiar-pin').reset();
+            document.getElementById('modal-cambiar-pin').classList.remove('hidden');
+        }
+
+        function cerrarModalCambiarPin() {
+            document.getElementById('modal-cambiar-pin').classList.add('hidden');
+        }
+
+        document.getElementById('form-cambiar-pin').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const pinAct = document.getElementById('pin-actual').value;
+            const pinNuev = document.getElementById('pin-nuevo').value;
+            const pinConf = document.getElementById('pin-confirmar').value;
+
+            if(pinNuev !== pinConf) {
+                alert("El nuevo PIN y la confirmación no coinciden.");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/cambiar-pin', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        usuario: currentUser.usuario,
+                        pin_actual: pinAct,
+                        pin_nuevo: pinNuev
+                    })
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    alert("¡Tu PIN ha sido actualizado con éxito!");
+                    currentUser.pin = pinNuev;
+                    localStorage.setItem('timetracker_user', JSON.stringify(currentUser));
+                    cerrarModalCambiarPin();
+                } else {
+                    alert(data.detail || "Error al actualizar el PIN.");
+                }
+            } catch(err) {
+                alert("Error de conexión al cambiar el PIN.");
+            }
+        });
+
+        function actualizarLabelMonto() {
+            const tipo = document.getElementById('input-u-tipopago').value.toLowerCase();
+            const label = document.getElementById('label-monto-tarifa');
+            const inputMonto = document.getElementById('input-u-monto');
+            if(tipo === 'horas') {
+                label.textContent = "Tarifa por Hora ($)";
+                inputMonto.value = "1.5";
+            } else {
+                label.textContent = "Monto Fijo / Gasolina ($)";
+                inputMonto.value = "150";
+            }
+        }
+
         function convertirFechaFlex(str) {
             if(!str) return null;
             str = str.trim();
@@ -461,19 +557,16 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
             return str;
         }
 
-        // FUNCIÓN PARA MOSTRAR LA FECHA EN FORMATO HUMANO (DD-MM-YYYY) EN LAS TABLAS
         function formatearFechaHumana(str) {
             if(!str) return '';
             let partes = str.split(' ');
-            let fechaParte = partes[0]; // Puede venir como YYYY-MM-DD o DD-MM-YYYY
+            let fechaParte = partes[0];
             let f = fechaParte.split('-');
             if(f.length === 3) {
                 if(f[0].length === 4) {
-                    // Es YYYY-MM-DD -> Convertir a DD-MM-YYYY
                     fechaParte = `${f[2]}-${f[1]}-${f[0]}`;
                 }
             }
-            // Reconstruir con la hora
             return `${fechaParte} ${partes.slice(1).join(' ')}`;
         }
 
@@ -800,17 +893,20 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
                     let i = 0;
                     for(let [u, info] of Object.entries(data.usuarios)) {
                         i++;
+                        let tipoPago = info.tipo_pago || 'Horas';
+                        let montoMostrar = (tipoPago.toLowerCase() === 'horas') ? (info.tarifa_hora !== undefined ? info.tarifa_hora : 1.5) : info.monto_fijo;
+
                         tU.innerHTML += `
                             <tr class="border-b border-slate-700/30">
                                 <td class="py-1.5 font-medium">${u}</td>
                                 <td class="py-1.5 text-slate-400">
                                     <span id="pin-text-${i}">••••</span>
-                                    <button onclick="togglePinTabla('${info.pin}', 'pin-text-${i}')" class="ml-2 text-emerald-400 hover:text-white"><i class="fa-solid fa-eye text-[10px]"></i></button>
+                                    <button onclick="togglePinTabla('${info.pin}', 'pin-text-${i}')" class="ml-2 text-emerald-400 hover:text-white" title="Ver / Ocultar PIN"><i class="fa-solid fa-eye text-[10px]"></i></button>
                                 </td>
-                                <td class="py-1.5 capitalize">${info.tipo_pago}</td>
-                                <td class="py-1.5">${info.monto_fijo}</td>
+                                <td class="py-1.5 capitalize">${tipoPago}</td>
+                                <td class="py-1.5 text-emerald-300 font-semibold">$${montoMostrar}</td>
                                 <td class="py-1.5 text-right">
-                                    <button onclick="editarUsuario('${u}', '${info.pin}', '${info.tipo_pago}', '${info.monto_fijo}', '${info.tarifa_hora}', '${info.area}', '${info.rol_sistema}')" class="text-emerald-400 hover:underline mr-2">Editar</button>
+                                    <button onclick="editarUsuario('${u}', '${info.pin}', '${tipoPago}', '${info.monto_fijo}', '${info.tarifa_hora}', '${info.area}', '${info.rol_sistema}')" class="text-emerald-400 hover:underline mr-2">Editar PIN / Rol</button>
                                     <button onclick="eliminarUsuario('${u}')" class="text-red-400 hover:underline">Borrar</button>
                                 </td>
                             </tr>
@@ -867,7 +963,7 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
                 resumen[u] = {
                     tipo_pago: globalAdminData.usuarios[u].tipo_pago || 'Horas',
                     monto_fijo: globalAdminData.usuarios[u].monto_fijo || 150,
-                    tarifa_hora: globalAdminData.usuarios[u].tarifa_hora || 1.5,
+                    tarifa_hora: globalAdminData.usuarios[u].tarifa_hora !== undefined ? globalAdminData.usuarios[u].tarifa_hora : 1.5,
                     horas: 0
                 };
             }
@@ -892,7 +988,7 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
             tR.innerHTML = '';
             for(let [u, info] of Object.entries(resumen)) {
                 let totalPagar = 0;
-                let valorTarifa = info.tipo_pago.toLowerCase() === 'horas' ? info.tarifa_hora : info.monto_fijo;
+                let valorTarifa = (info.tipo_pago.toLowerCase() === 'horas') ? info.tarifa_hora : info.monto_fijo;
                 
                 if(info.tipo_pago.toLowerCase() === 'fijo' || info.tipo_pago.toLowerCase() === 'gasolina') {
                     totalPagar = info.monto_fijo;
@@ -921,6 +1017,8 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
             document.getElementById('modal-titulo').textContent = "Registrar Nuevo Usuario";
             document.getElementById('form-usuario').reset();
             document.getElementById('edit-antiguo').value = "";
+            document.getElementById('input-u-tipopago').value = "Horas";
+            actualizarLabelMonto();
             document.getElementById('modal-usuario').classList.remove('hidden');
         }
 
@@ -930,7 +1028,12 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
             document.getElementById('input-u-nombre').value = u;
             document.getElementById('input-u-pin').value = pin;
             document.getElementById('input-u-tipopago').value = tipo;
-            document.getElementById('input-u-monto').value = monto;
+            actualizarLabelMonto();
+            if(tipo.toLowerCase() === 'horas') {
+                document.getElementById('input-u-monto').value = (tarifa !== 'undefined' && tarifa) ? tarifa : 1.5;
+            } else {
+                document.getElementById('input-u-monto').value = monto;
+            }
             document.getElementById('modal-usuario').classList.remove('hidden');
         }
 
@@ -950,15 +1053,18 @@ RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 b
 
         document.getElementById('form-usuario').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const tipoPago = document.getElementById('input-u-tipopago').value;
+            const valorInput = parseFloat(document.getElementById('input-u-monto').value) || 1.5;
+
             const payload = {
                 usuario_antiguo: document.getElementById('edit-antiguo').value,
                 usuario: document.getElementById('input-u-nombre').value,
                 pin: document.getElementById('input-u-pin').value,
-                tipo_pago: document.getElementById('input-u-tipopago').value,
-                monto_fijo: parseFloat(document.getElementById('input-u-monto').value) || 150,
-                tarifa_hora: 1.5,
+                tipo_pago: tipoPago,
+                monto_fijo: tipoPago.toLowerCase() !== 'horas' ? valorInput : 150,
+                tarifa_hora: tipoPago.toLowerCase() === 'horas' ? valorInput : 1.5,
                 area: "Gestión",
-                rol_sistema: "trabajador"
+                rol_sistema: document.getElementById('input-u-rol').value
             };
 
             const res = await fetch('/api/admin/usuario', {
