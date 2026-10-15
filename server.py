@@ -86,6 +86,25 @@ HISTORIAL_INICIAL = [
     {"usuario": "Lisander", "entrada": "05-10-2026 12:00:00 PM", "salida": "06-10-2026 12:02:00 AM", "es_continua": False}
 ]
 
+def eliminar_duplicados_bd():
+    """Elimina automáticamente registros duplicados idénticos en Supabase"""
+    try:
+        res = supabase.table("asistencias").select("*").execute()
+        if res.data:
+            vistos = set()
+            ids_a_borrar = []
+            for r in res.data:
+                clave = (str(r.get("usuario", "")).strip().lower(), str(r.get("entrada", "")).strip(), str(r.get("salida", "")).strip())
+                if clave in vistos:
+                    ids_a_borrar.append(r["id"])
+                else:
+                    vistos.add(clave)
+            
+            for rid in ids_a_borrar:
+                supabase.table("asistencias").delete().eq("id", rid).execute()
+    except Exception:
+        pass
+
 @app.get("/", response_class=HTMLResponse)
 def leer_raiz():
     if os.path.exists("index.html"):
@@ -222,7 +241,6 @@ def leer_raiz():
 
                 const tarifa = parseFloat(tarifaInput.value) || 0;
 
-                // Evitar sumar duplicados recolectando únicamente los valores únicos de la tabla de resumen diario
                 let sumaHorasUnicas = 0;
                 let filasVistas = new Set();
                 
@@ -320,22 +338,36 @@ def cambiar_pin(req: CambiarPinRequest):
 
 @app.post("/api/mis-horas")
 def mis_horas(req: LoginRequest):
+    eliminar_duplicados_bd()
     u = req.usuario.strip()
     if u.lower() == "admin" and str(req.pin).strip() == "1234":
         try:
             res_a = supabase.table("asistencias").select("*").execute()
-            return {"registros": res_a.data if res_a.data else []}
+            # Filtrar duplicados en memoria también por seguridad
+            unicos = []
+            vistos = set()
+            if res_a.data:
+                for r in res_a.data:
+                    k = (str(r.get("usuario","")).lower(), str(r.get("entrada","")), str(r.get("salida","")))
+                    if k not in vistos:
+                        vistos.add(k)
+                        unicos.append(r)
+            return {"registros": unicos}
         except Exception:
             return {"registros": []}
             
     try:
         res_all = supabase.table("asistencias").select("*").execute()
         registros_filtrados = []
+        vistos = set()
         if res_all.data:
             for r in res_all.data:
                 usr_reg = str(r.get("usuario", "")).strip().lower()
                 if usr_reg == u.lower():
-                    registros_filtrados.append(r)
+                    k = (str(r.get("entrada","")), str(r.get("salida","")))
+                    if k not in vistos:
+                        vistos.add(k)
+                        registros_filtrados.append(r)
         return {"registros": registros_filtrados}
     except Exception:
         return {"registros": []}
@@ -388,6 +420,7 @@ def receso(req: LoginRequest):
 
 @app.get("/api/admin/datos")
 def admin_datos():
+    eliminar_duplicados_bd()
     usuarios_dict = PERSONAL_FIJO.copy()
     try:
         res_u = supabase.table("usuarios").select("*").execute()
@@ -401,7 +434,15 @@ def admin_datos():
     try:
         res_a = supabase.table("asistencias").select("*").execute()
         if res_a.data and len(res_a.data) > 0:
-            asistencias_list = res_a.data
+            # Filtrar únicos
+            unicos = []
+            vistos = set()
+            for r in res_a.data:
+                k = (str(r.get("usuario","")).lower(), str(r.get("entrada","")), str(r.get("salida","")))
+                if k not in vistos:
+                    vistos.add(k)
+                    unicos.append(r)
+            asistencias_list = unicos
         else:
             supabase.table("asistencias").insert(HISTORIAL_INICIAL).execute()
             res_a_nuevas = supabase.table("asistencias").select("*").execute()
@@ -475,7 +516,15 @@ def admin_eliminar_usuario(usuario: str):
 def exportar_excel():
     try:
         res_a = supabase.table("asistencias").select("*").execute()
-        data_rows = [{"ID": r["id"], "Usuario": r["usuario"], "Entrada": r["entrada"], "Salida": r["salida"] if r["salida"] else "En Curso", "Es Continua": "Sí" if r["es_continua"] else "No"} for r in res_a.data] if res_a.data else []
+        unicos = []
+        vistos = set()
+        if res_a.data:
+            for r in res_a.data:
+                k = (str(r.get("usuario","")).lower(), str(r.get("entrada","")), str(r.get("salida","")))
+                if k not in vistos:
+                    vistos.add(k)
+                    unicos.append(r)
+        data_rows = [{"ID": r["id"], "Usuario": r["usuario"], "Entrada": r["entrada"], "Salida": r["salida"] if r["salida"] else "En Curso", "Es Continua": "Sí" if r["es_continua"] else "No"} for r in unicos]
     except Exception:
         data_rows = []
     df = pd.DataFrame(data_rows)
