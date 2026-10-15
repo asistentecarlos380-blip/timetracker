@@ -333,12 +333,12 @@
                         </select>
                     </div>
                     <div class="mb-2">
-                        <label class="block text-slate-300 mb-1">Entrada (ej. 05-10-2026 01:15 PM o 13:15)</label>
-                        <input type="text" id="manual-entrada" placeholder="05-10-2026 01:15 PM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                        <label class="block text-slate-300 mb-1">Entrada (ej. 15-10-2026 01:15 PM o 13:15)</label>
+                        <input type="text" id="manual-entrada" placeholder="15-10-2026 01:15 PM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                     </div>
                     <div class="mb-2">
-                        <label class="block text-slate-300 mb-1">Salida (ej. 06-10-2026 03:24 AM o 03:24)</label>
-                        <input type="text" id="manual-salida" placeholder="06-10-2026 03:24 AM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                        <label class="block text-slate-300 mb-1">Salida (ej. 16-10-2026 03:24 AM)</label>
+                        <input type="text" id="manual-salida" placeholder="16-10-2026 03:24 AM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
                     </div>
                     <div class="flex items-center gap-2 pt-1">
                         <input type="checkbox" id="manual-continua" class="w-4 h-4 accent-emerald-600">
@@ -349,9 +349,9 @@
                 <!-- CARGA SÚPER FÁCIL (LÍNEA POR LÍNEA) -->
                 <div id="seccion-simple" class="hidden">
                     <label class="block text-slate-300 mb-1">Pega tus registros (Trabajador | Entrada | Salida con formato DD-MM-YYYY):</label>
-                    <textarea id="manual-texto-simple" rows="7" placeholder="RICARDO | 05-10-2026 01:15 PM | 06-10-2026 03:24 AM
-RONALD | 05-10-2026 06:36 PM | 06-10-2026 12:01 AM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 font-mono text-[11px] text-emerald-300 focus:ring-1 focus:ring-emerald-500 focus:outline-none"></textarea>
-                    <p class="text-[10px] text-slate-400 mt-1">💡 Ejemplo: <code>RICARDO | 05-10-2026 01:15 PM | 06-10-2026 03:24 AM</code></p>
+                    <textarea id="manual-texto-simple" rows="7" placeholder="RICARDO | 15-10-2026 01:15 PM | 16-10-2026 03:24 AM
+RONALD | 15-10-2026 06:36 PM | 16-10-2026 12:01 AM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 font-mono text-[11px] text-emerald-300 focus:ring-1 focus:ring-emerald-500 focus:outline-none"></textarea>
+                    <p class="text-[10px] text-slate-400 mt-1">💡 Ejemplo: <code>RICARDO | 15-10-2026 01:15 PM | 16-10-2026 03:24 AM</code></p>
                 </div>
 
                 <div class="flex justify-end gap-2 mt-5">
@@ -442,11 +442,10 @@ RONALD | 05-10-2026 06:36 PM | 06-10-2026 12:01 AM" class="w-full bg-slate-900 b
             }
         }
 
-        // CONVERTIDOR INTELIGENTE DE FECHAS (Soporta DD-MM-YYYY, YYYY-MM-DD y barras /)
+        // CONVERTIDOR INTELIGENTE PARA ENTRADA Y LOTE (DD-MM-YYYY)
         function convertirFechaFlex(str) {
             if(!str) return null;
             str = str.trim();
-            // Si viene en formato DD-MM-YYYY o DD/MM/YYYY
             let regexDMY = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?$/;
             let match = str.match(regexDMY);
             if(match) {
@@ -455,21 +454,35 @@ RONALD | 05-10-2026 06:36 PM | 06-10-2026 12:01 AM" class="w-full bg-slate-900 b
                 let ampm = (match[7] || '').toUpperCase();
                 if(ampm === 'PM' && hh < 12) hh += 12;
                 if(ampm === 'AM' && hh === 12) hh = 0;
-                // Retornar en formato estandarizado YYYY-MM-DD hh:mm:ss AM/PM
                 let horaFinal = hh >= 12 ? 'PM' : 'AM';
                 let hh12 = hh % 12 || 12;
                 return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')} ${String(hh12).padStart(2,'0')}:${mm}:${ss} ${horaFinal}`;
             }
-            return str; // Si ya venía en otro formato, lo devuelve tal cual
+            return str;
+        }
+
+        // FUNCIÓN PARA MOSTRAR LA FECHA EN FORMATO HUMANO (DD-MM-YYYY) EN LAS TABLAS
+        function formatearFechaHumana(str) {
+            if(!str) return '';
+            let partes = str.split(' ');
+            let fechaParte = partes[0]; // Puede venir como YYYY-MM-DD o DD-MM-YYYY
+            let f = fechaParte.split('-');
+            if(f.length === 3) {
+                if(f[0].length === 4) {
+                    // Es YYYY-MM-DD -> Convertir a DD-MM-YYYY
+                    fechaParte = `${f[2]}-${f[1]}-${f[0]}`;
+                }
+            }
+            // Reconstruir con la hora
+            return `${fechaParte} ${partes.slice(1).join(' ')}`;
         }
 
         function parseFechaHora(str) {
             if(!str) return null;
             let partes = str.split(' ');
             let f = partes[0].split('-');
-            if(f.length !== 3) f = partes[0].split('/'); // Por si acaso
+            if(f.length !== 3) f = partes[0].split('/');
             if(f.length !== 3) return new Date(str);
-            // Detectar si el año está al inicio o al final
             let y, m, d;
             if(f[0].length === 4) {
                 y = f[0]; m = f[1]; d = f[2];
@@ -685,8 +698,9 @@ RONALD | 05-10-2026 06:36 PM | 06-10-2026 12:01 AM" class="w-full bg-slate-900 b
             });
 
             for(let [fecha, regs] of Object.entries(porFecha)) {
-                let primeraEntrada = regs[0].entrada;
-                let ultimaSalida = regs[regs.length - 1].salida;
+                let primeraEntrada = formatearFechaHumana(regs[0].entrada);
+                let ultimaSalida = regs[regs.length - 1].salida ? formatearFechaHumana(regs[regs.length - 1].salida) : null;
+                let fechaHumana = formatearFechaHumana(fecha);
                 let totalHorasDia = 0;
                 let enCurso = false;
 
@@ -705,7 +719,7 @@ RONALD | 05-10-2026 06:36 PM | 06-10-2026 12:01 AM" class="w-full bg-slate-900 b
 
                 tbody.innerHTML += `
                     <tr class="border-b border-slate-700/35 hover:bg-slate-800/40">
-                        <td class="py-2 font-medium">${fecha}</td>
+                        <td class="py-2 font-medium">${fechaHumana}</td>
                         <td class="py-2 text-slate-300">${primeraEntrada}</td>
                         <td class="py-2 text-slate-300">${salidaTexto}</td>
                         <td class="py-2 text-right text-emerald-300 font-bold">${horasTexto}</td>
@@ -718,7 +732,8 @@ RONALD | 05-10-2026 06:36 PM | 06-10-2026 12:01 AM" class="w-full bg-slate-900 b
         }
 
         function abrirDetallesDia(fecha, regs) {
-            document.getElementById('modal-detalles-titulo').textContent = `Detalles de Turnos - ${fecha}`;
+            let fechaHumana = formatearFechaHumana(fecha);
+            document.getElementById('modal-detalles-titulo').textContent = `Detalles de Turnos - ${fechaHumana}`;
             const tbody = document.getElementById('tabla-modal-detalles');
             tbody.innerHTML = '';
 
@@ -729,13 +744,14 @@ RONALD | 05-10-2026 06:36 PM | 06-10-2026 12:01 AM" class="w-full bg-slate-900 b
                 if(dE && dS) hrs = Math.max(0, (dS - dE) / (1000 * 60 * 60));
 
                 let tramoNombre = r.es_continua ? `Tramo ${idx+1} (Continúa)` : `Tramo ${idx+1}`;
-                let salidaTxt = r.salida ? r.salida : '<span class="text-emerald-400">En Curso</span>';
+                let salidaTxt = r.salida ? formatearFechaHumana(r.salida) : '<span class="text-emerald-400">En Curso</span>';
+                let entradaTxt = formatearFechaHumana(r.entrada);
                 let hrsTxt = r.salida ? `${hrs.toFixed(2)} hrs` : '-';
 
                 tbody.innerHTML += `
                     <tr class="border-b border-slate-700/40">
                         <td class="py-1.5 font-medium text-indigo-300">${tramoNombre}</td>
-                        <td class="py-1.5 text-slate-300">${r.entrada}</td>
+                        <td class="py-1.5 text-slate-300">${entradaTxt}</td>
                         <td class="py-1.5 text-slate-300">${salidaTxt}</td>
                         <td class="py-1.5 text-right font-bold text-emerald-300">${hrsTxt}</td>
                     </tr>
@@ -808,12 +824,15 @@ RONALD | 05-10-2026 06:36 PM | 06-10-2026 12:01 AM" class="w-full bg-slate-900 b
                         if(r.receso_inicio && !r.receso_fin) estadoReceso = '<span class="text-amber-400 font-semibold">En Receso</span>';
                         else if(r.receso_fin) estadoReceso = '<span class="text-emerald-400">Completado</span>';
 
+                        let entradaHumana = formatearFechaHumana(r.entrada);
+                        let salidaHumana = r.salida ? formatearFechaHumana(r.salida) : '<span class="text-emerald-400 font-semibold animate-pulse">Activo</span>';
+
                         tA.innerHTML += `
                             <tr class="border-b border-slate-700/30">
                                 <td class="py-1.5 font-medium">${r.usuario} ${r.es_continua ? '(Cont.)' : ''}</td>
-                                <td class="py-1.5 text-slate-300">${r.entrada}</td>
+                                <td class="py-1.5 text-slate-300">${entradaHumana}</td>
                                 <td class="py-1.5">${estadoReceso}</td>
-                                <td class="py-1.5 text-slate-300">${r.salida || '<span class="text-emerald-400 font-semibold animate-pulse">Activo</span>'}</td>
+                                <td class="py-1.5 text-slate-300">${salidaHumana}</td>
                                 <td class="py-1.5 text-right">
                                     ${!r.salida ? `<button onclick="forzarSalida(${r.id})" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-2 py-0.5 rounded text-[10px] transition">Finalizar</button>` : '-'}
                                 </td>
@@ -982,7 +1001,6 @@ RONALD | 05-10-2026 06:36 PM | 06-10-2026 12:01 AM" class="w-full bg-slate-900 b
                     alert('Error al agregar registro manual');
                 }
             } else {
-                // Modo simple por líneas: USUARIO | ENTRADA | SALIDA
                 const texto = document.getElementById('manual-texto-simple').value;
                 const lineas = texto.split('\n');
                 let exitosos = 0;
