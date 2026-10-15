@@ -52,10 +52,13 @@ class CambiarPinRequest(BaseModel):
 
 @app.post("/api/login")
 def login(req: LoginRequest):
-    # Búsqueda insensible a mayúsculas/minúsculas para prevenir errores
-    res = supabase.table("usuarios").select("*").ilike("usuario", req.usuario.strip()).execute()
+    try:
+        res = supabase.table("usuarios").select("*").ilike("usuario", req.usuario.strip()).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error en BD: {str(e)}")
+        
     if not res.data:
-        raise HTTPException(status_code=400, detail="Usuario no encontrado")
+        raise HTTPException(status_code=400, detail="Usuario no encontrado en la base de datos")
     
     user_info = res.data[0]
     if str(user_info["pin"]).strip() != str(req.pin).strip():
