@@ -42,7 +42,7 @@
         <header class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex justify-between items-center mb-6 shadow-md">
             <div>
                 <h1 class="text-lg font-bold text-indigo-400" id="worker-title">Panel de Trabajador</h1>
-                <p class="text-xs text-slate-400">Control personal de turnos</p>
+                <p class="text-xs text-slate-400">Control personal de turnos y recesos</p>
             </div>
             <button onclick="cerrarSesion()" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-red-500/30">Cerrar Sesión</button>
         </header>
@@ -54,7 +54,7 @@
             </button>
             <button onclick="ejecutarReceso()" class="bg-amber-600 hover:bg-amber-500 text-white p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2">
                 <i class="fa-solid fa-mug-hot text-xl"></i>
-                <span>Gestionar Receso</span>
+                <span>Pausar / Continuar (Receso)</span>
             </button>
             <button onclick="cargarPanelTrabajador()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2">
                 <i class="fa-solid fa-rotate text-xl text-indigo-400"></i>
@@ -63,12 +63,14 @@
         </div>
 
         <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-grow shadow-md overflow-x-auto">
-            <h2 class="text-sm font-semibold mb-3 text-slate-300">Tus Horas Registradas por Día</h2>
+            <h2 class="text-sm font-semibold mb-3 text-slate-300">Tus Registros y Horas por Día</h2>
             <table class="w-full text-left text-xs">
                 <thead>
                     <tr class="border-b border-slate-700 text-slate-400">
-                        <th class="pb-2">Fecha (Día Inicio)</th>
-                        <th class="pb-2 text-right">Horas Acumuladas</th>
+                        <th class="pb-2">Fecha (Día)</th>
+                        <th class="pb-2">Entrada</th>
+                        <th class="pb-2">Salida</th>
+                        <th class="pb-2 text-right">Horas Trabajadas</th>
                     </tr>
                 </thead>
                 <tbody id="tabla-mis-horas" class="divide-y divide-slate-700/50">
@@ -169,7 +171,7 @@
                             <tr class="border-b border-slate-700 text-slate-400">
                                 <th class="pb-2">Usuario</th>
                                 <th class="pb-2">Entrada</th>
-                                <th class="pb-2">Receso</th>
+                                <th class="pb-2">Receso / Estado</th>
                                 <th class="pb-2">Salida</th>
                                 <th class="pb-2 text-right">Acción</th>
                             </tr>
@@ -219,7 +221,7 @@
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-slate-300 mb-1">Área / Departamento</label>
-                        <input type="text" id="input-u-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none" value="Gestion">
+                        <input type="text" id="input-u-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none" value="Gestión">
                     </div>
                     <div>
                         <label class="block text-slate-300 mb-1">Rol en Sistema</label>
@@ -259,7 +261,6 @@
 
         function parseFechaHora(str) {
             if(!str) return null;
-            // Formato esperado "YYYY-MM-DD HH:MM:SS AM/PM"
             let partes = str.split(' ');
             let f = partes[0].split('-');
             let h = partes[1].split(':');
@@ -396,6 +397,7 @@
                 const data = await res.json();
                 if(res.ok) {
                     alert(data.mensaje);
+                    cargarPanelTrabajador();
                 } else {
                     alert(data.detail || 'Error al procesar receso');
                 }
@@ -417,38 +419,30 @@
                     tbody.innerHTML = '';
                     
                     if(data.registros.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="2" class="py-4 text-center text-slate-500">No hay registros de horas aún.</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-500">No hay registros de horas aún.</td></tr>`;
                         return;
                     }
 
-                    let porDia = {};
                     data.registros.forEach(r => {
                         let dEntrada = parseFechaHora(r.entrada);
                         let dSalida = parseFechaHora(r.salida);
-                        let fechaInicioKey = r.entrada.split(' ')[0]; // La fecha de inicio fija el día del turno
-
                         let hrs = 0;
                         if(dEntrada && dSalida) {
-                            let diffMs = dSalida - dEntrada;
-                            if(r.receso_inicio && r.receso_fin) {
-                                let dR1 = parseFechaHora(r.receso_inicio);
-                                let dR2 = parseFechaHora(r.receso_fin);
-                                if(dR1 && dR2) diffMs -= (dR2 - dR1);
-                            }
-                            hrs = Math.max(0, diffMs / (1000 * 60 * 60));
+                            hrs = Math.max(0, (dSalida - dEntrada) / (1000 * 60 * 60));
                         }
-                        if(!porDia[fechaInicioKey]) porDia[fechaInicioKey] = 0;
-                        porDia[fechaInicioKey] += hrs;
-                    });
+                        let tipoLabel = r.es_continua ? '<span class="text-amber-400 text-[10px] ml-1">(Continúa)</span>' : '';
+                        let salidaTexto = r.salida ? r.salida : '<span class="text-emerald-400 font-semibold animate-pulse">En Curso</span>';
+                        let horasTexto = r.salida ? `${hrs.toFixed(2)} hrs` : '-';
 
-                    for(let [fechaKey, horasTotales] of Object.entries(porDia)) {
                         tbody.innerHTML += `
-                            <tr class="border-b border-slate-700/30">
-                                <td class="py-2.5 font-medium">${fechaKey}</td>
-                                <td class="py-2.5 text-right text-indigo-300 font-bold">${horasTotales.toFixed(2)} hrs</td>
+                            <tr class="border-b border-slate-700/35">
+                                <td class="py-2.5 font-medium">${r.entrada.split(' ')[0]} ${tipoLabel}</td>
+                                <td class="py-2.5 text-slate-300">${r.entrada}</td>
+                                <td class="py-2.5 text-slate-300">${salidaTexto}</td>
+                                <td class="py-2.5 text-right text-indigo-300 font-bold">${horasTexto}</td>
                             </tr>
                         `;
-                    }
+                    });
                 }
             } catch(err) {}
         }
@@ -485,11 +479,15 @@
                     const tA = document.getElementById('tabla-asistencias-admin');
                     tA.innerHTML = '';
                     data.asistencias.slice().reverse().forEach(r => {
+                        let estadoReceso = 'Sin receso';
+                        if(r.receso_inicio && !r.receso_fin) estadoReceso = '<span class="text-amber-400 font-semibold">En Receso (Pausado)</span>';
+                        else if(r.receso_fin) estadoReceso = '<span class="text-emerald-400">Receso Completado</span>';
+
                         tA.innerHTML += `
                             <tr class="border-b border-slate-700/30">
-                                <td class="py-2 font-medium">${r.usuario}</td>
+                                <td class="py-2 font-medium">${r.usuario} ${r.es_continua ? '(Cont.)' : ''}</td>
                                 <td class="py-2 text-slate-300">${r.entrada}</td>
-                                <td class="py-2 text-slate-400">${r.receso_inicio ? (r.receso_fin ? 'Completado' : 'En Receso') : 'Sin receso'}</td>
+                                <td class="py-2">${estadoReceso}</td>
                                 <td class="py-2 text-slate-300">${r.salida || '<span class="text-emerald-400 font-semibold animate-pulse">En Línea / Activo</span>'}</td>
                                 <td class="py-2 text-right">
                                     ${!r.salida ? `<button onclick="forzarSalida(${r.id})" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-2 py-1 rounded text-[10px] transition">Finalizar</button>` : '-'}
@@ -527,17 +525,10 @@
                 let dEntrada = parseFechaHora(r.entrada);
                 let dSalida = parseFechaHora(r.salida);
 
-                // La regla de fecha asigna todo el turno a la fecha de ENTRADA
                 if(dEntrada && dEntrada >= dDesde && dEntrada <= dHasta) {
                     let hrs = 0;
                     if(dSalida) {
-                        let diffMs = dSalida - dEntrada;
-                        if(r.receso_inicio && r.receso_fin) {
-                            let dR1 = parseFechaHora(r.receso_inicio);
-                            let dR2 = parseFechaHora(r.receso_fin);
-                            if(dR1 && dR2) diffMs -= (dR2 - dR1);
-                        }
-                        hrs = Math.max(0, diffMs / (1000 * 60 * 60));
+                        hrs = Math.max(0, (dSalida - dEntrada) / (1000 * 60 * 60));
                     }
                     if(!resumen[r.usuario]) {
                         resumen[r.usuario] = { tipo_pago: 'Horas', monto_fijo: 150, horas: 0 };
