@@ -12,32 +12,32 @@ app = FastAPI()
 DATA_FILE = "system_data.json"
 TZ_VE = timezone(timedelta(hours=-4))
 
+USUARIOS_POR_DEFECTO = {
+    "admin": {"pin": "9999", "tipo_pago": "fijo", "monto_fijo": 150.0, "tarifa_hora": 0.0, "area": "Administración", "rol_sistema": "admin"},
+    "Luz": {"pin": "1234", "tipo_pago": "Gasolina", "monto_fijo": 150.0, "tarifa_hora": 0.0, "area": "Planta", "rol_sistema": "trabajador"},
+    "Ronald": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestion", "rol_sistema": "trabajador"},
+    "Ricardo": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestion", "rol_sistema": "trabajador"},
+    "Daniel": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestion", "rol_sistema": "trabajador"},
+    "Betzaida": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestion", "rol_sistema": "trabajador"},
+    "Lisander": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestion", "rol_sistema": "trabajador"}
+}
+
 def get_hora_actual():
     return datetime.now(TZ_VE).strftime("%Y-%m-%d %I:%M:%S %p")
 
 def load_data():
     if not os.path.exists(DATA_FILE):
-        return {
-            "usuarios": {
-                "admin": {"pin": "9999", "tipo_pago": "fijo", "monto_fijo": 150.0, "tarifa_hora": 0.0, "area": "Administración", "rol_sistema": "admin"}
-            },
-            "asistencias": []
-        }
+        return {"usuarios": USUARIOS_POR_DEFECTO, "asistencias": []}
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-            if "usuarios" not in data:
-                data["usuarios"] = {"admin": {"pin": "9999", "tipo_pago": "fijo", "monto_fijo": 150.0, "tarifa_hora": 0.0, "area": "Administración", "rol_sistema": "admin"}}
+            if "usuarios" not in data or not data["usuarios"]:
+                data["usuarios"] = USUARIOS_POR_DEFECTO
             if "asistencias" not in data:
                 data["asistencias"] = []
             return data
     except:
-        return {
-            "usuarios": {
-                "admin": {"pin": "9999", "tipo_pago": "fijo", "monto_fijo": 150.0, "tarifa_hora": 0.0, "area": "Administración", "rol_sistema": "admin"}
-            },
-            "asistencias": []
-        }
+        return {"usuarios": USUARIOS_POR_DEFECTO, "asistencias": []}
 
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
