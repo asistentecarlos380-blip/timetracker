@@ -13,17 +13,18 @@ DATA_FILE = "system_data.json"
 TZ_VE = timezone(timedelta(hours=-4))
 
 USUARIOS_PREDETERMINADOS = {
-    "admin": {"pin": "9999", "tipo_pago": "Fijo", "monto_fijo": 150.0, "tarifa_hora": 0.0, "area": "Administración", "rol_sistema": "admin"},
+    "admin": {"pin": "9999", "tipo_pago": "Fijo", "monto_fijo": 300.0, "tarifa_hora": 0.0, "area": "Administración", "rol_sistema": "admin"},
+    "user": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.5, "area": "Ventas", "rol_sistema": "trabajador"},
     "Luz": {"pin": "1234", "tipo_pago": "Gasolina", "monto_fijo": 150.0, "tarifa_hora": 0.0, "area": "Planta", "rol_sistema": "trabajador"},
-    "Ronald": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
-    "Ricardo": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
-    "Daniel": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
-    "Betzaida": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
-    "Lisander": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
-    "Brayan": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
-    "Gerson": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
-    "Matias": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
-    "Planta": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Planta", "rol_sistema": "trabajador"}
+    "Ronald": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.5, "area": "Gestión", "rol_sistema": "trabajador"},
+    "Ricardo": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.5, "area": "Gestión", "rol_sistema": "trabajador"},
+    "Daniel": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.5, "area": "Gestión", "rol_sistema": "trabajador"},
+    "Betzaida": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.5, "area": "Gestión", "rol_sistema": "trabajador"},
+    "Lisander": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.5, "area": "Gestión", "rol_sistema": "trabajador"},
+    "Brayan": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.5, "area": "Gestión", "rol_sistema": "trabajador"},
+    "Gerson": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.5, "area": "Gestión", "rol_sistema": "trabajador"},
+    "Matias": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.5, "area": "Gestión", "rol_sistema": "trabajador"},
+    "Planta": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.5, "area": "Planta", "rol_sistema": "trabajador"}
 }
 
 def get_hora_actual():
@@ -77,8 +78,8 @@ class UserReq(BaseModel):
     usuario: str
     pin: str
     tipo_pago: str = "Horas"
-    monto_fijo: float = 150.0
-    tarifa_hora: float = 1.1
+    monto_fijo: float = 300.0
+    tarifa_hora: float = 1.5
     area: str = "Gestión"
     rol_sistema: str = "trabajador"
 
@@ -127,7 +128,6 @@ def marcar(req: LoginReq):
     ahora = get_hora_actual()
     for reg in reversed(data["asistencias"]):
         if reg["usuario"].lower() == u_clean and reg["salida"] is None:
-            # Si estaba en receso y marca de nuevo, finaliza el tramo de continuación
             if reg.get("receso_inicio") and not reg.get("receso_fin"):
                 reg["receso_fin"] = ahora
             reg["salida"] = ahora
@@ -162,19 +162,16 @@ def gestionar_receso(req: LoginReq):
     for reg in reversed(data["asistencias"]):
         if reg["usuario"].lower() == u_clean and reg["salida"] is None:
             if reg.get("receso_inicio") is None:
-                # Inicia receso y cierra el primer tramo (Salida temporal para el tramo 1)
                 reg["receso_inicio"] = ahora
                 reg["salida"] = ahora
                 save_data(data)
                 return {"status": "receso_inicio", "mensaje": f"Receso iniciado a las {ahora}. Turno en pausa."}
             elif reg.get("receso_fin") is None:
-                # Finaliza receso y abre el tramo CONTINÚA
                 reg["receso_fin"] = ahora
-                # Creamos el registro de continuación para el tramo 2
                 nuevo_continua = {
                     "id": len(data["asistencias"]) + 1,
                     "usuario": user_key,
-                    "entrada": ahora, # Hora en que continúa
+                    "entrada": ahora,
                     "receso_inicio": None,
                     "receso_fin": None,
                     "salida": None,
@@ -250,31 +247,20 @@ def ajustar_salida(req: CheckoutReq):
 def exportar_excel():
     data = load_data()
     usuarios_list = list(data["usuarios"].keys())
-    
-    # Estructura para exportar con filas de Trabajador y Trabajador CONTINUA por día
     filas_excel = []
     
-    # Agrupar registros por fecha y usuario
-    # Para simplificar y ajustarnos al formato quincenal/semanal como el adjunto:
     for u in usuarios_list:
         fila_principal = {"Trabajador": u}
         fila_continua = {"Trabajador": f"{u} CONTINUA"}
-        
-        # Rellenar con los registros de asistencias de este usuario
         u_regs = [r for r in data["asistencias"] if r["usuario"].lower() == u.lower()]
-        
-        # Dividir en principal y continua según el flag es_continua
         principales = [r for r in u_regs if not r.get("es_continua")]
         continuas = [r for r in u_regs if r.get("es_continua")]
         
-        # Mapear por fecha de entrada
         for r in principales:
             if r.get("entrada"):
                 fecha = r["entrada"].split(' ')[0]
                 fila_principal[f"{fecha} Entr"] = r["entrada"].split(' ')[1] + " " + r["entrada"].split(' ')[2]
                 fila_principal[f"{fecha} Sal"] = r["salida"].split(' ')[1] + " " + r["salida"].split(' ')[2] if r.get("salida") else ""
-                
-                # Calcular horas
                 if r.get("salida"):
                     d1 = parse_fh_excel(r["entrada"])
                     d2 = parse_fh_excel(r["salida"])
@@ -286,7 +272,6 @@ def exportar_excel():
                 fecha = r["entrada"].split(' ')[0]
                 fila_continua[f"{fecha} Entr"] = r["entrada"].split(' ')[1] + " " + r["entrada"].split(' ')[2]
                 fila_continua[f"{fecha} Sal"] = r["salida"].split(' ')[1] + " " + r["salida"].split(' ')[2] if r.get("salida") else ""
-                
                 if r.get("salida"):
                     d1 = parse_fh_excel(r["entrada"])
                     d2 = parse_fh_excel(r["salida"])
@@ -297,7 +282,6 @@ def exportar_excel():
         filas_excel.append(fila_continua)
 
     df_matriz = pd.DataFrame(filas_excel)
-
     df_usuarios = pd.DataFrame([{
         "Usuario": u, "PIN": info.get("pin"), "Tipo_Pago": info.get("tipo_pago"),
         "Monto_Fijo": info.get("monto_fijo"), "Tarifa_Hora": info.get("tarifa_hora"),
@@ -331,8 +315,8 @@ async def importar_excel(file: UploadFile = File(...)):
             usuarios_dict[u_name] = {
                 "pin": str(row["PIN"]),
                 "tipo_pago": str(row["Tipo_Pago"]),
-                "monto_fijo": float(row["Monto_Fijo"]) if pd.notna(row["Monto_Fijo"]) else 150.0,
-                "tarifa_hora": float(row["Tarifa_Hora"]) if pd.notna(row["Tarifa_Hora"]) else 1.1,
+                "monto_fijo": float(row["Monto_Fijo"]) if pd.notna(row["Monto_Fijo"]) else 300.0,
+                "tarifa_hora": float(row["Tarifa_Hora"]) if pd.notna(row["Tarifa_Hora"]) else 1.5,
                 "area": str(row["Area"]) if pd.notna(row["Area"]) else "General",
                 "rol_sistema": str(row["Rol_Sistema"]) if pd.notna(row["Rol_Sistema"]) else "trabajador"
             }
