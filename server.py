@@ -9,9 +9,24 @@ from datetime import datetime
 app = FastAPI()
 
 DB_FILE = "database.json"
+BACKUP_FILE = "database_backup.json"
 
 def inicializar_bd():
+    # Si el archivo principal no existe pero tenemos un respaldo, lo restauramos automáticamente
     if not os.path.exists(DB_FILE):
+        if os.path.exists(BACKUP_FILE):
+            try:
+                with open(BACKUP_FILE, "r", encoding="utf-8") as f_back:
+                    datos_backup = json.load(f_back)
+                with open(DB_FILE, "w", encoding="utf-8") as f:
+                    json.dump(datos_backup, f, indent=2, ensure_ascii=False)
+                    f.flush()
+                    os.fsync(f.fileno())
+                return
+            except Exception:
+                pass
+
+        # Si no existe ninguno, creamos la estructura inicial
         datos_iniciales = {
             "usuarios": {
                 "ADMIN": {"pin": "1234", "rol_sistema": "admin", "tipo_pago": "Fijo", "monto_fijo": 300.0, "tarifa_hora": 0.0, "area": "Gerencia"},
@@ -29,6 +44,8 @@ def inicializar_bd():
         }
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(datos_iniciales, f, indent=2, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
 
 inicializar_bd()
 
@@ -39,8 +56,20 @@ def leer_db():
         return json.load(f)
 
 def escribir_db(data):
+    # Escritura segura en el archivo principal con sincronización física de disco
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
+        f.flush()
+        os.fsync(f.fileno())
+    
+    # Escritura simultánea en el archivo de respaldo (Backup)
+    try:
+        with open(BACKUP_FILE, "w", encoding="utf-8") as f_back:
+            json.dump(data, f_back, indent=2, ensure_ascii=False)
+            f_back.flush()
+            os.fsync(f_back.fileno())
+    except Exception as e:
+        print("Aviso al crear respaldo:", e)
 
 @app.get("/", response_class=HTMLResponse)
 def leer_raiz():
