@@ -19,7 +19,11 @@ USUARIOS_PREDETERMINADOS = {
     "Ricardo": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
     "Daniel": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
     "Betzaida": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
-    "Lisander": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"}
+    "Lisander": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
+    "Brayan": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
+    "Gerson": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
+    "Matias": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Gestión", "rol_sistema": "trabajador"},
+    "Planta": {"pin": "1234", "tipo_pago": "Horas", "monto_fijo": 150.0, "tarifa_hora": 1.1, "area": "Planta", "rol_sistema": "trabajador"}
 }
 
 def get_hora_actual():
@@ -75,7 +79,7 @@ class UserReq(BaseModel):
     tipo_pago: str = "Horas"
     monto_fijo: float = 150.0
     tarifa_hora: float = 1.1
-    area: str = "General"
+    area: str = "Gestión"
     rol_sistema: str = "trabajador"
 
 class CheckoutReq(BaseModel):
@@ -123,6 +127,7 @@ def marcar(req: LoginReq):
     ahora = get_hora_actual()
     for reg in reversed(data["asistencias"]):
         if reg["usuario"].lower() == u_clean and reg["salida"] is None:
+            # Si estaba en receso y marca de nuevo, finaliza el tramo de continuación
             if reg.get("receso_inicio") and not reg.get("receso_fin"):
                 reg["receso_fin"] = ahora
             reg["salida"] = ahora
@@ -157,13 +162,27 @@ def gestionar_receso(req: LoginReq):
     for reg in reversed(data["asistencias"]):
         if reg["usuario"].lower() == u_clean and reg["salida"] is None:
             if reg.get("receso_inicio") is None:
+                # Inicia receso y cierra el primer tramo (Salida temporal para el tramo 1)
                 reg["receso_inicio"] = ahora
+                reg["salida"] = ahora
                 save_data(data)
-                return {"status": "receso_inicio", "mensaje": f"Receso iniciado a las {ahora}"}
+                return {"status": "receso_inicio", "mensaje": f"Receso iniciado a las {ahora}. Turno en pausa."}
             elif reg.get("receso_fin") is None:
+                # Finaliza receso y abre el tramo CONTINÚA
                 reg["receso_fin"] = ahora
+                # Creamos el registro de continuación para el tramo 2
+                nuevo_continua = {
+                    "id": len(data["asistencias"]) + 1,
+                    "usuario": user_key,
+                    "entrada": ahora, # Hora en que continúa
+                    "receso_inicio": None,
+                    "receso_fin": None,
+                    "salida": None,
+                    "es_continua": True
+                }
+                data["asistencias"].append(nuevo_continua)
                 save_data(data)
-                return {"status": "receso_fin", "mensaje": f"Receso finalizado a las {ahora}"}
+                return {"status": "receso_fin", "mensaje": f"Receso finalizado a las {ahora}. ¡Continuando turno!"}
             else:
                 raise HTTPException(status_code=400, detail="Ya registraste un receso en este turno")
     raise HTTPException(status_code=400, detail="No tienes un turno activo abierto")
@@ -231,67 +250,51 @@ def ajustar_salida(req: CheckoutReq):
 def exportar_excel():
     data = load_data()
     usuarios_list = list(data["usuarios"].keys())
-    registros_por_usuario = {u: {} for u in usuarios_list}
     
-    for reg in data["asistencias"]:
-        u = reg["usuario"]
-        if u not in registros_por_usuario:
-            registros_por_usuario[u] = {}
-        
-        if reg.get("entrada"):
-            partes = reg["entrada"].split(' ')[0]
-            def limpiar_hora(h_str):
-                if not h_str: return "00:00"
-                try:
-                    p = h_str.split(' ')
-                    t = p[1].split(':')
-                    hh = int(t[0])
-                    if p[2] == 'PM' and hh < 12: hh += 12
-                    if p[2] == 'AM' and hh == 12: hh = 0
-                    return f"{hh:02d}:{t[1]}"
-                except:
-                    return "00:00"
-
-            h_ent = limpiar_hora(reg["entrada"])
-            h_sal = limpiar_hora(reg["salida"]) if reg.get("salida") else "00:00"
-            
-            hrs = 0.0
-            if reg.get("salida"):
-                d1 = parse_fh_excel(reg["entrada"])
-                d2 = parse_fh_excel(reg["salida"])
-                if d1 and d2:
-                    diff = (d2 - d1).total_seconds() / 3600.0
-                    if reg.get("receso_inicio") and reg.get("receso_fin"):
-                        dr1 = parse_fh_excel(reg["receso_inicio"])
-                        dr2 = parse_fh_excel(reg["receso_fin"])
-                        if dr1 and dr2:
-                            diff -= (dr2 - dr1).total_seconds() / 3600.0
-                    hrs = max(0.0, diff)
-
-            registros_por_usuario[u][partes] = {
-                "entrada": h_ent if reg.get("entrada") else "00:00",
-                "salida": h_sal if reg.get("salida") else "00:00",
-                "horas": round(hrs, 2)
-            }
-
-    todas_fechas = set()
-    for u in registros_por_usuario:
-        for f in registros_por_usuario[u]:
-            todas_fechas.add(f)
-    fechas_ordenadas = sorted(list(todas_fechas))
-
+    # Estructura para exportar con filas de Trabajador y Trabajador CONTINUA por día
     filas_excel = []
+    
+    # Agrupar registros por fecha y usuario
+    # Para simplificar y ajustarnos al formato quincenal/semanal como el adjunto:
     for u in usuarios_list:
-        fila = {"Trabajador": u}
-        total_horas_global = 0.0
-        for f in fechas_ordenadas:
-            info = registros_por_usuario[u].get(f, {"entrada": "00:00", "salida": "00:00", "horas": 0.0})
-            fila[f"{f} Entr"] = info["entrada"]
-            fila[f"{f} Sal"] = info["salida"]
-            fila[f"{f} Horas"] = info["horas"]
-            total_horas_global += info["horas"]
-        fila["Total Horas"] = round(total_horas_global, 2)
-        filas_excel.append(fila)
+        fila_principal = {"Trabajador": u}
+        fila_continua = {"Trabajador": f"{u} CONTINUA"}
+        
+        # Rellenar con los registros de asistencias de este usuario
+        u_regs = [r for r in data["asistencias"] if r["usuario"].lower() == u.lower()]
+        
+        # Dividir en principal y continua según el flag es_continua
+        principales = [r for r in u_regs if not r.get("es_continua")]
+        continuas = [r for r in u_regs if r.get("es_continua")]
+        
+        # Mapear por fecha de entrada
+        for r in principales:
+            if r.get("entrada"):
+                fecha = r["entrada"].split(' ')[0]
+                fila_principal[f"{fecha} Entr"] = r["entrada"].split(' ')[1] + " " + r["entrada"].split(' ')[2]
+                fila_principal[f"{fecha} Sal"] = r["salida"].split(' ')[1] + " " + r["salida"].split(' ')[2] if r.get("salida") else ""
+                
+                # Calcular horas
+                if r.get("salida"):
+                    d1 = parse_fh_excel(r["entrada"])
+                    d2 = parse_fh_excel(r["salida"])
+                    if d1 and d2:
+                        fila_principal[f"{fecha} Horas"] = round(max(0.0, (d2 - d1).total_seconds() / 3600.0), 2)
+
+        for r in continuas:
+            if r.get("entrada"):
+                fecha = r["entrada"].split(' ')[0]
+                fila_continua[f"{fecha} Entr"] = r["entrada"].split(' ')[1] + " " + r["entrada"].split(' ')[2]
+                fila_continua[f"{fecha} Sal"] = r["salida"].split(' ')[1] + " " + r["salida"].split(' ')[2] if r.get("salida") else ""
+                
+                if r.get("salida"):
+                    d1 = parse_fh_excel(r["entrada"])
+                    d2 = parse_fh_excel(r["salida"])
+                    if d1 and d2:
+                        fila_continua[f"{fecha} Horas"] = round(max(0.0, (d2 - d1).total_seconds() / 3600.0), 2)
+
+        filas_excel.append(fila_principal)
+        filas_excel.append(fila_continua)
 
     df_matriz = pd.DataFrame(filas_excel)
 
@@ -305,11 +308,11 @@ def exportar_excel():
 
     file_path = "respaldo_nomina.xlsx"
     with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
-        df_matriz.to_excel(writer, sheet_name="Resumen Matriz Dias", index=False)
+        df_matriz.to_excel(writer, sheet_name="Control Semanal", index=False)
         df_usuarios.to_excel(writer, sheet_name="Usuarios", index=False)
         df_asistencias.to_excel(writer, sheet_name="Asistencias Brutas", index=False)
 
-    return FileResponse(file_path, filename=f"Respaldo_Matriz_Nomina_{datetime.now().strftime('%Y-%m-%d')}.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    return FileResponse(file_path, filename=f"Control_Horas_Semanales_{datetime.now().strftime('%Y-%m-%d')}.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 @app.post("/api/admin/importar-excel")
 async def importar_excel(file: UploadFile = File(...)):
@@ -344,7 +347,8 @@ async def importar_excel(file: UploadFile = File(...)):
                 "entrada": str(row["entrada"]),
                 "receso_inicio": str(row["receso_inicio"]) if pd.notna(row["receso_inicio"]) else None,
                 "receso_fin": str(row["receso_fin"]) if pd.notna(row["receso_fin"]) else None,
-                "salida": str(row["salida"]) if pd.notna(row["salida"]) else None
+                "salida": str(row["salida"]) if pd.notna(row["salida"]) else None,
+                "es_continua": bool(row.get("es_continua", False)) if pd.notna(row.get("es_continua", False)) else False
             })
 
         nuevo_estado = {
