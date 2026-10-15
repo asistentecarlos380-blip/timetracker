@@ -451,31 +451,3 @@
 
         function iniciarVistaSegunRol() {
             document.getElementById('login-screen').classList.add('hidden');
-            resetSessionTimer(currentUser.rol_sistema);
-
-            if (currentUser.rol_sistema === 'admin') {
-                document.getElementById('admin-dashboard').classList.remove('hidden');
-                document.getElementById('worker-dashboard').classList.add('hidden');
-                cargarAdminDatos();
-            } else {
-                document.getElementById('worker-dashboard').classList.remove('hidden');
-                document.getElementById('admin-dashboard').classList.add('hidden');
-                document.getElementById('worker-title').textContent = `Trabajador: ${currentUser.usuario}`;
-                cargarPanelTrabajador();
-            }
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const saved = localStorage.getItem('timetracker_user');
-            if (saved) {
-                try {
-                    currentUser = JSON.parse(saved);
-                    iniciarVistaSegunRol();
-                } catch(e) {
-                    cerrarSesion();
-                }
-            }
-        });
-    </script>
-</body>
-</html>
