@@ -48,13 +48,13 @@
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <button onclick="ejecutarAccionMarcar()" class="bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2">
-                <i class="fa-solid fa-play text-xl"></i>
-                <span>Iniciar / Finalizar Turno</span>
+            <button id="btn-accion-turno" onclick="ejecutarAccionMarcar()" class="bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2">
+                <i id="icon-accion-turno" class="fa-solid fa-play text-xl"></i>
+                <span id="text-accion-turno">Iniciar Turno</span>
             </button>
-            <button onclick="ejecutarReceso()" class="bg-amber-600 hover:bg-amber-500 text-white p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2">
+            <button id="btn-receso" onclick="ejecutarReceso()" class="bg-amber-600 hover:bg-amber-500 text-white p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2">
                 <i class="fa-solid fa-mug-hot text-xl"></i>
-                <span>Pausar / Continuar (Receso)</span>
+                <span id="text-receso">Pausar / Receso</span>
             </button>
             <button onclick="cargarPanelTrabajador()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2">
                 <i class="fa-solid fa-rotate text-xl text-indigo-400"></i>
@@ -63,7 +63,7 @@
         </div>
 
         <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex-grow shadow-md overflow-x-auto">
-            <h2 class="text-sm font-semibold mb-3 text-slate-300">Tus Registros y Horas por Día</h2>
+            <h2 class="text-sm font-semibold mb-3 text-slate-300">Tus Registros y Horas (Últimos 14 días / Quincenal)</h2>
             <table class="w-full text-left text-xs">
                 <thead>
                     <tr class="border-b border-slate-700 text-slate-400">
@@ -101,7 +101,7 @@
 
         <!-- SECCIÓN RESUMEN POR RANGO DE FECHAS -->
         <div class="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow-md mb-6">
-            <h2 class="text-sm font-semibold text-slate-200 mb-3"><i class="fa-solid fa-calendar-days text-indigo-400 mr-2"></i>Resumen de Horas y Cálculo de Nómina por Rango de Fechas</h2>
+            <h2 class="text-sm font-semibold text-slate-200 mb-3"><i class="fa-solid fa-calendar-days text-indigo-400 mr-2"></i>Resumen de Horas y Cálculo de Nómina (Quincenal / 14 días)</h2>
             <div class="flex flex-wrap items-end gap-3 mb-4 text-xs">
                 <div>
                     <label class="block text-slate-400 mb-1">Desde (Fecha inicio):</label>
@@ -215,7 +215,7 @@
                     </div>
                     <div>
                         <label class="block text-slate-300 mb-1">Monto / Tarifa</label>
-                        <input type="number" id="input-u-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none" value="150">
+                        <input type="number" id="input-u-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500 focus:outline-none" value="1.5">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
@@ -355,21 +355,6 @@
 
         async function ejecutarAccionMarcar() {
             try {
-                const checkRes = await fetch('/api/mis-horas', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
-                });
-                const checkData = await checkRes.json();
-                if(checkRes.ok && checkData.registros.length > 0) {
-                    const ultimo = checkData.registros[checkData.registros.length - 1];
-                    if(ultimo.salida === null) {
-                        if(!confirm("¿Estás seguro de que quieres finalizar tu turno?")) return;
-                    }
-                }
-            } catch(e) {}
-
-            try {
                 const res = await fetch('/api/marcar', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -423,7 +408,18 @@
                         return;
                     }
 
+                    // Determinar estado actual del turno para cambiar colores de botones dinámicamente
+                    let tieneTurnoActivo = false;
+                    let estaEnReceso = false;
+
                     data.registros.forEach(r => {
+                        if(r.salida === null) {
+                            tieneTurnoActivo = true;
+                            if(r.receso_inicio && !r.receso_fin) {
+                                estaEnReceso = true;
+                            }
+                        }
+
                         let dEntrada = parseFechaHora(r.entrada);
                         let dSalida = parseFechaHora(r.salida);
                         let hrs = 0;
@@ -443,6 +439,28 @@
                             </tr>
                         `;
                     });
+
+                    // Actualizar diseño y colores de botones según estado
+                    const btnTurno = document.getElementById('btn-accion-turno');
+                    const iconTurno = document.getElementById('icon-accion-turno');
+                    const textTurno = document.getElementById('text-accion-turno');
+
+                    if(!tieneTurnoActivo) {
+                        // Estado: Fuera de turno -> Botón Verde (Iniciar Turno)
+                        btnTurno.className = "bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2";
+                        iconTurno.className = "fa-solid fa-play text-xl";
+                        textTurno.textContent = "Iniciar Turno";
+                    } else if(estaEnReceso) {
+                        // Estado: En receso -> Botón Verde (Continuar Turno)
+                        btnTurno.className = "bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2 animate-pulse";
+                        iconTurno.className = "fa-solid fa-forward text-xl";
+                        textTurno.textContent = "Continuar Turno";
+                    } else {
+                        // Estado: Trabajando activo -> Botón Rojo (Finalizar Turno)
+                        btnTurno.className = "bg-red-600 hover:bg-red-500 text-white p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2";
+                        iconTurno.className = "fa-solid fa-stop text-xl";
+                        textTurno.textContent = "Finalizar Turno";
+                    }
                 }
             } catch(err) {}
         }
@@ -595,7 +613,7 @@
                 pin: document.getElementById('input-u-pin').value,
                 tipo_pago: document.getElementById('input-u-tipopago').value,
                 monto_fijo: parseFloat(document.getElementById('input-u-monto').value) || 0,
-                tarifa_hora: 1.1,
+                tarifa_hora: 1.5,
                 area: document.getElementById('input-u-area').value,
                 rol_sistema: document.getElementById('input-u-rol').value
             };
