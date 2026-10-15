@@ -92,20 +92,19 @@ def leer_raiz():
         with open("index.html", "r", encoding="utf-8") as f:
             content = f.read()
             
-            # Inyectar botón de tuerca en el panel admin y modal de configuración global + parche para /api/mis-horas en el frontend
+            # Inyectar tuerca de configuración (solo icono, igual al panel trabajador) y versión v1.1.0
             patch_ui = """
             <script>
             document.addEventListener("DOMContentLoaded", () => {
-                // 1. Inyectar botón de configuración global (tuerca) en la barra superior del admin
                 const headerActions = document.querySelector('header') || document.querySelector('.flex.justify-between') || document.querySelector('#panel-admin');
                 if (headerActions && !document.getElementById('btn-config-global')) {
                     const btnConfig = document.createElement('button');
                     btnConfig.id = 'btn-config-global';
-                    btnConfig.className = 'bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-2 shadow transition ml-2';
-                    btnConfig.innerHTML = '<i class="fas fa-cog"></i> Configurar Tarifas';
+                    btnConfig.className = 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white p-2.5 rounded-lg text-sm flex items-center justify-center shadow transition ml-2 border border-slate-700';
+                    btnConfig.title = 'Configuración Global de Tarifas';
+                    btnConfig.innerHTML = '<i class="fas fa-cog"></i>';
                     btnConfig.onclick = abrirModalConfigGlobal;
                     
-                    // Buscar dónde insertar junto a Exportar Excel o Cerrar Sesión
                     const btnExcel = document.querySelector('button:has(.fa-file-excel)') || document.querySelector('#exportar-excel') || headerActions.querySelector('button');
                     if (btnExcel && btnExcel.parentNode) {
                         btnExcel.parentNode.insertBefore(btnConfig, btnExcel.nextSibling);
@@ -167,7 +166,7 @@ def leer_raiz():
             </script>
             """
             
-            footer_v = '<div style="text-align:center; padding:15px; color:#64748b; font-size:13px; font-family:monospace;">Control de Asistencia — v1.2.0 (Stable)</div></body>'
+            footer_v = '<div style="text-align:center; padding:15px; color:#64748b; font-size:13px; font-family:monospace;">Control de Asistencia — v1.1.0</div></body>'
             if "</body>" in content:
                 content = content.replace("</body>", patch_ui + footer_v)
             return content
@@ -235,7 +234,6 @@ def cambiar_pin(req: CambiarPinRequest):
 @app.post("/api/mis-horas")
 def mis_horas(req: LoginRequest):
     u = req.usuario.strip()
-    # Si es el admin, devolver todo el historial
     if u.lower() == "admin" and str(req.pin).strip() == "1234":
         try:
             res_a = supabase.table("asistencias").select("*").execute()
@@ -243,15 +241,15 @@ def mis_horas(req: LoginRequest):
         except Exception:
             return {"registros": []}
             
-    # Búsqueda robusta para el trabajador (sin distinción de mayúsculas y abarcando variaciones)
+    # Búsqueda infalible sin distinción de mayúsculas ni formato capitalizado
     try:
-        res_a = supabase.table("asistencias").select("*").ilike("usuario", u).execute()
-        registros = res_a.data if res_a.data else []
-        if not registros:
-            res_a2 = supabase.table("asistencias").select("*").execute()
-            if res_a2.data:
-                registros = [r for r in res_a2.data if str(r.get("usuario", "")).strip().lower() == u.lower()]
-        return {"registros": registros}
+        res_all = supabase.table("asistencias").select("*").execute()
+        registros_filtrados = []
+        if res_all.data:
+            for r in res_all.data:
+                if str(r.get("usuario", "")).strip().lower() == u.lower():
+                    registros_filtrados.append(r)
+        return {"registros": registros_filtrados}
     except Exception:
         return {"registros": []}
 
@@ -329,13 +327,10 @@ def admin_datos():
 @app.post("/api/admin/configurar-tarifas-global")
 def configurar_tarifas_global(req: ConfigGlobalRequest):
     try:
-        # Actualizar en la tabla usuarios de Supabase para todos los registros existentes
         res_u = supabase.table("usuarios").select("usuario").execute()
         if res_u.data:
             for u in res_u.data:
                 supabase.table("usuarios").update({"tarifa_hora": req.tarifa_hora}).eq("usuario", u["usuario"]).execute()
-        
-        # También actualizar en el respaldo fijo local si aplica
         for k in PERSONAL_FIJO:
             PERSONAL_FIJO[k]["tarifa_hora"] = req.tarifa_hora
     except Exception as e:
