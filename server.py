@@ -78,7 +78,7 @@ class UserReq(BaseModel):
     usuario: str
     pin: str
     tipo_pago: str = "Horas"
-    monto_fijo: float = 300.0
+    monto_fijo: float = 150.0
     tarifa_hora: float = 1.5
     area: str = "Gestión"
     rol_sistema: str = "trabajador"
@@ -86,6 +86,12 @@ class UserReq(BaseModel):
 class CheckoutReq(BaseModel):
     registro_id: int
     hora_salida: str
+
+class ManualRegReq(BaseModel):
+    usuario: str
+    entrada: str
+    salida: str
+    es_continua: bool = False
 
 @app.get("/")
 def read_root():
@@ -243,6 +249,25 @@ def ajustar_salida(req: CheckoutReq):
             return {"status": "ok", "mensaje": "Hora de salida actualizada"}
     raise HTTPException(status_code=404, detail="Registro no encontrado")
 
+@app.post("/api/admin/registro-manual")
+def registro_manual(req: ManualRegReq):
+    data = load_data()
+    if req.usuario not in data["usuarios"]:
+        raise HTTPException(status_code=404, detail="El trabajador no existe")
+    
+    nuevo_reg = {
+        "id": len(data["asistencias"]) + 1,
+        "usuario": req.usuario,
+        "entrada": req.entrada,
+        "receso_inicio": None,
+        "receso_fin": None,
+        "salida": req.salida,
+        "es_continua": req.es_continua
+    }
+    data["asistencias"].append(nuevo_reg)
+    save_data(data)
+    return {"status": "ok", "mensaje": "Registro manual agregado con éxito"}
+
 @app.get("/api/admin/exportar-excel")
 def exportar_excel():
     data = load_data()
@@ -259,8 +284,8 @@ def exportar_excel():
         for r in principales:
             if r.get("entrada"):
                 fecha = r["entrada"].split(' ')[0]
-                fila_principal[f"{fecha} Entr"] = r["entrada"].split(' ')[1] + " " + r["entrada"].split(' ')[2]
-                fila_principal[f"{fecha} Sal"] = r["salida"].split(' ')[1] + " " + r["salida"].split(' ')[2] if r.get("salida") else ""
+                fila_principal[f"{fecha} Entr"] = r["entrada"]
+                fila_principal[f"{fecha} Sal"] = r["salida"] if r.get("salida") else ""
                 if r.get("salida"):
                     d1 = parse_fh_excel(r["entrada"])
                     d2 = parse_fh_excel(r["salida"])
@@ -270,8 +295,8 @@ def exportar_excel():
         for r in continuas:
             if r.get("entrada"):
                 fecha = r["entrada"].split(' ')[0]
-                fila_continua[f"{fecha} Entr"] = r["entrada"].split(' ')[1] + " " + r["entrada"].split(' ')[2]
-                fila_continua[f"{fecha} Sal"] = r["salida"].split(' ')[1] + " " + r["salida"].split(' ')[2] if r.get("salida") else ""
+                fila_continua[f"{fecha} Entr"] = r["entrada"]
+                fila_continua[f"{fecha} Sal"] = r["salida"] if r.get("salida") else ""
                 if r.get("salida"):
                     d1 = parse_fh_excel(r["entrada"])
                     d2 = parse_fh_excel(r["salida"])
@@ -288,7 +313,7 @@ def exportar_excel():
         "Area": info.get("area"), "Rol_Sistema": info.get("rol_sistema")
     } for u, info in data["usuarios"].items()])
 
-    df_asistencias = pd.DataFrame(data["asistencias"] if data["asistencias"] else [{"id": "", "usuario": "", "entrada": "", "receso_inicio": "", "receso_fin": "", "salida": ""}])
+    df_asistencias = pd.DataFrame(data["asistencias"] if data["asistencias"] else [{"id": "", "usuario": "", "entrada": "", "receso_inicio": "", "receso_fin": "", "salida": "", "es_continua": False}])
 
     file_path = "respaldo_nomina.xlsx"
     with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
@@ -315,7 +340,7 @@ async def importar_excel(file: UploadFile = File(...)):
             usuarios_dict[u_name] = {
                 "pin": str(row["PIN"]),
                 "tipo_pago": str(row["Tipo_Pago"]),
-                "monto_fijo": float(row["Monto_Fijo"]) if pd.notna(row["Monto_Fijo"]) else 300.0,
+                "monto_fijo": float(row["Monto_Fijo"]) if pd.notna(row["Monto_Fijo"]) else 150.0,
                 "tarifa_hora": float(row["Tarifa_Hora"]) if pd.notna(row["Tarifa_Hora"]) else 1.5,
                 "area": str(row["Area"]) if pd.notna(row["Area"]) else "General",
                 "rol_sistema": str(row["Rol_Sistema"]) if pd.notna(row["Rol_Sistema"]) else "trabajador"
