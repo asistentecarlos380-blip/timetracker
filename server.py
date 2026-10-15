@@ -220,12 +220,9 @@ def ajustar_salida(req: CheckoutReq):
             return {"status": "ok", "mensaje": "Hora de salida actualizada"}
     raise HTTPException(status_code=404, detail="Registro no encontrado")
 
-# EXPORTAR EN EXCEL (.xlsx) CON DOS HOJAS (Usuarios y Asistencias)
 @app.get("/api/admin/exportar-excel")
 def exportar_excel():
     data = load_data()
-    
-    # Preparar tabla de usuarios
     usuarios_list = []
     for u, info in data["usuarios"].items():
         usuarios_list.append({
@@ -239,7 +236,6 @@ def exportar_excel():
         })
     df_usuarios = pd.DataFrame(usuarios_list)
 
-    # Preparar tabla de asistencias
     asistencias_list = data["asistencias"] if data["asistencias"] else [{"id": "", "usuario": "", "entrada": "", "receso_inicio": "", "receso_fin": "", "salida": ""}]
     df_asistencias = pd.DataFrame(asistencias_list)
 
@@ -250,7 +246,6 @@ def exportar_excel():
 
     return FileResponse(file_path, filename=f"Respaldo_Nomina_{datetime.now().strftime('%Y-%m-%d')}.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-# IMPORTAR DESDE EXCEL (.xlsx)
 @app.post("/api/admin/importar-excel")
 async def importar_excel(file: UploadFile = File(...)):
     try:
@@ -259,7 +254,6 @@ async def importar_excel(file: UploadFile = File(...)):
         with open(temp_path, "wb") as f:
             f.write(contents)
 
-        # Leer hojas del Excel
         df_usuarios = pd.read_excel(temp_path, sheet_name="Usuarios")
         df_asistencias = pd.read_excel(temp_path, sheet_name="Asistencias")
 
