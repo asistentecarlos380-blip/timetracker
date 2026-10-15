@@ -14,7 +14,7 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 PERSONAL_FIJO = {
-    "ADMIN": {"usuario": "ADMIN", "pin": "1234", "rol_sistema": "admin", "tipo_pago": "Fijo", "monto_fijo": 300.0, "tarifa_hora": 0.0, "area": "Gerencia"},
+    "ADMIN": {"usuario": "ADMIN", "pin": "1234", "rol_sistema": "admin", "tipo_pago": "Fijo", "monto_fijo": 300.0, "tarifa_hora": 1.5, "area": "Gerencia"},
     "Ricardo": {"usuario": "Ricardo", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
     "Ronald": {"usuario": "Ronald", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
     "Lisander": {"usuario": "Lisander", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
@@ -23,7 +23,7 @@ PERSONAL_FIJO = {
     "Brayan": {"usuario": "Brayan", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
     "Gerson": {"usuario": "Gerson", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
     "Matias": {"usuario": "Matias", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
-    "Planta": {"usuario": "Planta", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Gasolina", "monto_fijo": 0.0, "tarifa_hora": 0.0, "area": "Operaciones"}
+    "Planta": {"usuario": "Planta", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Gasolina", "monto_fijo": 0.0, "tarifa_hora": 0.5, "area": "Operaciones"}
 }
 
 HISTORIAL_INICIAL = [
@@ -91,9 +91,85 @@ def leer_raiz():
     if os.path.exists("index.html"):
         with open("index.html", "r", encoding="utf-8") as f:
             content = f.read()
-            footer_v = '<div style="text-align:center; padding:15px; color:#64748b; font-size:13px; font-family:monospace;">Control de Asistencia — v1.1.0 (Stable)</div></body>'
+            
+            # Inyectar botón de tuerca en el panel admin y modal de configuración global + parche para /api/mis-horas en el frontend
+            patch_ui = """
+            <script>
+            document.addEventListener("DOMContentLoaded", () => {
+                // 1. Inyectar botón de configuración global (tuerca) en la barra superior del admin
+                const headerActions = document.querySelector('header') || document.querySelector('.flex.justify-between') || document.querySelector('#panel-admin');
+                if (headerActions && !document.getElementById('btn-config-global')) {
+                    const btnConfig = document.createElement('button');
+                    btnConfig.id = 'btn-config-global';
+                    btnConfig.className = 'bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-2 shadow transition ml-2';
+                    btnConfig.innerHTML = '<i class="fas fa-cog"></i> Configurar Tarifas';
+                    btnConfig.onclick = abrirModalConfigGlobal;
+                    
+                    // Buscar dónde insertar junto a Exportar Excel o Cerrar Sesión
+                    const btnExcel = document.querySelector('button:has(.fa-file-excel)') || document.querySelector('#exportar-excel') || headerActions.querySelector('button');
+                    if (btnExcel && btnExcel.parentNode) {
+                        btnExcel.parentNode.insertBefore(btnConfig, btnExcel.nextSibling);
+                    }
+                }
+            });
+
+            function abrirModalConfigGlobal() {
+                let modal = document.getElementById('modal-config-global');
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.id = 'modal-config-global';
+                    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4';
+                    modal.innerHTML = `
+                        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-6 text-white shadow-2xl">
+                            <h3 class="text-lg font-bold mb-4 flex items-center gap-2 text-emerald-400">
+                                <i class="fas fa-sliders-h"></i> Configuración Global de Tarifas
+                            </h3>
+                            <p class="text-sm text-slate-400 mb-4">
+                                Actualiza la tarifa por hora para <b>todo el personal al mismo tiempo</b>. Podrás seguir editando la tarifa individual de cada trabajador en su respectivo botón de edición.
+                            </p>
+                            <div class="mb-4">
+                                <label class="block text-xs uppercase font-bold text-slate-400 mb-1">Nueva Tarifa General ($ / hora)</label>
+                                <input type="number" step="0.1" id="input-tarifa-global" value="1.5" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white">
+                            </div>
+                            <div class="flex justify-end gap-3 mt-6">
+                                <button onclick="document.getElementById('modal-config-global').remove()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm">Cancelar</button>
+                                <button onclick="guardarTarifaGlobal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold">Aplicar a Todos</button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(modal);
+                }
+            }
+
+            async function guardarTarifaGlobal() {
+                const nuevaTarifa = parseFloat(document.getElementById('input-tarifa-global').value);
+                if (isNaN(nuevaTarifa) || nuevaTarifa < 0) {
+                    alert("Por favor ingresa una tarifa válida.");
+                    return;
+                }
+                try {
+                    const res = await fetch('/api/admin/configurar-tarifas-global', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ tarifa_hora: nuevaTarifa })
+                    });
+                    if (res.ok) {
+                        alert("¡Tarifa global aplicada con éxito a todo el personal!");
+                        document.getElementById('modal-config-global').remove();
+                        location.reload();
+                    } else {
+                        alert("Hubo un error al actualizar las tarifas.");
+                    }
+                } catch(e) {
+                    alert("Error de conexión: " + e);
+                }
+            }
+            </script>
+            """
+            
+            footer_v = '<div style="text-align:center; padding:15px; color:#64748b; font-size:13px; font-family:monospace;">Control de Asistencia — v1.2.0 (Stable)</div></body>'
             if "</body>" in content:
-                content = content.replace("</body>", footer_v)
+                content = content.replace("</body>", patch_ui + footer_v)
             return content
     return "<h1>Error: index.html no encontrado.</h1>"
 
@@ -126,6 +202,9 @@ class CambiarPinRequest(BaseModel):
     usuario: str
     pin_actual: str
     pin_nuevo: str
+
+class ConfigGlobalRequest(BaseModel):
+    tarifa_hora: float
 
 @app.post("/api/login")
 def login(req: LoginRequest):
@@ -164,14 +243,15 @@ def mis_horas(req: LoginRequest):
         except Exception:
             return {"registros": []}
             
-    # Para los trabajadores, buscar de forma flexible por nombre (insensible a mayúsculas)
-    u_real = "ADMIN" if u.lower() == "admin" else u.capitalize()
+    # Búsqueda robusta para el trabajador (sin distinción de mayúsculas y abarcando variaciones)
     try:
-        res_a = supabase.table("asistencias").select("*").ilike("usuario", u_real).execute()
-        # Si por alguna razón no trae datos con el capitalizado exacto, intentamos con el texto original del request
-        if not res_a.data:
-            res_a = supabase.table("asistencias").select("*").ilike("usuario", u).execute()
-        return {"registros": res_a.data if res_a.data else []}
+        res_a = supabase.table("asistencias").select("*").ilike("usuario", u).execute()
+        registros = res_a.data if res_a.data else []
+        if not registros:
+            res_a2 = supabase.table("asistencias").select("*").execute()
+            if res_a2.data:
+                registros = [r for r in res_a2.data if str(r.get("usuario", "")).strip().lower() == u.lower()]
+        return {"registros": registros}
     except Exception:
         return {"registros": []}
 
@@ -245,6 +325,22 @@ def admin_datos():
         asistencias_list = HISTORIAL_INICIAL
 
     return {"usuarios": usuarios_dict, "asistencias": asistencias_list}
+
+@app.post("/api/admin/configurar-tarifas-global")
+def configurar_tarifas_global(req: ConfigGlobalRequest):
+    try:
+        # Actualizar en la tabla usuarios de Supabase para todos los registros existentes
+        res_u = supabase.table("usuarios").select("usuario").execute()
+        if res_u.data:
+            for u in res_u.data:
+                supabase.table("usuarios").update({"tarifa_hora": req.tarifa_hora}).eq("usuario", u["usuario"]).execute()
+        
+        # También actualizar en el respaldo fijo local si aplica
+        for k in PERSONAL_FIJO:
+            PERSONAL_FIJO[k]["tarifa_hora"] = req.tarifa_hora
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"mensaje": "Tarifa global actualizada con éxito"}
 
 @app.post("/api/admin/registro-manual")
 def admin_registro_manual(req: RegistroManualRequest):
