@@ -60,7 +60,7 @@
 
     <!-- WORKER DASHBOARD -->
     <div id="worker-dashboard" class="hidden flex-grow flex flex-col p-4 max-w-4xl mx-auto w-full z-10">
-        <header class="glass-panel p-4 rounded-xl flex justify-between items-center mb-6 shadow-md">
+        <header class="glass-panel p-4 rounded-xl flex justify-between items-center mb-4 shadow-md">
             <div>
                 <h1 class="text-lg font-bold text-emerald-400" id="worker-title">Panel de Trabajador</h1>
                 <p class="text-xs text-slate-400">Control personal de turnos y recesos</p>
@@ -68,30 +68,46 @@
             <button onclick="cerrarSesion()" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-red-500/30">Cerrar Sesión</button>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <button id="btn-accion-turno" onclick="ejecutarAccionMarcar()" class="bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2">
-                <i id="icon-accion-turno" class="fa-solid fa-play text-xl"></i>
-                <span id="text-accion-turno">Iniciar Turno</span>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            <button id="btn-accion-turno" onclick="ejecutarAccionMarcar()" class="bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1">
+                <i id="icon-accion-turno" class="fa-solid fa-play text-lg"></i>
+                <span id="text-accion-turno" class="text-xs">Iniciar Turno</span>
             </button>
-            <button id="btn-receso" onclick="ejecutarReceso()" class="bg-amber-600 hover:bg-amber-500 text-white p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2">
-                <i class="fa-solid fa-mug-hot text-xl"></i>
-                <span id="text-receso">Pausar / Receso</span>
+            <button id="btn-receso" onclick="ejecutarReceso()" class="bg-amber-600 hover:bg-amber-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1">
+                <i class="fa-solid fa-mug-hot text-lg"></i>
+                <span class="text-xs">Pausar / Receso</span>
             </button>
-            <button onclick="cargarPanelTrabajador()" class="glass-panel hover:bg-slate-800 text-slate-200 p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2">
-                <i class="fa-solid fa-rotate text-xl text-emerald-400"></i>
-                <span>Actualizar Datos</span>
+            <button onclick="cargarPanelTrabajador()" class="glass-panel hover:bg-slate-800 text-slate-200 p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1">
+                <i class="fa-solid fa-rotate text-lg text-emerald-400"></i>
+                <span class="text-xs">Actualizar Datos</span>
             </button>
         </div>
 
-        <div class="glass-panel rounded-xl p-4 flex-grow shadow-md overflow-x-auto">
-            <h2 class="text-sm font-semibold mb-3 text-slate-300">Tus Registros y Horas (Quincenal / 14 días)</h2>
+        <!-- APARTADO COMPACTO DE RANGO DE FECHAS Y TOTAL DE HORAS -->
+        <div class="glass-panel p-3 rounded-xl mb-4 shadow-md flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-semibold text-emerald-400"><i class="fa-solid fa-calculator mr-1"></i>Rango (14 días):</span>
+                <input type="date" id="worker-desde" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200">
+                <span class="text-slate-400">a</span>
+                <input type="date" id="worker-hasta" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200">
+                <button onclick="calcularHorasWorker()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded font-medium transition">Calcular</button>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-700 px-3 py-1.5 rounded-lg">
+                <span class="text-slate-400">Total Período:</span> <strong id="worker-total-horas-rango" class="text-emerald-400 text-sm">0.00 hrs</strong>
+            </div>
+        </div>
+
+        <!-- TABLA COMPACTA (UNA LÍNEA POR DÍA) -->
+        <div class="glass-panel rounded-xl p-3 flex-grow shadow-md overflow-x-auto max-h-[380px]">
+            <h2 class="text-xs font-semibold mb-2 text-slate-300">Resumen Diario Consolidado</h2>
             <table class="w-full text-left text-xs">
                 <thead>
                     <tr class="border-b border-slate-700/60 text-slate-400">
-                        <th class="pb-2">Fecha (Día)</th>
-                        <th class="pb-2">Entrada</th>
-                        <th class="pb-2">Salida</th>
-                        <th class="pb-2 text-right">Horas Trabajadas</th>
+                        <th class="py-1.5">Fecha</th>
+                        <th class="py-1.5">Primera Entrada</th>
+                        <th class="py-1.5">Última Salida</th>
+                        <th class="py-1.5 text-right">Total Horas Día</th>
+                        <th class="py-1.5 text-right">Acción</th>
                     </tr>
                 </thead>
                 <tbody id="tabla-mis-horas" class="divide-y divide-slate-700/40">
@@ -101,9 +117,37 @@
         </div>
     </div>
 
+    <!-- MODAL DETALLES DEL DÍA -->
+    <div id="modal-detalles" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+        <div class="glass-panel p-5 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-700 text-xs">
+            <div class="flex justify-between items-center mb-3">
+                <h3 id="modal-detalles-titulo" class="font-bold text-emerald-400 text-sm">Detalles del Turno</h3>
+                <button onclick="cerrarModalDetalles()" class="text-slate-400 hover:text-white font-bold text-sm"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="overflow-x-auto max-h-64">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-slate-400">
+                            <th class="py-1">Tramo</th>
+                            <th class="py-1">Entrada</th>
+                            <th class="py-1">Salida</th>
+                            <th class="py-1 text-right">Horas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-modal-detalles" class="divide-y divide-slate-700/40">
+                        <!-- Dinámico -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4 text-right">
+                <button onclick="cerrarModalDetalles()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-1.5 rounded transition">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ADMIN DASHBOARD -->
     <div id="admin-dashboard" class="hidden flex-grow flex flex-col p-4 max-w-7xl mx-auto w-full z-10">
-        <header class="glass-panel p-4 rounded-xl flex justify-between items-center mb-6 shadow-md">
+        <header class="glass-panel p-4 rounded-xl flex justify-between items-center mb-4 shadow-md">
             <div>
                 <h1 class="text-lg font-bold text-emerald-400">Control de Asistencia</h1>
                 <p class="text-xs text-slate-400">Panel de Administración y Gestión Completa</p>
@@ -124,56 +168,55 @@
         </header>
 
         <!-- SECCIÓN RESUMEN POR RANGO DE FECHAS -->
-        <div class="glass-panel p-5 rounded-xl shadow-md mb-6">
-            <h2 class="text-sm font-semibold text-slate-200 mb-3"><i class="fa-solid fa-calendar-days text-emerald-400 mr-2"></i>Resumen de Horas y Cálculo de Nómina (Quincenal / 14 días)</h2>
-            <div class="flex flex-wrap items-end gap-3 mb-4 text-xs">
+        <div class="glass-panel p-4 rounded-xl shadow-md mb-4">
+            <h2 class="text-xs font-semibold text-slate-200 mb-2"><i class="fa-solid fa-calendar-days text-emerald-400 mr-1"></i>Resumen de Horas y Cálculo de Nómina (Quincenal / 14 días)</h2>
+            <div class="flex flex-wrap items-end gap-3 mb-3 text-xs">
                 <div>
                     <label class="block text-slate-400 mb-1">Desde (Fecha inicio):</label>
-                    <input type="date" id="filtro-fecha-desde" class="bg-slate-900/90 border border-slate-700 rounded-lg px-3 py-2 text-slate-100">
+                    <input type="date" id="filtro-fecha-desde" class="bg-slate-900/90 border border-slate-700 rounded px-2 py-1 text-slate-100">
                 </div>
                 <div>
                     <label class="block text-slate-400 mb-1">Hasta (Fecha fin):</label>
-                    <input type="date" id="filtro-fecha-hasta" class="bg-slate-900/90 border border-slate-700 rounded-lg px-3 py-2 text-slate-100">
+                    <input type="date" id="filtro-fecha-hasta" class="bg-slate-900/90 border border-slate-700 rounded px-2 py-1 text-slate-100">
                 </div>
-                <button onclick="calcularResumenFechas()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium transition shadow">
+                <button onclick="calcularResumenFechas()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded font-medium transition shadow">
                     <i class="fa-solid fa-calculator mr-1"></i> Calcular Horas
                 </button>
             </div>
-            <div class="overflow-x-auto max-h-64">
+            <div class="overflow-x-auto max-h-52">
                 <table class="w-full text-left text-xs">
                     <thead>
                         <tr class="border-b border-slate-700/60 text-slate-400">
-                            <th class="pb-2">Trabajador</th>
-                            <th class="pb-2">Tipo Pago</th>
-                            <th class="pb-2">Horas Totales</th>
-                            <th class="pb-2">Tarifa / Monto</th>
-                            <th class="pb-2 text-right">Total a Pagar</th>
+                            <th class="py-1">Trabajador</th>
+                            <th class="py-1">Tipo Pago</th>
+                            <th class="py-1">Horas Totales</th>
+                            <th class="py-1">Tarifa / Monto</th>
+                            <th class="py-1 text-right">Total a Pagar</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-resumen-fechas" class="divide-y divide-slate-700/40">
-                        <tr><td colspan="5" class="py-4 text-center text-slate-500">Selecciona las fechas y presiona 'Calcular Horas'.</td></tr>
+                        <tr><td colspan="5" class="py-3 text-center text-slate-500">Selecciona las fechas y presiona 'Calcular Horas'.</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <!-- Personal Registrado -->
-            <div class="glass-panel p-5 rounded-xl shadow-md">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-sm font-semibold text-slate-200">Personal Registrado y Tarifas</h2>
-                    <button onclick="abrirModalUsuario()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">+ Nuevo Usuario</button>
+            <div class="glass-panel p-4 rounded-xl shadow-md">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-xs font-semibold text-slate-200">Personal Registrado y Tarifas</h2>
+                    <button onclick="abrirModalUsuario()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded text-xs transition">+ Nuevo</button>
                 </div>
-                <div class="overflow-x-auto max-h-96">
+                <div class="overflow-x-auto max-h-64">
                     <table class="w-full text-left text-xs">
                         <thead>
                             <tr class="border-b border-slate-700/60 text-slate-400">
-                                <th class="pb-2">Usuario</th>
-                                <th class="pb-2">PIN</th>
-                                <th class="pb-2">Tipo Pago</th>
-                                <th class="pb-2">Monto / Tarifa</th>
-                                <th class="pb-2">Área</th>
-                                <th class="pb-2 text-right">Acciones</th>
+                                <th class="py-1">Usuario</th>
+                                <th class="py-1">PIN</th>
+                                <th class="py-1">Pago</th>
+                                <th class="py-1">Monto / Tarifa</th>
+                                <th class="py-1 text-right">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="tabla-usuarios" class="divide-y divide-slate-700/40">
@@ -184,20 +227,20 @@
             </div>
 
             <!-- Registro de Asistencias -->
-            <div class="glass-panel p-5 rounded-xl shadow-md flex flex-col">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-sm font-semibold text-slate-200">Asistencias en Tiempo Real</h2>
+            <div class="glass-panel p-4 rounded-xl shadow-md flex flex-col">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-xs font-semibold text-slate-200">Asistencias en Tiempo Real</h2>
                     <button onclick="cargarAdminDatos()" class="text-xs text-emerald-400 hover:underline"><i class="fa-solid fa-rotate mr-1"></i> Actualizar</button>
                 </div>
-                <div class="overflow-x-auto max-h-96 flex-grow">
+                <div class="overflow-x-auto max-h-64 flex-grow">
                     <table class="w-full text-left text-xs">
                         <thead>
                             <tr class="border-b border-slate-700/60 text-slate-400">
-                                <th class="pb-2">Usuario</th>
-                                <th class="pb-2">Entrada</th>
-                                <th class="pb-2">Receso / Estado</th>
-                                <th class="pb-2">Salida</th>
-                                <th class="pb-2 text-right">Acción</th>
+                                <th class="py-1">Usuario</th>
+                                <th class="py-1">Entrada</th>
+                                <th class="py-1">Estado</th>
+                                <th class="py-1">Salida</th>
+                                <th class="py-1 text-right">Acción</th>
                             </tr>
                         </thead>
                         <tbody id="tabla-asistencias-admin" class="divide-y divide-slate-700/40">
@@ -296,7 +339,6 @@
 
     <!-- SCRIPT DE CONTROL Y MATRIX -->
     <script>
-        // ANIMACIÓN MATRIX BACKGROUND
         const canvas = document.getElementById('matrix-bg');
         const ctx = canvas.getContext('2d');
 
@@ -319,7 +361,7 @@
             ctx.fillStyle = 'rgba(9, 13, 22, 0.08)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.fillStyle = '#10b981'; // Color verde esmeralda hacker
+            ctx.fillStyle = '#10b981';
             ctx.font = fontSize + 'px monospace';
 
             for (let i = 0; i < drops.length; i++) {
@@ -334,10 +376,10 @@
         }
         setInterval(drawMatrix, 35);
 
-        // LÓGICA DE LA APLICACIÓN
         let currentUser = null;
         let sessionTimer = null;
         let globalAdminData = null;
+        let registrosGlobalesTrabajador = [];
 
         function togglePass(inputId, iconId) {
             const input = document.getElementById(inputId);
@@ -513,13 +555,8 @@
                 });
                 const data = await res.json();
                 if(res.ok) {
-                    const tbody = document.getElementById('tabla-mis-horas');
-                    tbody.innerHTML = '';
-                    
-                    if(data.registros.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-500">No hay registros de horas aún.</td></tr>`;
-                        return;
-                    }
+                    registrosGlobalesTrabajador = data.registros;
+                    renderizarTablaConsolidada(registrosGlobalesTrabajador);
 
                     let tieneTurnoActivo = false;
                     let estaEnReceso = false;
@@ -531,25 +568,6 @@
                                 estaEnReceso = true;
                             }
                         }
-
-                        let dEntrada = parseFechaHora(r.entrada);
-                        let dSalida = parseFechaHora(r.salida);
-                        let hrs = 0;
-                        if(dEntrada && dSalida) {
-                            hrs = Math.max(0, (dSalida - dEntrada) / (1000 * 60 * 60));
-                        }
-                        let tipoLabel = r.es_continua ? '<span class="text-amber-400 text-[10px] ml-1">(Continúa)</span>' : '';
-                        let salidaTexto = r.salida ? r.salida : '<span class="text-emerald-400 font-semibold animate-pulse">En Curso</span>';
-                        let horasTexto = r.salida ? `${hrs.toFixed(2)} hrs` : '-';
-
-                        tbody.innerHTML += `
-                            <tr class="border-b border-slate-700/35">
-                                <td class="py-2.5 font-medium">${r.entrada.split(' ')[0]} ${tipoLabel}</td>
-                                <td class="py-2.5 text-slate-300">${r.entrada}</td>
-                                <td class="py-2.5 text-slate-300">${salidaTexto}</td>
-                                <td class="py-2.5 text-right text-emerald-300 font-bold">${horasTexto}</td>
-                            </tr>
-                        `;
                     });
 
                     const btnTurno = document.getElementById('btn-accion-turno');
@@ -557,20 +575,126 @@
                     const textTurno = document.getElementById('text-accion-turno');
 
                     if(!tieneTurnoActivo) {
-                        btnTurno.className = "bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2";
-                        iconTurno.className = "fa-solid fa-play text-xl";
+                        btnTurno.className = "bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1";
+                        iconTurno.className = "fa-solid fa-play text-lg";
                         textTurno.textContent = "Iniciar Turno";
                     } else if(estaEnReceso) {
-                        btnTurno.className = "bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2 animate-pulse";
-                        iconTurno.className = "fa-solid fa-forward text-xl";
+                        btnTurno.className = "bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1 animate-pulse";
+                        iconTurno.className = "fa-solid fa-forward text-lg";
                         textTurno.textContent = "Continuar Turno";
                     } else {
-                        btnTurno.className = "bg-red-600 hover:bg-red-500 text-white p-4 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-2";
-                        iconTurno.className = "fa-solid fa-stop text-xl";
+                        btnTurno.className = "bg-red-600 hover:bg-red-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1";
+                        iconTurno.className = "fa-solid fa-stop text-lg";
                         textTurno.textContent = "Finalizar Turno";
                     }
                 }
             } catch(err) {}
+        }
+
+        function renderizarTablaConsolidada(registros) {
+            const tbody = document.getElementById('tabla-mis-horas');
+            tbody.innerHTML = '';
+            
+            if(registros.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-500">No hay registros de horas aún.</td></tr>`;
+                return;
+            }
+
+            // Agrupar registros por fecha
+            let porFecha = {};
+            registros.forEach(r => {
+                let fecha = r.entrada.split(' ')[0];
+                if(!porFecha[fecha]) porFecha[fecha] = [];
+                porFecha[fecha].push(r);
+            });
+
+            for(let [fecha, regs] of Object.entries(porFecha)) {
+                let primeraEntrada = regs[0].entrada;
+                let ultimaSalida = regs[regs.length - 1].salida;
+                let totalHorasDia = 0;
+                let enCurso = false;
+
+                regs.forEach(r => {
+                    let dE = parseFechaHora(r.entrada);
+                    let dS = parseFechaHora(r.salida);
+                    if(dE && dS) {
+                        totalHorasDia += Math.max(0, (dS - dE) / (1000 * 60 * 60));
+                    } else if(!r.salida) {
+                        enCurso = true;
+                    }
+                });
+
+                let salidaTexto = enCurso ? '<span class="text-emerald-400 font-semibold animate-pulse">En Curso</span>' : ultimaSalida;
+                let horasTexto = enCurso && totalHorasDia === 0 ? '-' : `${totalHorasDia.toFixed(2)} hrs`;
+
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-700/35 hover:bg-slate-800/40">
+                        <td class="py-2 font-medium">${fecha}</td>
+                        <td class="py-2 text-slate-300">${primeraEntrada}</td>
+                        <td class="py-2 text-slate-300">${salidaTexto}</td>
+                        <td class="py-2 text-right text-emerald-300 font-bold">${horasTexto}</td>
+                        <td class="py-2 text-right">
+                            <button onclick='abrirDetallesDia("${fecha}", ${JSON.stringify(regs)})' class="bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white px-2 py-1 rounded text-[11px] transition">Ver Detalles</button>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function abrirDetallesDia(fecha, regs) {
+            document.getElementById('modal-detalles-titulo').textContent = `Detalles de Turnos - ${fecha}`;
+            const tbody = document.getElementById('tabla-modal-detalles');
+            tbody.innerHTML = '';
+
+            regs.forEach((r, idx) => {
+                let dE = parseFechaHora(r.entrada);
+                let dS = parseFechaHora(r.salida);
+                let hrs = 0;
+                if(dE && dS) hrs = Math.max(0, (dS - dE) / (1000 * 60 * 60));
+
+                let tramoNombre = r.es_continua ? `Tramo ${idx+1} (Continúa)` : `Tramo ${idx+1}`;
+                let salidaTxt = r.salida ? r.salida : '<span class="text-emerald-400">En Curso</span>';
+                let hrsTxt = r.salida ? `${hrs.toFixed(2)} hrs` : '-';
+
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-700/40">
+                        <td class="py-1.5 font-medium text-indigo-300">${tramoNombre}</td>
+                        <td class="py-1.5 text-slate-300">${r.entrada}</td>
+                        <td class="py-1.5 text-slate-300">${salidaTxt}</td>
+                        <td class="py-1.5 text-right font-bold text-emerald-300">${hrsTxt}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('modal-detalles').classList.remove('hidden');
+        }
+
+        function cerrarModalDetalles() {
+            document.getElementById('modal-detalles').classList.add('hidden');
+        }
+
+        function calcularHorasWorker() {
+            const desde = document.getElementById('worker-desde').value;
+            const hasta = document.getElementById('worker-hasta').value;
+
+            if(!desde || !hasta) {
+                alert("Selecciona el rango de fechas (Desde y Hasta).");
+                return;
+            }
+
+            let dDesde = new Date(desde + "T00:00:00");
+            let dHasta = new Date(hasta + "T23:59:59");
+            let total = 0;
+
+            registrosGlobalesTrabajador.forEach(r => {
+                let dE = parseFechaHora(r.entrada);
+                let dS = parseFechaHora(r.salida);
+                if(dE && dE >= dDesde && dE <= dHasta && dS) {
+                    total += Math.max(0, (dS - dE) / (1000 * 60 * 60));
+                }
+            });
+
+            document.getElementById('worker-total-horas-rango').textContent = `${total.toFixed(2)} hrs`;
         }
 
         async function cargarAdminDatos() {
@@ -586,15 +710,14 @@
                         i++;
                         tU.innerHTML += `
                             <tr class="border-b border-slate-700/30">
-                                <td class="py-2 font-medium">${u}</td>
-                                <td class="py-2 text-slate-400">
+                                <td class="py-1.5 font-medium">${u}</td>
+                                <td class="py-1.5 text-slate-400">
                                     <span id="pin-text-${i}">••••</span>
                                     <button onclick="togglePinTabla('${info.pin}', 'pin-text-${i}')" class="ml-2 text-emerald-400 hover:text-white"><i class="fa-solid fa-eye text-[10px]"></i></button>
                                 </td>
-                                <td class="py-2 capitalize">${info.tipo_pago}</td>
-                                <td class="py-2">${info.monto_fijo}</td>
-                                <td class="py-2">${info.area}</td>
-                                <td class="py-2 text-right">
+                                <td class="py-1.5 capitalize">${info.tipo_pago}</td>
+                                <td class="py-1.5">${info.monto_fijo}</td>
+                                <td class="py-1.5 text-right">
                                     <button onclick="editarUsuario('${u}', '${info.pin}', '${info.tipo_pago}', '${info.monto_fijo}', '${info.tarifa_hora}', '${info.area}', '${info.rol_sistema}')" class="text-emerald-400 hover:underline mr-2">Editar</button>
                                     <button onclick="eliminarUsuario('${u}')" class="text-red-400 hover:underline">Borrar</button>
                                 </td>
@@ -606,17 +729,17 @@
                     tA.innerHTML = '';
                     data.asistencias.slice().reverse().forEach(r => {
                         let estadoReceso = 'Sin receso';
-                        if(r.receso_inicio && !r.receso_fin) estadoReceso = '<span class="text-amber-400 font-semibold">En Receso (Pausado)</span>';
-                        else if(r.receso_fin) estadoReceso = '<span class="text-emerald-400">Receso Completado</span>';
+                        if(r.receso_inicio && !r.receso_fin) estadoReceso = '<span class="text-amber-400 font-semibold">En Receso</span>';
+                        else if(r.receso_fin) estadoReceso = '<span class="text-emerald-400">Completado</span>';
 
                         tA.innerHTML += `
                             <tr class="border-b border-slate-700/30">
-                                <td class="py-2 font-medium">${r.usuario} ${r.es_continua ? '(Cont.)' : ''}</td>
-                                <td class="py-2 text-slate-300">${r.entrada}</td>
-                                <td class="py-2">${estadoReceso}</td>
-                                <td class="py-2 text-slate-300">${r.salida || '<span class="text-emerald-400 font-semibold animate-pulse">En Línea / Activo</span>'}</td>
-                                <td class="py-2 text-right">
-                                    ${!r.salida ? `<button onclick="forzarSalida(${r.id})" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-2 py-1 rounded text-[10px] transition">Finalizar</button>` : '-'}
+                                <td class="py-1.5 font-medium">${r.usuario} ${r.es_continua ? '(Cont.)' : ''}</td>
+                                <td class="py-1.5 text-slate-300">${r.entrada}</td>
+                                <td class="py-1.5">${estadoReceso}</td>
+                                <td class="py-1.5 text-slate-300">${r.salida || '<span class="text-emerald-400 font-semibold animate-pulse">Activo</span>'}</td>
+                                <td class="py-1.5 text-right">
+                                    ${!r.salida ? `<button onclick="forzarSalida(${r.id})" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-2 py-0.5 rounded text-[10px] transition">Finalizar</button>` : '-'}
                                 </td>
                             </tr>
                         `;
@@ -684,11 +807,11 @@
 
                 tR.innerHTML += `
                     <tr class="border-b border-slate-700/30">
-                        <td class="py-2 font-medium">${u}</td>
-                        <td class="py-2 capitalize">${info.tipo_pago}</td>
-                        <td class="py-2 text-emerald-300 font-semibold">${info.horas.toFixed(2)} hrs</td>
-                        <td class="py-2">$${valorTarifa}</td>
-                        <td class="py-2 text-right text-emerald-400 font-bold">$${totalPagar.toFixed(2)}</td>
+                        <td class="py-1.5 font-medium">${u}</td>
+                        <td class="py-1.5 capitalize">${info.tipo_pago}</td>
+                        <td class="py-1.5 text-emerald-300 font-semibold">${info.horas.toFixed(2)} hrs</td>
+                        <td class="py-1.5">$${valorTarifa}</td>
+                        <td class="py-1.5 text-right text-emerald-400 font-bold">$${totalPagar.toFixed(2)}</td>
                     </tr>
                 `;
             }
