@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import os
 import json
@@ -112,7 +112,7 @@ def marcar(req: LoginReq):
                 reg["receso_fin"] = ahora
             reg["salida"] = ahora
             save_data(data)
-            return {"status": "salida", "mensaje": f"Salida registrada a las {ahora}"}
+            return {"status": "salida", "mensaje": f"Turno finalizado (Salida) a las {ahora}"}
 
     nuevo_reg = {
         "id": len(data["asistencias"]) + 1,
@@ -124,7 +124,7 @@ def marcar(req: LoginReq):
     }
     data["asistencias"].append(nuevo_reg)
     save_data(data)
-    return {"status": "entrada", "mensaje": f"Registro iniciado a las {ahora}"}
+    return {"status": "entrada", "mensaje": f"Turno iniciado (Entrada) a las {ahora}"}
 
 @app.post("/api/receso")
 def gestionar_receso(req: LoginReq):
@@ -153,7 +153,7 @@ def gestionar_receso(req: LoginReq):
                 save_data(data)
                 return {"status": "receso_fin", "mensaje": f"Receso finalizado a las {ahora}"}
             else:
-                raise HTTPException(status_code=400, detail="Ya registraste un receso")
+                raise HTTPException(status_code=400, detail="Ya registraste un receso en este turno")
 
     raise HTTPException(status_code=400, detail="No tienes un turno activo abierto")
 
@@ -219,7 +219,6 @@ def ajustar_salida(req: CheckoutReq):
             return {"status": "ok", "mensaje": "Hora de salida actualizada"}
     raise HTTPException(status_code=404, detail="Registro no encontrado")
 
-# API Admin: Importar Base de Datos completa
 @app.post("/api/admin/importar")
 def importar_datos(nuevo_estado: dict):
     if "usuarios" not in nuevo_estado or "asistencias" not in nuevo_estado:
