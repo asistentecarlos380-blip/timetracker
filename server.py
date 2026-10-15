@@ -8,9 +8,9 @@ from supabase import create_client, Client
 
 app = FastAPI()
 
-# --- CREDENCIALES CON CLAVE SECRETA (BYPASS RLS) ---
+# --- CREDENCIALES LIMPIAS ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://dvpfynkqtjwkvmcndael.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_secret_BUbMHoBdfhr3JRrl8TV61Q_z82Og3IY")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2cGZ5bmtxdGp3a3ZtY25kYWVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwODM1MDcsImV4cCI6MjEwNzY1OTUwN30.7gjZWE3AbR1ta8grbzr-Xpdd5vugYm0KSFJ54giI89Y")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
