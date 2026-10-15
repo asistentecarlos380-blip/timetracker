@@ -13,6 +13,24 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# --- AUTO-INICIALIZACIÓN DE EMERGENCIA ---
+@app.on_event("startup")
+def asegurar_admin():
+    try:
+        res = supabase.table("usuarios").select("*").ilike("usuario", "ADMIN").execute()
+        if not res.data:
+            supabase.table("usuarios").insert({
+                "usuario": "ADMIN",
+                "pin": "1234",
+                "rol_sistema": "admin",
+                "tipo_pago": "Fijo",
+                "monto_fijo": 300.0,
+                "tarifa_hora": 0.0,
+                "area": "Gerencia"
+            }).execute()
+    except Exception as e:
+        print("Aviso de inicialización:", e)
+
 @app.get("/", response_class=HTMLResponse)
 def leer_raiz():
     if os.path.exists("index.html"):
