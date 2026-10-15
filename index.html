@@ -72,18 +72,13 @@
                 <p class="text-xs text-slate-300">Control personal de turnos y recesos</p>
             </div>
             <div class="flex items-center gap-2">
-                <!-- BOTÓN ACTUALIZAR (SOLO ICONO) -->
                 <button onclick="cargarPanelTrabajador()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-white p-2 rounded-lg text-xs font-medium transition border border-slate-700 flex items-center justify-center" title="Actualizar Datos">
                     <i class="fa-solid fa-rotate text-sm"></i>
                 </button>
-
-                <!-- BOTÓN CONFIGURACIÓN / TUERCA -->
                 <div class="relative">
                     <button onclick="toggleMenuConfig()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white p-2 rounded-lg text-xs font-medium transition border border-slate-700 flex items-center justify-center" title="Configuración y Simulador">
                         <i class="fa-solid fa-gear text-sm"></i>
                     </button>
-                    
-                    <!-- MENÚ DESPLEGABLE DE LA TUERCA -->
                     <div id="menu-config" class="hidden absolute right-0 mt-2 w-64 glass-panel p-3 rounded-xl shadow-2xl border border-slate-700 z-50 text-xs space-y-3">
                         <div class="border-b border-slate-700 pb-2">
                             <button onclick="abrirModalCambiarPin(); cerrarMenuConfig();" class="w-full text-left text-indigo-300 hover:text-white flex items-center gap-2 py-1">
@@ -101,7 +96,6 @@
                         </div>
                     </div>
                 </div>
-
                 <button onclick="cerrarSesion()" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-red-500/30">Cerrar Sesión</button>
             </div>
         </header>
@@ -145,67 +139,6 @@
                 </thead>
                 <tbody id="tabla-mis-horas" class="divide-y divide-slate-700/40"></tbody>
             </table>
-        </div>
-    </div>
-
-    <!-- MODAL CAMBIAR PIN -->
-    <div id="modal-cambiar-pin" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
-        <div class="glass-panel p-6 rounded-2xl w-full max-w-sm shadow-2xl border border-slate-700 text-xs">
-            <h3 class="text-base font-bold mb-4 text-emerald-400 flex items-center gap-2"><i class="fa-solid fa-key"></i> Cambiar mi PIN</h3>
-            <form id="form-cambiar-pin" class="space-y-3">
-                <div>
-                    <label class="block text-slate-300 mb-1">PIN Actual</label>
-                    <div class="relative">
-                        <input type="password" id="pin-actual" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none pr-10">
-                        <button type="button" onclick="togglePass('pin-actual', 'icon-pin-act')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
-                            <i id="icon-pin-act" class="fa-solid fa-eye text-xs"></i>
-                        </button>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-slate-300 mb-1">Nuevo PIN</label>
-                    <div class="relative">
-                        <input type="password" id="pin-nuevo" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none pr-10" placeholder="Mínimo 4 números">
-                        <button type="button" onclick="togglePass('pin-nuevo', 'icon-pin-nuev')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
-                            <i id="icon-pin-nuev" class="fa-solid fa-eye text-xs"></i>
-                        </button>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-slate-300 mb-1">Confirmar Nuevo PIN</label>
-                    <input type="password" id="pin-confirmar" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none">
-                </div>
-                <div class="flex justify-end gap-2 mt-5">
-                    <button type="button" onclick="cerrarModalCambiarPin()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Cancelar</button>
-                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition">Actualizar PIN</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL DETALLES DEL DÍA -->
-    <div id="modal-detalles" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
-        <div class="glass-panel p-5 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-700 text-xs">
-            <div class="flex justify-between items-center mb-3">
-                <h3 id="modal-detalles-titulo" class="font-bold text-emerald-400 text-sm">Detalles del Turno</h3>
-                <button onclick="cerrarModalDetalles()" class="text-slate-400 hover:text-white font-bold text-sm"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="overflow-x-auto max-h-64">
-                <table class="w-full text-left">
-                    <thead>
-                        <tr class="border-b border-slate-700 text-slate-400">
-                            <th class="py-1">Tramo</th>
-                            <th class="py-1">Entrada</th>
-                            <th class="py-1">Salida</th>
-                            <th class="py-1 text-right">Horas</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-modal-detalles" class="divide-y divide-slate-700/40"></tbody>
-                </table>
-            </div>
-            <div class="mt-4 text-right">
-                <button onclick="cerrarModalDetalles()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-1.5 rounded transition">Cerrar</button>
-            </div>
         </div>
     </div>
 
@@ -289,7 +222,7 @@
 
             <div class="glass-panel p-4 rounded-xl shadow-md flex flex-col">
                 <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-xs font-semibold text-slate-200">Asistencias en Tiempo Real</h2>
+                    <h2 class="text-xs font-semibold text-slate-200">Asistencias en Tiempo Real (Ordenadas por Fecha)</h2>
                     <button onclick="cargarAdminDatos()" class="text-xs text-emerald-400 hover:underline"><i class="fa-solid fa-rotate mr-1"></i> Actualizar</button>
                 </div>
                 <div class="overflow-x-auto max-h-64 flex-grow">
@@ -307,6 +240,67 @@
                     </table>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR REGISTRO -->
+    <div id="modal-editar-registro" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+        <div class="glass-panel p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700 text-xs">
+            <h3 class="text-base font-bold mb-3 text-emerald-400"><i class="fa-solid fa-pen-to-square mr-2"></i>Editar Registro de Turno</h3>
+            <form id="form-editar-registro" class="space-y-3">
+                <input type="hidden" id="edit-reg-id">
+                <div>
+                    <label class="block text-slate-300 mb-1">Trabajador</label>
+                    <input type="text" id="edit-reg-usuario" disabled class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-2 text-slate-400">
+                </div>
+                <div>
+                    <label class="block text-slate-300 mb-1">Entrada (ej. 14-10-2026 05:52 PM)</label>
+                    <input type="text" id="edit-reg-entrada" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-slate-300 mb-1">Salida (ej. 15-10-2026 12:02 AM o dejar vacío si está activo)</label>
+                    <input type="text" id="edit-reg-salida" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="En Curso si está vacío">
+                </div>
+                <div class="flex justify-end gap-2 mt-5">
+                    <button type="button" onclick="cerrarModalEditarRegistro()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Cancelar</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL CAMBIAR PIN -->
+    <div id="modal-cambiar-pin" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+        <div class="glass-panel p-6 rounded-2xl w-full max-w-sm shadow-2xl border border-slate-700 text-xs">
+            <h3 class="text-base font-bold mb-4 text-emerald-400 flex items-center gap-2"><i class="fa-solid fa-key"></i> Cambiar mi PIN</h3>
+            <form id="form-cambiar-pin" class="space-y-3">
+                <div>
+                    <label class="block text-slate-300 mb-1">PIN Actual</label>
+                    <div class="relative">
+                        <input type="password" id="pin-actual" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none pr-10">
+                        <button type="button" onclick="togglePass('pin-actual', 'icon-pin-act')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                            <i id="icon-pin-act" class="fa-solid fa-eye text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-300 mb-1">Nuevo PIN</label>
+                    <div class="relative">
+                        <input type="password" id="pin-nuevo" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none pr-10" placeholder="Mínimo 4 números">
+                        <button type="button" onclick="togglePass('pin-nuevo', 'icon-pin-nuev')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                            <i id="icon-pin-nuev" class="fa-solid fa-eye text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-300 mb-1">Confirmar Nuevo PIN</label>
+                    <input type="password" id="pin-confirmar" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                </div>
+                <div class="flex justify-end gap-2 mt-5">
+                    <button type="button" onclick="cerrarModalCambiarPin()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Cancelar</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition">Actualizar PIN</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -752,6 +746,9 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
                 return;
             }
 
+            // Ordenar de más reciente a más antiguo
+            registros.sort((a, b) => parseFechaHora(b.entrada) - parseFechaHora(a.entrada));
+
             let porFecha = {};
             registros.forEach(r => {
                 let fecha = r.entrada.split(' ')[0];
@@ -873,17 +870,23 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
                         `;
                     }
 
+                    // ORDENAR ASISTENCIAS CRONOLÓGICAMENTE (MÁS RECIENTE ARRIBA, MÁS ANTIGUO ABAJO)
+                    let asistenciasOrdenadas = data.asistencias.slice().sort((a, b) => parseFechaHora(b.entrada) - parseFechaHora(a.entrada));
+
                     const tA = document.getElementById('tabla-asistencias-admin');
                     tA.innerHTML = '';
-                    data.asistencias.slice().reverse().forEach(r => {
+                    asistenciasOrdenadas.forEach(r => {
                         let salidaHumana = r.salida ? r.salida : '<span class="text-emerald-400 font-semibold animate-pulse">Activo</span>';
                         tA.innerHTML += `
-                            <tr class="border-b border-slate-700/30">
+                            <tr class="border-b border-slate-700/30 hover:bg-slate-800/40">
                                 <td class="py-1.5 font-medium">${r.usuario}</td>
                                 <td class="py-1.5 text-slate-300">${r.entrada}</td>
                                 <td class="py-1.5">${r.receso_inicio && !r.receso_fin ? '<span class="text-amber-400">En Receso</span>' : 'Normal'}</td>
                                 <td class="py-1.5 text-slate-300">${salidaHumana}</td>
-                                <td class="py-1.5 text-right">${!r.salida ? `<button onclick="forzarSalida(${r.id})" class="bg-red-600/20 text-red-400 px-2 py-0.5 rounded text-[10px]">Finalizar</button>` : '-'}</td>
+                                <td class="py-1.5 text-right">
+                                    <button onclick='abrirModalEditarRegistro(${r.id}, "${r.usuario}", "${r.entrada}", "${r.salida || ""}")' class="text-indigo-400 hover:underline mr-2" title="Editar Registro"><i class="fa-solid fa-pen"></i></button>
+                                    <button onclick="eliminarRegistroAdmin(${r.id})" class="text-red-400 hover:underline" title="Eliminar Registro"><i class="fa-solid fa-trash"></i></button>
+                                </td>
                             </tr>
                         `;
                     });
@@ -893,6 +896,58 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
                     for(let u in data.usuarios) { selectManual.innerHTML += `<option value="${u}">${u}</option>`; }
                 }
             } catch(e) {}
+        }
+
+        function abrirModalEditarRegistro(id, usuario, entrada, salida) {
+            document.getElementById('edit-reg-id').value = id;
+            document.getElementById('edit-reg-usuario').value = usuario;
+            document.getElementById('edit-reg-entrada').value = entrada;
+            document.getElementById('edit-reg-salida').value = salida;
+            document.getElementById('modal-editar-registro').classList.remove('hidden');
+        }
+
+        function cerrarModalEditarRegistro() {
+            document.getElementById('modal-editar-registro').classList.add('hidden');
+        }
+
+        document.getElementById('form-editar-registro').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = parseInt(document.getElementById('edit-reg-id').value);
+            const entrada = convertirFechaFlex(document.getElementById('edit-reg-entrada').value);
+            const salidaInput = document.getElementById('edit-reg-salida').value.trim();
+            const salida = salidaInput ? convertirFechaFlex(salidaInput) : null;
+
+            try {
+                const res = await fetch('/api/admin/editar-registro', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ registro_id: id, entrada: entrada, salida: salida })
+                });
+                if(res.ok) {
+                    cerrarModalEditarRegistro();
+                    alert("Registro actualizado con éxito");
+                    cargarAdminDatos();
+                } else {
+                    const data = await res.json();
+                    alert(data.detail || "Error al actualizar registro");
+                }
+            } catch(err) {
+                alert("Error de conexión");
+            }
+        });
+
+        async function eliminarRegistroAdmin(id) {
+            if(!confirm("¿Estás seguro de eliminar este registro de asistencia?")) return;
+            try {
+                const res = await fetch(`/api/admin/eliminar-registro/${id}`, { method: 'DELETE' });
+                if(res.ok) {
+                    cargarAdminDatos();
+                } else {
+                    alert("Error al eliminar el registro.");
+                }
+            } catch(err) {
+                alert("Error de conexión");
+            }
         }
 
         function calcularResumenFechas() {
