@@ -222,7 +222,7 @@
 
             <div class="glass-panel p-4 rounded-xl shadow-md flex flex-col">
                 <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-xs font-semibold text-slate-200">Asistencias en Tiempo Real (Ordenadas por Fecha)</h2>
+                    <h2 class="text-xs font-semibold text-slate-200">Asistencias en Tiempo Real (Ordenadas y con Horas)</h2>
                     <button onclick="cargarAdminDatos()" class="text-xs text-emerald-400 hover:underline"><i class="fa-solid fa-rotate mr-1"></i> Actualizar</button>
                 </div>
                 <div class="overflow-x-auto max-h-64 flex-grow">
@@ -231,8 +231,8 @@
                             <tr class="border-b border-slate-700/60 text-slate-400">
                                 <th class="py-1">Usuario</th>
                                 <th class="py-1">Entrada</th>
-                                <th class="py-1">Estado</th>
                                 <th class="py-1">Salida</th>
+                                <th class="py-1 text-right">Total Horas</th>
                                 <th class="py-1 text-right">Acción</th>
                             </tr>
                         </thead>
@@ -746,7 +746,6 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
                 return;
             }
 
-            // Ordenar de más reciente a más antiguo
             registros.sort((a, b) => parseFechaHora(b.entrada) - parseFechaHora(a.entrada));
 
             let porFecha = {};
@@ -870,19 +869,24 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
                         `;
                     }
 
-                    // ORDENAR ASISTENCIAS CRONOLÓGICAMENTE (MÁS RECIENTE ARRIBA, MÁS ANTIGUO ABAJO)
+                    // ORDENAR CRONOLÓGICAMENTE (MÁS RECIENTE ARRIBA, MÁS ANTIGUO ABAJO)
                     let asistenciasOrdenadas = data.asistencias.slice().sort((a, b) => parseFechaHora(b.entrada) - parseFechaHora(a.entrada));
 
                     const tA = document.getElementById('tabla-asistencias-admin');
                     tA.innerHTML = '';
                     asistenciasOrdenadas.forEach(r => {
+                        let dE = parseFechaHora(r.entrada);
+                        let dS = parseFechaHora(r.salida);
+                        let hrs = (dE && dS) ? Math.max(0, (dS - dE) / (1000 * 60 * 60)) : 0;
                         let salidaHumana = r.salida ? r.salida : '<span class="text-emerald-400 font-semibold animate-pulse">Activo</span>';
+                        let horasTexto = r.salida ? `${hrs.toFixed(2)} hrs` : '-';
+
                         tA.innerHTML += `
                             <tr class="border-b border-slate-700/30 hover:bg-slate-800/40">
                                 <td class="py-1.5 font-medium">${r.usuario}</td>
                                 <td class="py-1.5 text-slate-300">${r.entrada}</td>
-                                <td class="py-1.5">${r.receso_inicio && !r.receso_fin ? '<span class="text-amber-400">En Receso</span>' : 'Normal'}</td>
                                 <td class="py-1.5 text-slate-300">${salidaHumana}</td>
+                                <td class="py-1.5 text-right font-bold text-emerald-300">${horasTexto}</td>
                                 <td class="py-1.5 text-right">
                                     <button onclick='abrirModalEditarRegistro(${r.id}, "${r.usuario}", "${r.entrada}", "${r.salida || ""}")' class="text-indigo-400 hover:underline mr-2" title="Editar Registro"><i class="fa-solid fa-pen"></i></button>
                                     <button onclick="eliminarRegistroAdmin(${r.id})" class="text-red-400 hover:underline" title="Eliminar Registro"><i class="fa-solid fa-trash"></i></button>
