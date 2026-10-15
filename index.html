@@ -15,7 +15,7 @@
             width: 100vw;
             height: 100vh;
             z-index: -1;
-            background: #090d16;
+            background: #050811;
         }
 
         /* Estilo para Paneles Translúcidos */
@@ -26,51 +26,65 @@
             border: 1px solid rgba(51, 65, 85, 0.6);
         }
 
-        /* Cuadro de Login con Estilo Hacker Directo */
+        /* Contenedor del Tarjeta de Login con Canvas Hacker */
         .hacker-login-card {
             position: relative;
-            background-color: #0b131e;
-            background-image: 
-                radial-gradient(circle at 50% 30%, rgba(16, 185, 129, 0.15), transparent 70%),
-                linear-gradient(to bottom, rgba(11, 19, 30, 0.85), rgba(11, 19, 30, 0.95)),
-                url('https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80');
-            background-size: cover;
-            background-position: center;
-            border: 1px solid rgba(16, 185, 129, 0.5);
-            box-shadow: 0 0 30px rgba(16, 185, 129, 0.25);
+            background: rgba(8, 14, 26, 0.88);
+            border: 1px solid rgba(16, 185, 129, 0.6);
+            box-shadow: 0 0 35px rgba(16, 185, 129, 0.25);
+            overflow: hidden;
+        }
+
+        canvas#hacker-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.35;
+            pointer-events: none;
         }
     </style>
 </head>
 <body class="text-slate-100 min-h-screen flex flex-col justify-between relative overflow-x-hidden">
 
-    <!-- CANVAS MATRIX BACKGROUND -->
+    <!-- CANVAS MATRIX BACKGROUND GENERAL -->
     <canvas id="matrix-bg"></canvas>
 
     <!-- LOGIN SCREEN -->
     <div id="login-screen" class="flex items-center justify-center flex-grow p-4 z-10">
-        <div class="hacker-login-card p-8 rounded-2xl shadow-2xl w-full max-w-md">
-            <div class="text-center mb-6">
-                <i class="fa-solid fa-shield-halved text-emerald-400 text-4xl mb-2 animate-pulse"></i>
-                <h1 class="text-2xl font-bold tracking-wide text-white">Control de Asistencia</h1>
-                <p class="text-xs text-emerald-300/90 mt-1">Sistema de fichaje y gestión segura</p>
-            </div>
-            <form id="login-form" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-medium text-slate-200 mb-1">Usuario</label>
-                    <input type="text" id="login-usuario" required class="w-full bg-slate-900/90 border border-slate-700/80 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Tu nombre de usuario">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-200 mb-1">PIN</label>
-                    <div class="relative">
-                        <input type="password" id="login-pin" required class="w-full bg-slate-900/90 border border-slate-700/80 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-10" placeholder="••••">
-                        <button type="button" onclick="togglePass('login-pin', 'icon-login-pin')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
-                            <i id="icon-login-pin" class="fa-solid fa-eye text-xs"></i>
-                        </button>
+        <div class="hacker-login-card p-8 rounded-2xl shadow-2xl w-full max-w-md relative">
+            <!-- Canvas interno con la figura del Hacker -->
+            <canvas id="hacker-canvas"></canvas>
+
+            <div class="relative z-10">
+                <div class="text-center mb-6">
+                    <div class="inline-block p-3 rounded-full bg-emerald-500/10 border border-emerald-500/30 mb-2">
+                        <i class="fa-solid fa-user-ninja text-emerald-400 text-3xl animate-pulse"></i>
                     </div>
+                    <h1 class="text-2xl font-bold tracking-wide text-white drop-shadow-[0_2px_8px_rgba(16,185,129,0.5)]">Control de Asistencia</h1>
+                    <p class="text-xs text-emerald-300 mt-1">Sistema de fichaje y gestión segura</p>
                 </div>
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg transition text-sm shadow-lg shadow-emerald-600/30">Ingresar al Sistema</button>
-            </form>
-            <div id="login-error" class="mt-4 text-center text-xs text-red-400 hidden"></div>
+
+                <form id="login-form" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-200 mb-1">Usuario</label>
+                        <input type="text" id="login-usuario" required class="w-full bg-slate-900/90 border border-emerald-500/40 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Tu nombre de usuario">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-200 mb-1">PIN</label>
+                        <div class="relative">
+                            <input type="password" id="login-pin" required class="w-full bg-slate-900/90 border border-emerald-500/40 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-10" placeholder="••••">
+                            <button type="button" onclick="togglePass('login-pin', 'icon-login-pin')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                                <i id="icon-login-pin" class="fa-solid fa-eye text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg transition text-sm shadow-lg shadow-emerald-600/40 border border-emerald-400/30">Ingresar al Sistema</button>
+                </form>
+                <div id="login-error" class="mt-4 text-center text-xs text-red-400 hidden"></div>
+            </div>
         </div>
     </div>
 
@@ -350,8 +364,9 @@
         </div>
     </div>
 
-    <!-- SCRIPT DE CONTROL Y MATRIX -->
+    <!-- SCRIPT DE CONTROL Y CANVAS MATRIX + HACKER -->
     <script>
+        // 1. ANIMACIÓN MATRIX BACKGROUND GENERAL
         const canvas = document.getElementById('matrix-bg');
         const ctx = canvas.getContext('2d');
 
@@ -371,7 +386,7 @@
         }
 
         function drawMatrix() {
-            ctx.fillStyle = 'rgba(9, 13, 22, 0.08)';
+            ctx.fillStyle = 'rgba(5, 8, 17, 0.08)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             ctx.fillStyle = '#10b981';
@@ -389,6 +404,61 @@
         }
         setInterval(drawMatrix, 35);
 
+        // 2. DIBUJO VECTORIAL HACKER EN EL CANVAS DEL LOGIN CARD
+        const hCanvas = document.getElementById('hacker-canvas');
+        const hCtx = hCanvas.getContext('2d');
+
+        function drawHackerCard() {
+            const w = hCanvas.width = hCanvas.offsetWidth;
+            const h = hCanvas.height = hCanvas.offsetHeight;
+
+            hCtx.clearRect(0, 0, w, h);
+
+            // Capa de Brillo Ciber
+            let grad = hCtx.createRadialGradient(w/2, h/2, 10, w/2, h/2, w/1.2);
+            grad.addColorStop(0, 'rgba(16, 185, 129, 0.25)');
+            grad.addColorStop(1, 'rgba(5, 8, 17, 0.95)');
+            hCtx.fillStyle = grad;
+            hCtx.fillRect(0, 0, w, h);
+
+            // Silueta del Hacker Encapuchado
+            hCtx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+            hCtx.beginPath();
+            // Capucha y Cabeza
+            hCtx.arc(w/2, h*0.38, w*0.18, Math.PI, 0, false);
+            hCtx.lineTo(w*0.75, h*0.9);
+            hCtx.lineTo(w*0.25, h*0.9);
+            hCtx.closePath();
+            hCtx.fill();
+
+            // Resplandor Verde Laptop / Pantalla del Hacker
+            let laptopGrad = hCtx.createLinearGradient(w*0.3, h*0.7, w*0.7, h*0.95);
+            laptopGrad.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
+            laptopGrad.addColorStop(1, 'rgba(16, 185, 129, 0.05)');
+            hCtx.fillStyle = laptopGrad;
+            hCtx.beginPath();
+            hCtx.moveTo(w*0.2, h*0.92);
+            hCtx.lineTo(w*0.8, h*0.92);
+            hCtx.lineTo(w*0.7, h*0.75);
+            hCtx.lineTo(w*0.3, h*0.75);
+            hCtx.closePath();
+            hCtx.fill();
+
+            // Líneas de Código Circuito Hacker
+            hCtx.strokeStyle = 'rgba(16, 185, 129, 0.25)';
+            hCtx.lineWidth = 1.5;
+            for(let i = 0; i < 5; i++) {
+                hCtx.beginPath();
+                hCtx.moveTo(w * (0.1 + i*0.2), 0);
+                hCtx.lineTo(w * (0.1 + i*0.2), h * 0.3);
+                hCtx.lineTo(w * (0.15 + i*0.2), h * 0.45);
+                hCtx.stroke();
+            }
+        }
+        setTimeout(drawHackerCard, 100);
+        window.addEventListener('resize', drawHackerCard);
+
+        // 3. LÓGICA GENERAL DEL SISTEMA
         let currentUser = null;
         let sessionTimer = null;
         let globalAdminData = null;
@@ -472,6 +542,7 @@
             document.getElementById('worker-dashboard').classList.add('hidden');
             document.getElementById('admin-dashboard').classList.add('hidden');
             document.getElementById('login-form').reset();
+            setTimeout(drawHackerCard, 50);
         }
 
         function iniciarVistaSegunRol() {
