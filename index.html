@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Fondo Matrix Animado */
+        /* Fondo Matrix Animado General */
         canvas#matrix-bg {
             position: fixed;
             top: 0;
@@ -17,11 +17,24 @@
             z-index: -1;
             background: #090d16;
         }
+
+        /* Estilo para Paneles Translúcidos */
         .glass-panel {
             background: rgba(15, 23, 42, 0.85);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(51, 65, 85, 0.6);
+        }
+
+        /* Cuadro de Login con Imagen Hacker de Fondo */
+        .hacker-login-card {
+            position: relative;
+            background-image: linear-gradient(to bottom, rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.94)), 
+                              url('https://i.ibb.co/3sS7qR4/hacker-bg.jpg');
+            background-size: cover;
+            background-position: center;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.15);
         }
     </style>
 </head>
@@ -32,21 +45,21 @@
 
     <!-- LOGIN SCREEN -->
     <div id="login-screen" class="flex items-center justify-center flex-grow p-4 z-10">
-        <div class="glass-panel p-8 rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="hacker-login-card p-8 rounded-2xl shadow-2xl w-full max-w-md">
             <div class="text-center mb-6">
-                <i class="fa-solid fa-shield-halved text-emerald-500 text-4xl mb-2 animate-pulse"></i>
-                <h1 class="text-2xl font-bold tracking-wide">Control de Asistencia</h1>
-                <p class="text-xs text-slate-400 mt-1">Sistema de fichaje y gestión segura</p>
+                <i class="fa-solid fa-shield-halved text-emerald-400 text-4xl mb-2 animate-pulse"></i>
+                <h1 class="text-2xl font-bold tracking-wide text-white">Control de Asistencia</h1>
+                <p class="text-xs text-emerald-300/80 mt-1">Sistema de fichaje y gestión segura</p>
             </div>
             <form id="login-form" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-medium text-slate-300 mb-1">Usuario</label>
-                    <input type="text" id="login-usuario" required class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Tu nombre de usuario">
+                    <label class="block text-xs font-medium text-slate-200 mb-1">Usuario</label>
+                    <input type="text" id="login-usuario" required class="w-full bg-slate-900/90 border border-slate-700/80 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Tu nombre de usuario">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-300 mb-1">PIN</label>
+                    <label class="block text-xs font-medium text-slate-200 mb-1">PIN</label>
                     <div class="relative">
-                        <input type="password" id="login-pin" required class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-10" placeholder="••••">
+                        <input type="password" id="login-pin" required class="w-full bg-slate-900/90 border border-slate-700/80 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-10" placeholder="••••">
                         <button type="button" onclick="togglePass('login-pin', 'icon-login-pin')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
                             <i id="icon-login-pin" class="fa-solid fa-eye text-xs"></i>
                         </button>
@@ -600,7 +613,6 @@
                 return;
             }
 
-            // Agrupar registros por fecha
             let porFecha = {};
             registros.forEach(r => {
                 let fecha = r.entrada.split(' ')[0];
