@@ -2,5 +2,4 @@ fastapi
 uvicorn
 pandas
 openpyxl
-tzdata
-python-multipart
+supabase
