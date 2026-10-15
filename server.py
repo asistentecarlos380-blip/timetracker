@@ -5,13 +5,12 @@ import os
 import json
 import pandas as pd
 import uvicorn
-from datetime import datetime
-import zoneinfo
+from datetime import datetime, timezone, timedelta
 
 app = FastAPI()
 
 DATA_FILE = "system_data.json"
-TZ_VE = zoneinfo.ZoneInfo("America/Caracas")
+TZ_VE = timezone(timedelta(hours=-4))
 
 def get_hora_actual():
     return datetime.now(TZ_VE).strftime("%Y-%m-%d %I:%M:%S %p")
