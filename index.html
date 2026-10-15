@@ -150,7 +150,7 @@
                 <button onclick="abrirModalManual()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow">
                     <i class="fa-solid fa-plus-circle"></i> Agregar Horas
                 </button>
-                <button onclick="restaurarRespaldoServidor()" class="bg-amber-600/80 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow" title="Restaurar automáticamente desde el archivo de respaldo">
+                <button onclick="restaurarRespaldoServidor()" class="bg-amber-600/80 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow" title="Restaurar desde archivo de respaldo del servidor">
                     <i class="fa-solid fa-cloud-arrow-down"></i> Restaurar Respaldo
                 </button>
                 <button onclick="exportarExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow">
@@ -773,6 +773,10 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
                 const data = await res.json();
                 if(res.ok) {
                     globalAdminData = data;
+                    
+                    // Guardar copia de seguridad automática en el navegador para máxima seguridad
+                    localStorage.setItem('timetracker_backup_local', JSON.stringify(data));
+
                     const tU = document.getElementById('tabla-usuarios');
                     tU.innerHTML = '';
                     let i = 0;
@@ -831,18 +835,42 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
         }
 
         async function restaurarRespaldoServidor() {
-            if(!confirm("¿Deseas restaurar todos los registros y usuarios desde el archivo de respaldo automático?")) return;
+            if(!confirm("¿Deseas restaurar todos los registros y usuarios desde el respaldo del servidor?")) return;
             try {
                 const res = await fetch('/api/admin/restaurar-respaldo', { method: 'POST' });
                 const data = await res.json();
                 if(res.ok) {
-                    alert("¡Respaldo restaurado con éxito! Todos los datos están de vuelta.");
+                    alert("¡Respaldo restaurado con éxito!");
                     cargarAdminDatos();
                 } else {
-                    alert(data.detail || "No se pudo restaurar el respaldo.");
+                    // Si el servidor no tiene el archivo, intentamos restaurar con la copia de seguridad local del navegador
+                    restaurarRespaldoLocalNavegador();
                 }
             } catch(err) {
-                alert("Error de conexión al restaurar el respaldo.");
+                restaurarRespaldoLocalNavegador();
+            }
+        }
+
+        async function restaurarRespaldoLocalNavegador() {
+            const backupLocal = localStorage.getItem('timetracker_backup_local');
+            if(!backupLocal) {
+                alert("No se encontró ningún respaldo local ni en el servidor.");
+                return;
+            }
+            try {
+                let dataObj = JSON.parse(backupLocal);
+                // Reenviar todos los registros guardados localmente al servidor
+                for(let r of dataObj.asistencias) {
+                    await fetch('/api/admin/registro-manual', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ usuario: r.usuario, entrada: r.entrada, salida: r.salida, es_continua: r.es_continua })
+                    });
+                }
+                alert("¡Datos restaurados exitosamente desde la copia de seguridad del navegador!");
+                cargarAdminDatos();
+            } catch(e) {
+                alert("Error al restaurar el respaldo local.");
             }
         }
 
