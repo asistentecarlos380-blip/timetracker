@@ -91,7 +91,6 @@ def leer_raiz():
     if os.path.exists("index.html"):
         with open("index.html", "r", encoding="utf-8") as f:
             content = f.read()
-            # Inyectar automáticamente el pie de página con la versión v1.1.0
             footer_v = '<div style="text-align:center; padding:15px; color:#64748b; font-size:13px; font-family:monospace;">Control de Asistencia — v1.1.0 (Stable)</div></body>'
             if "</body>" in content:
                 content = content.replace("</body>", footer_v)
@@ -156,14 +155,22 @@ def cambiar_pin(req: CambiarPinRequest):
 
 @app.post("/api/mis-horas")
 def mis_horas(req: LoginRequest):
-    if req.usuario.strip().lower() == "admin" and str(req.pin).strip() == "1234":
+    u = req.usuario.strip()
+    # Si es el admin, devolver todo el historial
+    if u.lower() == "admin" and str(req.pin).strip() == "1234":
         try:
             res_a = supabase.table("asistencias").select("*").execute()
             return {"registros": res_a.data if res_a.data else []}
         except Exception:
             return {"registros": []}
+            
+    # Para los trabajadores, buscar de forma flexible por nombre (insensible a mayúsculas)
+    u_real = "ADMIN" if u.lower() == "admin" else u.capitalize()
     try:
-        res_a = supabase.table("asistencias").select("*").ilike("usuario", req.usuario.strip()).execute()
+        res_a = supabase.table("asistencias").select("*").ilike("usuario", u_real).execute()
+        # Si por alguna razón no trae datos con el capitalizado exacto, intentamos con el texto original del request
+        if not res_a.data:
+            res_a = supabase.table("asistencias").select("*").ilike("usuario", u).execute()
         return {"registros": res_a.data if res_a.data else []}
     except Exception:
         return {"registros": []}
@@ -231,7 +238,6 @@ def admin_datos():
         if res_a.data and len(res_a.data) > 0:
             asistencias_list = res_a.data
         else:
-            # Auto-llenar historial inicial si la tabla está vacía en Supabase
             supabase.table("asistencias").insert(HISTORIAL_INICIAL).execute()
             res_a_nuevas = supabase.table("asistencias").select("*").execute()
             asistencias_list = res_a_nuevas.data if res_a_nuevas.data else HISTORIAL_INICIAL
