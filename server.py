@@ -23,7 +23,7 @@ def inicializar_bd():
                 "Brayan": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
                 "Gerson": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
                 "Matias": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
-                "Planta": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"}
+                "Planta": {"pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Gasolina", "monto_fijo": 0.0, "tarifa_hora": 0.0, "area": "Operaciones"}
             },
             "asistencias": []
         }
@@ -82,7 +82,7 @@ class CambiarPinRequest(BaseModel):
 def login(req: LoginRequest):
     db = leer_db()
     usuarios = db.get("usuarios", {})
-    # Búsqueda insensible a mayúsculas/minúsculas para permitir el ingreso
+    
     usuario_encontrado = None
     for u in usuarios:
         if u.lower() == req.usuario.strip().lower():
@@ -99,13 +99,62 @@ def login(req: LoginRequest):
         "rol_sistema": usuarios[usuario_encontrado].get("rol_sistema", "trabajador")
     }
 
+@app.post("/api/admin/registro-manual")
+def admin_registro_manual(req: RegistroManualRequest):
+    db = leer_db()
+    asistencias = db.get("asistencias", [])
+    usuarios = db.get("usuarios", {})
+    
+    nombre_usuario = req.usuario.strip()
+    
+    # Buscar si existe ignorando mayúsculas/minúsculas
+    usuario_real = None
+    for u in usuarios:
+        if u.lower() == nombre_usuario.lower():
+            usuario_real = u
+            break
+            
+    # Si el usuario no existe, crearlo automáticamente
+    if not usuario_real:
+        usuario_real = nombre_usuario.capitalize()
+        tipo = "Gasolina" if usuario_real.lower() == "planta" else "Horas"
+        tarifa = 0.0 if tipo == "Gasolina" else 1.5
+        usuarios[usuario_real] = {
+            "pin": "1234",
+            "rol_sistema": "trabajador",
+            "tipo_pago": tipo,
+            "monto_fijo": 0.0,
+            "tarifa_hora": tarifa,
+            "area": "Operaciones"
+        }
+        db["usuarios"] = usuarios
+
+    nuevo_id = max([r["id"] for r in asistencias], default=0) + 1
+    nuevo_reg = {
+        "id": nuevo_id,
+        "usuario": usuario_real,
+        "entrada": req.entrada,
+        "receso_inicio": None,
+        "receso_fin": None,
+        "salida": req.salida,
+        "es_continua": req.es_continua
+    }
+    asistencias.append(nuevo_reg)
+    db["asistencias"] = asistencias
+    escribir_db(db)
+    return {"mensaje": "Registro manual guardado con éxito"}
+
+@app.get("/api/admin/datos")
+def admin_datos():
+    db = leer_db()
+    return {"usuarios": db.get("usuarios", {}), "asistencias": db.get("asistencias", [])}
+
 @app.post("/api/admin/usuario")
 def admin_guardar_usuario(req: UsuarioAdminRequest):
     db = leer_db()
     usuarios = db.get("usuarios", {})
     nuevo_nombre = req.usuario.strip()
     
-    # Eliminar clave antigua si cambió de nombre
     if req.usuario_antiguo and req.usuario_antiguo in usuarios and req.usuario_antiguo != nuevo_nombre:
         del usuarios[req.usuario_antiguo]
         
@@ -113,10 +162,27 @@ def admin_guardar_usuario(req: UsuarioAdminRequest):
         "pin": req.pin,
         "rol_sistema": req.rol_sistema,
         "tipo_pago": req.tipo_pago,
-        "monto_fijo": req.monto_fijo if req.tipo_pago.lower() != "horas" else 0.0,
+        "monto_fijo": req.monto_fijo if req.tipo_pago.lower() == "fijo" else 0.0,
         "tarifa_hora": req.tarifa_hora if req.tipo_pago.lower() == "horas" else 0.0,
         "area": req.area
     }
     db["usuarios"] = usuarios
     escribir_db(db)
     return {"mensaje": "Usuario guardado correctamente"}
+
+@app.delete("/api/admin/usuario/{usuario}")
+def admin_eliminar_usuario(usuario: str):
+    db = leer_db()
+    usuarios = db.get("usuarios", {})
+    u_eliminar = None
+    for u in usuarios:
+        if u.lower() == usuario.lower():
+            u_eliminar = u
+            break
+            
+    if u_eliminar:
+        del usuarios[u_eliminar]
+        db["usuarios"] = usuarios
+        escribir_db(db)
+        return {"mensaje": "Usuario eliminado"}
+    raise HTTPException(status_code=404, detail="Usuario no encontrado")
