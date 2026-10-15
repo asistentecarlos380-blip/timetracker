@@ -92,11 +92,9 @@ def leer_raiz():
         with open("index.html", "r", encoding="utf-8") as f:
             content = f.read()
             
-            # Inyectar tuerca admin global y asegurar que el menú de la tuerca del trabajador tenga el simulador y cambiar PIN
             patch_ui = """
             <script>
             document.addEventListener("DOMContentLoaded", () => {
-                // 1. Añadir botón de tuerca global en el panel Admin
                 const headerActions = document.querySelector('header') || document.querySelector('.flex.justify-between') || document.querySelector('#panel-admin');
                 if (headerActions && !document.getElementById('btn-config-global')) {
                     const btnConfig = document.createElement('button');
@@ -111,23 +109,6 @@ def leer_raiz():
                         btnExcel.parentNode.insertBefore(btnConfig, btnExcel.nextSibling);
                     }
                 }
-
-                // 2. Restaurar opciones en el menú de la tuerca del trabajador (Cambiar PIN y Simulador de Cobro local)
-                const observer = new MutationObserver(() => {
-                    const dropdownMenu = document.querySelector('#menu-config-trabajador') || document.querySelector('.dropdown-menu') || document.querySelector('[role="menu"]') || document.querySelector('.absolute.right-0.mt-2');
-                    if (dropdownMenu && !document.getElementById('simulador-cobro-btn')) {
-                        // Verificar si ya tiene la opción de cambiar pin, si no, asegurar el menú completo
-                        if (!dropdownMenu.innerHTML.includes('Simulador')) {
-                            const itemSimulador = document.createElement('a');
-                            itemSimulador.id = 'simulador-cobro-btn';
-                            itemSimulador.className = 'block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white cursor-pointer flex items-center gap-2';
-                            itemSimulador.innerHTML = '<i class="fas fa-calculator text-emerald-400"></i> Simulador de Cobro';
-                            itemSimulador.onclick = abrirSimuladorTrabajador;
-                            dropdownMenu.appendChild(itemSimulador);
-                        }
-                    }
-                });
-                observer.observe(document.body, { childList: true, subtree: true });
             });
 
             function abrirModalConfigGlobal() {
@@ -179,33 +160,6 @@ def leer_raiz():
                     }
                 } catch(e) {
                     alert("Error de conexión: " + e);
-                }
-            }
-
-            function abrirSimuladorTrabajador() {
-                let modal = document.getElementById('modal-simulador-trabajador');
-                if (!modal) {
-                    modal = document.createElement('div');
-                    modal.id = 'modal-simulador-trabajador';
-                    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4';
-                    modal.innerHTML = `
-                        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-sm w-full p-6 text-white shadow-2xl">
-                            <h3 class="text-lg font-bold mb-3 flex items-center gap-2 text-emerald-400">
-                                <i class="fas fa-calculator"></i> Simulador de Cobro
-                            </h3>
-                            <p class="text-xs text-slate-400 mb-4">
-                                Simula cuánto cobrarías ingresando una tarifa por hora de referencia (esto es solo para tu cálculo personal y no afecta al administrador).
-                            </p>
-                            <div class="mb-4">
-                                <label class="block text-xs uppercase font-bold text-slate-400 mb-1">Tarifa Referencial ($ / hora)</label>
-                                <input type="number" step="0.1" id="input-tarifa-ref" value="1.5" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white">
-                            </div>
-                            <div class="flex justify-end gap-3 mt-4">
-                                <button onclick="document.getElementById('modal-simulador-trabajador').remove()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs">Cerrar</button>
-                            </div>
-                        </div>
-                    `;
-                    document.body.appendChild(modal);
                 }
             }
             </script>
@@ -286,7 +240,6 @@ def mis_horas(req: LoginRequest):
         except Exception:
             return {"registros": []}
             
-    # Búsqueda robusta y universal para devolver todo el historial sin restricciones de mayúsculas
     try:
         res_all = supabase.table("asistencias").select("*").execute()
         registros_filtrados = []
