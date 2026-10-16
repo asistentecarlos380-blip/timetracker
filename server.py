@@ -95,7 +95,6 @@ def leer_raiz():
             patch_ui = """
             <script>
             document.addEventListener("DOMContentLoaded", () => {
-                // 1. Tuerca global en panel admin (SIN BOTÓN DE AUDITORÍA)
                 const headerActions = document.querySelector('header') || document.querySelector('.flex.justify-between') || document.querySelector('#panel-admin');
                 if (headerActions && !document.getElementById('btn-config-global')) {
                     const btnConfig = document.createElement('button');
@@ -111,7 +110,6 @@ def leer_raiz():
                     }
                 }
 
-                // 2. Enriquecer tabla personal y iconos limpios en admin con Alerta Inteligente de Turnos Largos (>10 horas)
                 setTimeout(() => {
                     const esAdmin = document.body.textContent.includes('Panel de Administración') || 
                                     document.body.textContent.includes('Personal Registrado y Tarifas') ||
@@ -122,7 +120,6 @@ def leer_raiz():
                     }
                 }, 500);
 
-                // 3. Simulador de cobro trabajador en su menú
                 const observerTrabajador = new MutationObserver(() => {
                     const dropdownMenu = document.querySelector('#menu-config-trabajador') || document.querySelector('.dropdown-menu') || document.querySelector('[role="menu"]') || document.querySelector('.absolute.right-0.mt-2');
                     if (dropdownMenu && !document.getElementById('simulador-cobro-btn')) {
@@ -174,13 +171,26 @@ def leer_raiz():
                 document.querySelectorAll('tr').forEach(tr => {
                     const celdas = tr.querySelectorAll('td');
                     if (celdas.length >= 6) {
+                        // Reemplazo seguro de botones de acción en tabla de personal
                         const celdaAcciones = celdas[celdas.length - 1];
                         if (celdaAcciones && !celdaAcciones.dataset.iconos) {
                             celdaAcciones.dataset.iconos = "true";
-                            celdaAcciones.innerHTML = celdaAcciones.innerHTML
-                                .replace(/Detalles/g, '<i class="fas fa-eye text-indigo-400 hover:text-indigo-300 cursor-pointer text-base mr-3" title="Detalles"></i>')
-                                .replace(/Editar/g, '<i class="fas fa-edit text-emerald-400 hover:text-emerald-300 cursor-pointer text-base mr-3" title="Editar"></i>')
-                                .replace(/Borrar/g, '<i class="fas fa-trash text-rose-500 hover:text-rose-400 cursor-pointer text-base" title="Borrar"></i>');
+                            
+                            // Extraer nombres de funciones y argumentos de los botones existentes de manera segura
+                            const botones = celdaAcciones.querySelectorAll('button');
+                            if (botones.length >= 3) {
+                                let onclickDetalle = botones[0].getAttribute('onclick');
+                                let onclickEditar = botones[1].getAttribute('onclick');
+                                let onclickBorrar = botones[2].getAttribute('onclick');
+
+                                celdaAcciones.innerHTML = `
+                                    <div class="flex items-center justify-end gap-3">
+                                        <i class="fas fa-eye text-indigo-400 hover:text-indigo-300 cursor-pointer text-base" onclick="${onclickDetalle}" title="Ver Historial de Asistencias"></i>
+                                        <i class="fas fa-edit text-emerald-400 hover:text-emerald-300 cursor-pointer text-base" onclick="${onclickEditar}" title="Editar"></i>
+                                        <i class="fas fa-trash text-rose-500 hover:text-rose-400 cursor-pointer text-base" onclick="${onclickBorrar}" title="Borrar"></i>
+                                    </div>
+                                `;
+                            }
                         }
 
                         const nombrePersonal = celdas[0].textContent.trim();
@@ -250,7 +260,6 @@ def leer_raiz():
                     document.body.appendChild(modal);
                 }
 
-                // Ventana más grande (max-w-2xl) y contenedor interno con mayor altura (max-h-96) para que quepan todos sin scroll
                 modal.innerHTML = `
                     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 text-white shadow-2xl animate-fade-in">
                         <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-3">
