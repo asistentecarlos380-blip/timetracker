@@ -539,7 +539,6 @@ def login(req: LoginRequest):
     u = req.usuario.strip()
     p = str(req.pin).strip()
     
-    # 1. Verificación prioritaria y segura en PERSONAL_FIJO para garantizar acceso inmediato
     if u.lower() == "admin" and p == "1234":
         return {"usuario": "ADMIN", "pin": "1234", "rol_sistema": "admin"}
     
@@ -547,7 +546,6 @@ def login(req: LoginRequest):
         if k.lower() == u.lower() and str(v["pin"]).strip() == p:
             return {"usuario": v["usuario"], "pin": p, "rol_sistema": v.get("rol_sistema", "trabajador")}
 
-    # 2. Respaldo por si se agregaron nuevos usuarios en Supabase
     try:
         res = supabase.table("usuarios").select("*").ilike("usuario", u).execute()
         user_info = res.data[0] if res.data else None
@@ -594,6 +592,7 @@ def mis_horas(req: LoginRequest):
             return {"registros": []}
             
     try:
+        # Búsqueda flexible e insensible a mayúsculas/minúsculas para los registros del trabajador
         res_all = supabase.table("asistencias").select("*").execute()
         registros_filtrados = []
         if res_all.data:
@@ -601,9 +600,18 @@ def mis_horas(req: LoginRequest):
                 usr_reg = str(r.get("usuario", "")).strip().lower()
                 if usr_reg == u.lower():
                     registros_filtrados.append(r)
+        
+        # Si Supabase está vacío o no devolvió registros, verificamos con HISTORIAL_INICIAL por defecto
+        if not registros_filtrados:
+            for r in HISTORIAL_INICIAL:
+                if str(r.get("usuario", "")).strip().lower() == u.lower():
+                    registros_filtrados.append(r)
+
         return {"registros": registros_filtrados}
     except Exception:
-        return {"registros": []}
+        # Respaldo local en caso de fallo de red
+        respaldo = [r for r in HISTORIAL_INICIAL if str(r.get("usuario", "")).strip().lower() == u.lower()]
+        return {"registros": respaldo}
 
 @app.post("/api/marcar")
 def marcar(req: LoginRequest):
