@@ -17,7 +17,7 @@ except Exception:
     supabase = None
 
 PERSONAL_FIJO = {
-    "ADMIN": {"usuario": "ADMIN", "pin": "1234", "rol_sistema": "admin", "tipo_pago": "Semanal", "monto_fijo": 150.0, "tarifa_hora": 150.0, "area": "Gerencia"},
+    "ADMIN": {"usuario": "ADMIN", "pin": "1234", "rol_sistema": "admin", "tipo_pago": "Fijo", "monto_fijo": 300.0, "tarifa_hora": 1.5, "area": "Gerencia"},
     "Ricardo": {"usuario": "Ricardo", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
     "Ronald": {"usuario": "Ronald", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
     "Lisander": {"usuario": "Lisander", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
@@ -132,34 +132,7 @@ def leer_raiz():
                     });
                 }, 400);
 
-                const observerModalUsuario = new MutationObserver(() => {
-                    document.querySelectorAll('select').forEach(sel => {
-                        if (sel.innerHTML.includes('Horas') && !sel.innerHTML.includes('Semanal')) {
-                            const opt = document.createElement('option');
-                            opt.value = 'Semanal';
-                            opt.textContent = 'Semanal';
-                            sel.appendChild(opt);
-                        }
-                    });
-
-                    const selectPago = document.querySelector('select[name="tipo_pago"]') || Array.from(document.querySelectorAll('select')).find(s => s.value === 'Semanal' || s.value === 'Fijo');
-                    if (selectPago) {
-                        const contenedorInput = selectPago.closest('.space-y-4') || selectPago.parentElement.parentElement;
-                        if (contenedorInput) {
-                            contenedorInput.querySelectorAll('label').forEach(lbl => {
-                                if (lbl.textContent.toLowerCase().includes('fijo') || lbl.textContent.toLowerCase().includes('tarifa') || lbl.textContent.toLowerCase().includes('monto')) {
-                                    if (selectPago.value === 'Semanal') {
-                                        lbl.textContent = 'Monto Semanal ($)';
-                                    } else if (selectPago.value === 'Horas') {
-                                        lbl.textContent = 'Tarifa por Hora ($)';
-                                    }
-                                }
-                            });
-                        }
-                    }
-                });
-                observerModalUsuario.observe(document.body, { childList: true, subtree: true });
-
+                // Autocompletar la semana en curso (Lunes a Domingo) en los campos de fecha del panel trabajador/admin
                 setTimeout(() => {
                     let inputsFecha = [];
                     document.querySelectorAll('input').forEach(el => {
@@ -296,31 +269,12 @@ def leer_raiz():
                 const botonCalcular = document.querySelector('button:has(.fa-calculator)') || Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Calcular Horas'));
                 if (botonCalcular && !botonCalcular.dataset.modalAgregado) {
                     botonCalcular.dataset.modalAgregado = "true";
-                    
-                    // Asegurarnos de corregir los valores semanales en la tabla de resultados de resumen
                     const eventoOriginal = botonCalcular.onclick;
                     botonCalcular.onclick = function(e) {
                         if (eventoOriginal) eventoOriginal.apply(this, arguments);
-                        setTimeout(corregirCalculosSemanalesEnResumen, 200);
-                        setTimeout(mostrarModalTotalGeneral, 400);
+                        setTimeout(mostrarModalTotalGeneral, 300);
                     };
                 }
-            }
-
-            function corregirCalculosSemanalesEnResumen() {
-                // Si en la tabla resumen hay personal semanal, asegurar que tome el monto fijo en lugar de horas*tarifa
-                document.querySelectorAll('#tabla-resumen-fechas tr, table tr').forEach(tr => {
-                    const celdas = tr.querySelectorAll('td');
-                    if (celdas.length >= 5) {
-                        let trabajador = celdas[0].textContent.trim();
-                        // Verificar si el trabajador es de pago semanal buscando en la tabla de configuración o global
-                        // Aquí aplicamos directamente si el usuario es ADMIN o tiene pago semanal configurado
-                        if (trabajador.toUpperCase() === 'ADMIN') {
-                            celdas[4].textContent = '$150.00';
-                            if (celdas.length >= 4) celdas[3].textContent = '1 Semana';
-                        }
-                    }
-                });
             }
 
             function mostrarModalTotalGeneral() {
@@ -331,15 +285,8 @@ def leer_raiz():
                     const celdas = tr.querySelectorAll('td');
                     if (celdas.length >= 5) {
                         const trabajador = celdas[0].textContent.trim();
-                        let pagoStr = celdas[4].textContent.trim().replace('$', '');
-                        let valor = parseFloat(pagoStr) || 0;
-                        
-                        // Si es admin y marcaba 0, forzar el monto semanal de $150
-                        if (trabajador.toUpperCase() === 'ADMIN' && valor === 0) {
-                            valor = 150.0;
-                            celdas[4].textContent = '$150.00';
-                        }
-
+                        const pagoStr = celdas[4].textContent.trim().replace('$', '');
+                        const valor = parseFloat(pagoStr) || 0;
                         totalGeneral += valor;
                         detalleHtml += '<div class="flex justify-between border-b border-slate-800/60 py-1 px-2 text-xs"><span class="text-slate-200 font-medium">' + trabajador + '</span><span class="font-bold text-emerald-400">$' + valor.toFixed(2) + '</span></div>';
                     }
@@ -355,7 +302,7 @@ def leer_raiz():
                     document.body.appendChild(modal);
                 }
 
-                modal.innerHTML = '<div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-5 text-white shadow-2xl animate-fade-in"><div class="flex justify-between items-center mb-2 border-b border-slate-800 pb-2"><h3 class="text-sm font-bold flex items-center gap-2 text-emerald-400"><i class="fas fa-file-invoice-dollar"></i> Resumen de Nómina y Total General</h3><button onclick="document.getElementById(\\'modal-total-general-emergente\\').remove()" class="text-slate-400 hover:text-white text-lg">&times;</button></div><p class="text-[11px] text-slate-400 mb-2">Desglose calculado para el período seleccionado:</p><div class="space-y-1 mb-3 bg-slate-950/40 p-2.5 rounded-xl border border-slate-800 max-h-60 overflow-y-auto">' + detalleHtml + '</div><div class="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-3 flex justify-between items-center mb-4 shadow-inner"><span class="text-xs font-bold uppercase tracking-wider text-emerald-300">Total General a Pagar:</span><span class="text-xl font-black text-emerald-400">$' + totalGeneral.toFixed(2) + '</span></div><div class="flex justify-end"><button onclick="document.getElementById(\\'modal-total-general-emergente\\').remove()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-600/30">Cerrar Ventana</button></div></div>';
+                modal.innerHTML = '<div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-5 text-white shadow-2xl animate-fade-in"><div class="flex justify-between items-center mb-2 border-b border-slate-800 pb-2"><h3 class="text-sm font-bold flex items-center gap-2 text-emerald-400"><i class="fas fa-file-invoice-dollar"></i> Resumen de Nómina y Total General</h3><button onclick="document.getElementById(\\'modal-total-general-emergente\\').remove()" class="text-slate-400 hover:text-white text-lg">&times;</button></div><p class="text-[11px] text-slate-400 mb-2">Desglose calculado para el período seleccionado:</p><div class="space-y-1 mb-3 bg-slate-950/40 p-2.5 rounded-xl border border-slate-800">' + detalleHtml + '</div><div class="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-3 flex justify-between items-center mb-4 shadow-inner"><span class="text-xs font-bold uppercase tracking-wider text-emerald-300">Total General a Pagar:</span><span class="text-xl font-black text-emerald-400">$' + totalGeneral.toFixed(2) + '</span></div><div class="flex justify-end"><button onclick="document.getElementById(\\'modal-total-general-emergente\\').remove()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-600/30">Cerrar Ventana</button></div></div>';
             }
 
             async function forzarCierreIndividual(usuario) {
@@ -710,12 +657,9 @@ def admin_datos():
             res_u = supabase.table("usuarios").select("*").execute()
             if res_u.data:
                 for u in res_u.data:
-                    tipo = str(u.get("tipo_pago", "")).lower()
-                    if tipo in ["fijo", "semanal"]:
-                        if not u.get("monto_fijo") or u.get("monto_fijo") == 0:
-                            u["monto_fijo"] = u.get("tarifa_hora", 150.0)
-                        if not u.get("tarifa_hora") or u.get("tarifa_hora") == 0:
-                            u["tarifa_hora"] = u["monto_fijo"]
+                    if u.get("tipo_pago", "").lower() in ["fijo", "semanal"] and (u.get("monto_fijo") is None or u.get("monto_fijo") == 0):
+                        if u.get("tarifa_hora", 0) > 0:
+                            u["monto_fijo"] = u["tarifa_hora"]
                     usuarios_dict[u["usuario"]] = u
         except Exception:
             pass
@@ -783,17 +727,8 @@ def admin_eliminar_registro(registro_id: int):
 @app.post("/api/admin/usuario")
 def admin_guardar_usuario(req: UsuarioAdminRequest):
     tipo = req.tipo_pago.strip()
-    val_monto = req.monto_fijo if req.monto_fijo > 0 else req.tarifa_hora
-    
-    if tipo.lower() in ["fijo", "semanal"]:
-        m_fijo = val_monto if val_monto > 0 else 150.0
-        t_hora = m_fijo
-    elif tipo.lower() == "gasolina":
-        m_fijo = 0.0
-        t_hora = 0.5
-    else:
-        m_fijo = 0.0
-        t_hora = req.tarifa_hora if req.tarifa_hora > 0 else 1.5
+    m_fijo = req.monto_fijo if tipo.lower() in ["fijo", "semanal"] else 0.0
+    t_hora = req.tarifa_hora if tipo.lower() == "horas" else (req.monto_fijo if tipo.lower() in ["fijo", "semanal"] else (0.5 if tipo.lower() == "gasolina" else 0.0))
 
     payload = {
         "usuario": req.usuario.strip(),
