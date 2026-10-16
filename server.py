@@ -169,7 +169,7 @@ def leer_raiz():
                     }
                 }, 500);
 
-                // Asegurar que la opción "Semanal" esté presente en el desplegable de Tipo de Pago del modal
+                // Asegurar opción "Semanal" y adaptar la etiqueta del input numérico (Monto Fijo / Semanal)
                 const observerModalUsuario = new MutationObserver(() => {
                     document.querySelectorAll('select').forEach(sel => {
                         if (sel.innerHTML.includes('Horas') && sel.innerHTML.includes('Fijo') && !sel.innerHTML.includes('Semanal')) {
@@ -179,6 +179,26 @@ def leer_raiz():
                             sel.appendChild(opt);
                         }
                     });
+
+                    // Si el tipo de pago es Semanal o Fijo, ajustar el texto de la etiqueta del monto
+                    const selectPago = document.querySelector('select[name="tipo_pago"]') || Array.from(document.querySelectorAll('select')).find(s => s.value === 'Semanal' || s.value === 'Fijo');
+                    if (selectPago) {
+                        const contenedorInput = selectPago.closest('.space-y-4') || selectPago.parentElement.parentElement;
+                        if (contenedorInput) {
+                            const labels = contenedorInput.querySelectorAll('label');
+                            labels.forEach(lbl => {
+                                if (lbl.textContent.toLowerCase().includes('tarifa') || lbl.textContent.toLowerCase().includes('monto')) {
+                                    if (selectPago.value === 'Semanal') {
+                                        lbl.textContent = 'Monto Fijo Semanal ($)';
+                                    } else if (selectPago.value === 'Fijo') {
+                                        lbl.textContent = 'Monto Fijo ($)';
+                                    } else if (selectPago.value === 'Horas') {
+                                        lbl.textContent = 'Tarifa por Hora ($)';
+                                    }
+                                }
+                            });
+                        }
+                    }
                 });
                 observerModalUsuario.observe(document.body, { childList: true, subtree: true });
 
@@ -685,6 +705,10 @@ def admin_datos():
             res_u = supabase.table("usuarios").select("*").execute()
             if res_u.data:
                 for u in res_u.data:
+                    # Mapear correctamente monto_fijo para tipos semanales/fijos y tarifa_hora para horas
+                    if u.get("tipo_pago", "").lower() in ["fijo", "semanal"] and (u.get("monto_fijo") is None or u.get("monto_fijo") == 0):
+                        if u.get("tarifa_hora", 0) > 0:
+                            u["monto_fijo"] = u["tarifa_hora"]
                     usuarios_dict[u["usuario"]] = u
         except Exception:
             pass
@@ -753,9 +777,9 @@ def admin_eliminar_registro(registro_id: int):
 def admin_guardar_usuario(req: UsuarioAdminRequest):
     tipo = req.tipo_pago.strip()
     
-    # Asignar correctamente según el tipo de pago seleccionado en la interfaz
+    # Para pagos semanales y fijos, guardamos el valor en monto_fijo y también sincronizamos tarifa_hora para que la UI original lo refleje sin mostrar $0
     m_fijo = req.monto_fijo if tipo.lower() in ["fijo", "semanal"] else 0.0
-    t_hora = req.tarifa_hora if tipo.lower() == "horas" else (0.5 if tipo.lower() == "gasolina" else 0.0)
+    t_hora = req.tarifa_hora if tipo.lower() == "horas" else (req.monto_fijo if tipo.lower() in ["fijo", "semanal"] else (0.5 if tipo.lower() == "gasolina" else 0.0))
 
     payload = {
         "usuario": req.usuario.strip(),
@@ -767,12 +791,10 @@ def admin_guardar_usuario(req: UsuarioAdminRequest):
         "area": req.area
     }
     
-    # Actualizar localmente también para persistencia inmediata
     PERSONAL_FIJO[req.usuario.strip()] = payload
 
     if supabase:
         try:
-            # Si existía un usuario antiguo con otro nombre, limpiarlo
             if req.usuario_antiguo and req.usuario_antiguo.strip() != req.usuario.strip():
                 supabase.table("usuarios").delete().ilike("usuario", req.usuario_antiguo.strip()).execute()
             
