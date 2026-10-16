@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 import os
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from supabase import create_client, Client
 
 app = FastAPI()
@@ -113,20 +113,43 @@ def leer_raiz():
                     }
                 }
 
-                // Mantener siempre fija la fecha actual en el input "Hasta"
-                const ajustarFechaHasta = () => {
+                // Auto-configurar semana en curso (Lunes a Domingo) y calcular automáticamente al iniciar
+                setTimeout(() => {
                     const inputsFecha = document.querySelectorAll('input[type="date"]');
                     if (inputsFecha.length >= 2) {
+                        const hoy = new Date();
+                        const diaSemana = hoy.getDay(); // 0 = Domingo, 1 = Lunes...
+                        
+                        const diffLunes = hoy.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1);
+                        const lunesSemana = new Date(new Date().setDate(diffLunes));
+                        const domingoSemana = new Date(lunesSemana);
+                        domingoSemana.setDate(lunesSemana.getDate() + 6);
+
+                        const lunesStr = lunesSemana.toISOString().split('T')[0];
+                        const domingoStr = domingoSemana.toISOString().split('T')[0];
+
+                        let inputDesde = inputsFecha[inputsFecha.length - 2];
                         let inputHasta = inputsFecha[inputsFecha.length - 1];
-                        const hoyStr = new Date().toISOString().split('T')[0];
-                        if (inputHasta.value !== hoyStr) {
-                            inputHasta.value = hoyStr;
+
+                        if (inputDesde) {
+                            inputDesde.value = lunesStr;
+                            inputDesde.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                        if (inputHasta) {
+                            inputHasta.value = domingoStr;
+                            inputHasta.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+
+                        // Simular clic automático en el botón de calcular para mostrar las horas de inmediato
+                        const btnCalcular = document.querySelector('button:has(.fa-calculator)') || Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Calcular'));
+                        if (btnCalcular) {
+                            // Pequeño retraso para asegurar que los datos del trabajador ya hayan cargado en la tabla
+                            setTimeout(() => {
+                                btnCalcular.click();
+                            }, 300);
                         }
                     }
-                };
-
-                ajustarFechaHasta();
-                setInterval(ajustarFechaHasta, 1000);
+                }, 500);
 
                 setTimeout(() => {
                     const esAdmin = document.body.textContent.includes('Panel de Administración') || 
@@ -476,12 +499,10 @@ def leer_raiz():
                 const tarifa = parseFloat(tarifaInput.value) || 0;
                 let totalHorasPeriodo = 0;
 
-                // Sumar estrictamente solo las filas de la tabla que están visibles (filtradas por el rango de fechas)
                 let filasVistas = new Set();
                 document.querySelectorAll('tr').forEach(tr => {
                     const textoFila = tr.textContent;
                     const matchHrs = textoFila.match(/([0-9]+\.[0-9]+)\s*hrs/);
-                    // Comprobar que la fila tenga horas, no se haya procesado y esté visible en el DOM (display !== 'none')
                     if (matchHrs && !filasVistas.has(textoFila)) {
                         const styleDisplay = window.getComputedStyle(tr).display;
                         if (styleDisplay !== 'none') {
