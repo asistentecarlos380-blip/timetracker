@@ -120,8 +120,6 @@ def leer_raiz():
 
                     if (esAdmin) {
                         enriquecerTablaPersonalAdmin();
-                    } else {
-                        vincularConfirmacionesTrabajador();
                     }
                 }, 500);
 
@@ -137,46 +135,9 @@ def leer_raiz():
                             dropdownMenu.appendChild(itemSimulador);
                         }
                     }
-                    vincularConfirmacionesTrabajador();
                 });
                 observerTrabajador.observe(document.body, { childList: true, subtree: true });
             });
-
-            function vincularConfirmacionesTrabajador() {
-                // Interceptar botón de Iniciar/Finalizar Turno (Verde/Rojo)
-                document.querySelectorAll('button').forEach(btn => {
-                    const txt = btn.textContent.trim().toLowerCase();
-                    if ((txt.includes('iniciar turno') || txt.includes('finalizar turno')) && !btn.dataset.confirmacionVinc) {
-                        btn.dataset.confirmacionVinc = "true";
-                        const originalOnClick = btn.onclick;
-                        btn.onclick = function(e) {
-                            const accionTxt = btn.textContent.trim().toLowerCase().includes('iniciar') ? 'iniciar' : 'finalizar';
-                            if (confirm(`¿Estás seguro de que deseas ${accionTxt} el turno?`)) {
-                                if (originalOnClick) originalOnClick.apply(this, arguments);
-                            } else {
-                                e.preventDefault();
-                                e.stopPropagation();
-                            }
-                        };
-                    }
-
-                    // Interceptar botón de Pausar / Receso (Naranja)
-                    if (txt.includes('pausar') || txt.includes('receso')) {
-                        if (!btn.dataset.confirmacionVinc) {
-                            btn.dataset.confirmacionVinc = "true";
-                            const originalOnClick = btn.onclick;
-                            btn.onclick = function(e) {
-                                if (confirm("¿Estás seguro de que deseas registrar una pausa / receso?")) {
-                                    if (originalOnClick) originalOnClick.apply(this, arguments);
-                                } else {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                }
-                            };
-                        }
-                    }
-                });
-            }
 
             function parsearFechaPersonalizada(str) {
                 if(!str) return null;
