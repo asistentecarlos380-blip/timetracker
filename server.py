@@ -96,12 +96,11 @@ def leer_raiz():
         with open("index.html", "r", encoding="utf-8") as f:
             content = f.read()
             
-            # Inyectar el diccionario de personal directamente para que el frontend conozca montos semanales exactos
             personal_json = json.dumps(PERSONAL_FIJO)
             
-            patch_ui = f"""
+            patch_ui = """
             <script>
-            window._dbPersonalGlobal = {personal_json};
+            window._dbPersonalGlobal = """ + personal_json + """;
 
             document.addEventListener("DOMContentLoaded", () => {
                 const headerActions = document.querySelector('header') || document.querySelector('.flex.justify-between') || document.querySelector('#panel-admin');
@@ -286,11 +285,9 @@ def leer_raiz():
 
                         const nombrePersonal = celdas[0].textContent.trim();
                         
-                        // Corregir visualización de tarifa semanal en la tabla principal
                         if (celdas.length >= 4) {
                             let pagoTipoTxt = celdas[2] ? celdas[2].textContent.trim() : '';
                             if (pagoTipoTxt.toLowerCase() === 'semanal' || pagoTipoTxt.toLowerCase() === 'fijo') {
-                                // Buscar si tenemos un monto fijo registrado en window._dbPersonalGlobal
                                 if (window._dbPersonalGlobal && window._dbPersonalGlobal[nombrePersonal]) {
                                     let montoSe = window._dbPersonalGlobal[nombrePersonal].monto_fijo || window._dbPersonalGlobal[nombrePersonal].tarifa_hora || 150;
                                     celdas[3].textContent = '$' + parseFloat(montoSe).toFixed(2);
@@ -329,7 +326,6 @@ def leer_raiz():
                     const celdas = tr.querySelectorAll('td');
                     if (celdas.length >= 5) {
                         let trabajador = celdas[0].textContent.trim();
-                        // Verificar si es trabajador semanal en el diccionario global
                         if (window._dbPersonalGlobal && window._dbPersonalGlobal[trabajador]) {
                             let usrData = window._dbPersonalGlobal[trabajador];
                             let tipoP = (usrData.tipo_pago || '').toLowerCase();
@@ -354,7 +350,6 @@ def leer_raiz():
                         let pagoStr = celdas[4].textContent.trim().replace('$', '');
                         let valor = parseFloat(pagoStr) || 0;
                         
-                        // Forzar el monto fijo/semanal si el usuario está registrado como semanal en el diccionario global
                         if (window._dbPersonalGlobal && window._dbPersonalGlobal[trabajador]) {
                             let usrData = window._dbPersonalGlobal[trabajador];
                             let tipoP = (usrData.tipo_pago || '').toLowerCase();
