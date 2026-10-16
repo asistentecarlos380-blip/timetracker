@@ -132,7 +132,7 @@ def leer_raiz():
                     });
                 }, 400);
 
-                // Asegurar que la opción Semanal aparezca en el select de tipo de pago y reemplazar "Fijo" si es necesario
+                // Asegurar opción "Semanal" y adaptar etiquetas de monto/tarifa dinámicamente en modales
                 const observerModalUsuario = new MutationObserver(() => {
                     document.querySelectorAll('select').forEach(sel => {
                         if (sel.innerHTML.includes('Horas') && !sel.innerHTML.includes('Semanal')) {
@@ -143,15 +143,16 @@ def leer_raiz():
                         }
                     });
 
-                    // Cambiar etiquetas de "Monto Fijo" a "Monto Semanal" cuando corresponda
                     const selectPago = document.querySelector('select[name="tipo_pago"]') || Array.from(document.querySelectorAll('select')).find(s => s.value === 'Semanal' || s.value === 'Fijo');
                     if (selectPago) {
                         const contenedorInput = selectPago.closest('.space-y-4') || selectPago.parentElement.parentElement;
                         if (contenedorInput) {
                             contenedorInput.querySelectorAll('label').forEach(lbl => {
-                                if (lbl.textContent.includes('Fijo') || lbl.textContent.includes('Tarifa')) {
+                                if (lbl.textContent.toLowerCase().includes('fijo') || lbl.textContent.toLowerCase().includes('tarifa') || lbl.textContent.toLowerCase().includes('monto')) {
                                     if (selectPago.value === 'Semanal') {
                                         lbl.textContent = 'Monto Semanal ($)';
+                                    } else if (selectPago.value === 'Horas') {
+                                        lbl.textContent = 'Tarifa por Hora ($)';
                                     }
                                 }
                             });
@@ -684,9 +685,12 @@ def admin_datos():
             res_u = supabase.table("usuarios").select("*").execute()
             if res_u.data:
                 for u in res_u.data:
-                    if u.get("tipo_pago", "").lower() in ["fijo", "semanal"] and (u.get("monto_fijo") is None or u.get("monto_fijo") == 0):
-                        if u.get("tarifa_hora", 0) > 0:
-                            u["monto_fijo"] = u["tarifa_hora"]
+                    tipo = str(u.get("tipo_pago", "")).lower()
+                    if tipo in ["fijo", "semanal"]:
+                        if not u.get("monto_fijo") or u.get("monto_fijo") == 0:
+                            u["monto_fijo"] = u.get("tarifa_hora", 150.0)
+                        if not u.get("tarifa_hora") or u.get("tarifa_hora") == 0:
+                            u["tarifa_hora"] = u["monto_fijo"]
                     usuarios_dict[u["usuario"]] = u
         except Exception:
             pass
@@ -754,8 +758,18 @@ def admin_eliminar_registro(registro_id: int):
 @app.post("/api/admin/usuario")
 def admin_guardar_usuario(req: UsuarioAdminRequest):
     tipo = req.tipo_pago.strip()
-    m_fijo = req.monto_fijo if tipo.lower() in ["fijo", "semanal"] else 0.0
-    t_hora = req.tarifa_hora if tipo.lower() == "horas" else (req.monto_fijo if tipo.lower() in ["fijo", "semanal"] else (0.5 if tipo.lower() == "gasolina" else 0.0))
+    # Capturar correctamente el monto ingresado ya sea desde monto_fijo o tarifa_hora
+    val_monto = req.monto_fijo if req.monto_fijo > 0 else req.tarifa_hora
+    
+    if tipo.lower() in ["fijo", "semanal"]:
+        m_fijo = val_monto if val_monto > 0 else 150.0
+        t_hora = m_fijo  # Sincronizado para que la tabla original muestre el valor correctamente
+    elif tipo.lower() == "gasolina":
+        m_fijo = 0.0
+        t_hora = 0.5
+    else:
+        m_fijo = 0.0
+        t_hora = req.tarifa_hora if req.tarifa_hora > 0 else 1.5
 
     payload = {
         "usuario": req.usuario.strip(),
