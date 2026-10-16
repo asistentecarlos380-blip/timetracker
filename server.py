@@ -111,7 +111,7 @@ def leer_raiz():
                     }
                 }
 
-                // 2. Enriquecer tabla de personal (Iconos limpios y botón Activo/Finalizar en línea)
+                // 2. Control estricto: Solo inyectar elementos de administración si estamos en el panel de admin
                 setTimeout(() => {
                     const esAdmin = document.body.textContent.includes('Panel de Administración') || 
                                     document.body.textContent.includes('Personal Registrado y Tarifas') ||
@@ -119,6 +119,10 @@ def leer_raiz():
 
                     if (esAdmin) {
                         enriquecerTablaPersonalAdmin();
+                    } else {
+                        // Asegurar limpieza absoluta en panel de trabajador
+                        const cuadroTrabajador = document.getElementById('cuadro-total-nomina-general');
+                        if (cuadroTrabajador) cuadroTrabajador.remove();
                     }
                 }, 500);
 
@@ -155,7 +159,7 @@ def leer_raiz():
                 document.querySelectorAll('tr').forEach(tr => {
                     const celdas = tr.querySelectorAll('td');
                     if (celdas.length >= 6) {
-                        // Cambiar texto de Acciones por SOLO ICONOS (Detalles, Editar, Borrar)
+                        // Acciones con iconos puros (Detalles, Editar, Borrar)
                         const celdaAcciones = celdas[celdas.length - 1];
                         if (celdaAcciones && !celdaAcciones.dataset.iconos) {
                             celdaAcciones.dataset.iconos = "true";
@@ -168,7 +172,7 @@ def leer_raiz():
                             `;
                         }
 
-                        // Agregar indicador Activo y botón Finalizar en la misma línea del trabajador (al lado del Área)
+                        // Estado Activo y botón Finalizar en la línea del trabajador (al lado de Área/Cargo)
                         const nombrePersonal = celdas[0].textContent.trim();
                         if (usuariosActivos.has(nombrePersonal) && !tr.dataset.enriquecido) {
                             tr.dataset.enriquecido = "true";
@@ -193,7 +197,6 @@ def leer_raiz():
             }
 
             async function forzarCierreIndividual(usuario) {
-                // Confirmación obligatoria para evitar cierres por error accidental
                 if (!confirm(`¿Estás seguro de finalizar el turno activo de ${usuario}?`)) return;
                 try {
                     const res = await fetch('/api/admin/forzar-cierre', {
