@@ -551,6 +551,7 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
 
                 if (res.ok) {
                     currentUser = data;
+                    sessionStorage.setItem('currentUser', JSON.stringify(data));
                     document.getElementById('login-screen').classList.add('hidden');
                     if (data.rol_sistema === 'admin') {
                         document.getElementById('admin-dashboard').classList.remove('hidden');
@@ -570,8 +571,25 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
             }
         });
 
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedUser = sessionStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                document.getElementById('login-screen').classList.add('hidden');
+                if (currentUser.rol_sistema === 'admin') {
+                    document.getElementById('admin-dashboard').classList.remove('hidden');
+                    cargarAdminDatos();
+                } else {
+                    document.getElementById('worker-dashboard').classList.remove('hidden');
+                    document.getElementById('worker-title').textContent = 'Panel de Trabajador: ' + currentUser.usuario;
+                    cargarPanelTrabajador();
+                }
+            }
+        });
+
         function cerrarSesion() {
             currentUser = null;
+            sessionStorage.removeItem('currentUser');
             if (sessionTimer) clearInterval(sessionTimer);
             document.getElementById('admin-dashboard').classList.add('hidden');
             document.getElementById('worker-dashboard').classList.add('hidden');
