@@ -3,77 +3,409 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Asistencia - Matrix Style</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <title>Control de Asistencia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        canvas {
+        canvas#matrix-bg {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
             z-index: -1;
-            background: #000;
+            background: #050811;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(51, 65, 85, 0.5);
+        }
+        .glass-login-card {
+            background: rgba(10, 16, 30, 0.65);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.15);
         }
     </style>
 </head>
 <body class="text-slate-100 min-h-screen flex flex-col justify-between relative overflow-x-hidden">
 
-    <!-- Fondo Matrix dinámico -->
     <canvas id="matrix-bg"></canvas>
 
     <!-- LOGIN SCREEN -->
     <div id="login-screen" class="flex items-center justify-center flex-grow p-4 z-10">
-        <div class="bg-slate-900/90 border border-emerald-500/30 p-8 rounded-2xl shadow-2xl shadow-emerald-950/50 w-full max-w-md backdrop-blur-md">
-            
-            <div class="flex flex-col items-center mb-6">
-                <div class="w-12 h-12 bg-emerald-500/10 border border-emerald-500/30 rounded-full flex items-center justify-center mb-3">
-                    <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                    </svg>
-                </div>
-                <h1 class="text-2xl font-bold tracking-wide text-emerald-400">Control de Asistencia</h1>
-                <p class="text-xs text-slate-400 mt-1">Sistema de fichaje y gestión segura</p>
+        <div class="glass-login-card p-8 rounded-2xl shadow-2xl w-full max-w-md">
+            <div class="text-center mb-6">
+                <i class="fa-solid fa-shield-halved text-emerald-500 text-5xl mb-3 animate-pulse"></i>
+                <h1 class="text-2xl font-bold tracking-wide text-white">Control de Asistencia</h1>
+                <p class="text-xs text-slate-300 mt-1">Sistema de fichaje y gestión segura</p>
             </div>
-
-            <form id="login-form" class="space-y-4" onsubmit="handleLogin(event)">
+            <form id="login-form" class="space-y-4">
                 <div>
-                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1 font-semibold">Usuario</label>
-                    <input type="text" id="username" required class="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-4 py-3 text-slate-100 focus:outline-none focus:border-emerald-500 transition-colors" placeholder="Ingrese su usuario">
+                    <label class="block text-xs font-medium text-slate-200 mb-1">Usuario</label>
+                    <input type="text" id="login-usuario" required class="w-full bg-slate-900/70 border border-slate-700/80 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Tu nombre de usuario">
                 </div>
-
                 <div>
-                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1 font-semibold">PIN</label>
+                    <label class="block text-xs font-medium text-slate-200 mb-1">PIN</label>
                     <div class="relative">
-                        <input type="password" id="pin" required class="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-4 py-3 text-slate-100 focus:outline-none focus:border-emerald-500 transition-colors" placeholder="••••">
+                        <input type="password" id="login-pin" required class="w-full bg-slate-900/70 border border-slate-700/80 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-10" placeholder="••••">
+                        <button type="button" onclick="togglePass('login-pin', 'icon-login-pin')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                            <i id="icon-login-pin" class="fa-solid fa-eye text-xs"></i>
+                        </button>
                     </div>
                 </div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg transition text-sm shadow-lg shadow-emerald-600/30">Ingresar al Sistema</button>
+            </form>
+            <div id="login-error" class="mt-4 text-center text-xs text-red-400 hidden"></div>
+        </div>
+    </div>
 
-                <button type="submit" id="login-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-3 rounded-lg shadow-lg shadow-emerald-900/30 transition-all cursor-pointer">
-                    Ingresar al Sistema
+    <!-- WORKER DASHBOARD -->
+    <div id="worker-dashboard" class="hidden flex-grow flex flex-col p-4 max-w-4xl mx-auto w-full z-10">
+        <header class="glass-panel p-4 rounded-xl flex justify-between items-center mb-4 shadow-md relative">
+            <div>
+                <h1 class="text-lg font-bold text-emerald-400" id="worker-title">Panel de Trabajador</h1>
+                <p class="text-xs text-slate-300">Control personal de turnos y recesos</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="cargarPanelTrabajador()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-white p-2 rounded-lg text-xs font-medium transition border border-slate-700 flex items-center justify-center" title="Actualizar Datos">
+                    <i class="fa-solid fa-rotate text-sm"></i>
                 </button>
+                <div class="relative">
+                    <button onclick="toggleMenuConfig()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white p-2 rounded-lg text-xs font-medium transition border border-slate-700 flex items-center justify-center" title="Configuración y Simulador">
+                        <i class="fa-solid fa-gear text-sm"></i>
+                    </button>
+                    <div id="menu-config" class="hidden absolute right-0 mt-2 w-64 glass-panel p-3 rounded-xl shadow-2xl border border-slate-700 z-50 text-xs space-y-3">
+                        <div class="border-b border-slate-700 pb-2">
+                            <button onclick="abrirModalCambiarPin(); cerrarMenuConfig();" class="w-full text-left text-indigo-300 hover:text-white flex items-center gap-2 py-1">
+                                <i class="fa-solid fa-key"></i> Cambiar mi PIN
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="cerrarSesion()" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-red-500/30">Cerrar Sesión</button>
+            </div>
+        </header>
 
-                <!-- Mensaje de error/estado -->
-                <div id="login-status" class="text-red-400 text-xs text-center mt-2 hidden"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+            <button id="btn-accion-turno" onclick="ejecutarAccionMarcar()" class="bg-emerald-600/90 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1">
+                <i id="icon-accion-turno" class="fa-solid fa-play text-lg"></i>
+                <span id="text-accion-turno" class="text-xs">Iniciar Turno</span>
+            </button>
+            <button id="btn-receso" onclick="ejecutarReceso()" class="bg-amber-600/90 hover:bg-amber-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1">
+                <i class="fa-solid fa-mug-hot text-lg"></i>
+                <span class="text-xs">Pausar / Receso</span>
+            </button>
+        </div>
+
+        <div class="glass-panel p-3 rounded-xl mb-4 shadow-md flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-semibold text-emerald-400"><i class="fa-solid fa-calculator mr-1"></i>Rango (14 días):</span>
+                <input type="date" id="worker-desde" class="bg-slate-900/80 border border-slate-700/80 rounded px-2 py-1 text-slate-200">
+                <span class="text-slate-400">a</span>
+                <input type="date" id="worker-hasta" class="bg-slate-900/80 border border-slate-700/80 rounded px-2 py-1 text-slate-200">
+                <button onclick="calcularHorasWorker()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded font-medium transition">Calcular</button>
+            </div>
+            <div class="bg-slate-900/70 border border-slate-700/80 px-3 py-1.5 rounded-lg">
+                <span class="text-slate-300">Total Período:</span> <strong id="worker-total-horas-rango" class="text-emerald-400 text-sm">0.00 hrs</strong>
+            </div>
+        </div>
+
+        <div class="glass-panel rounded-xl p-3 flex-grow shadow-md overflow-x-auto max-h-[380px]">
+            <h2 class="text-xs font-semibold mb-2 text-slate-300">Resumen Diario Consolidado</h2>
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-slate-700/60 text-slate-400">
+                        <th class="py-1.5">Fecha</th>
+                        <th class="py-1.5">Primera Entrada</th>
+                        <th class="py-1.5">Última Salida</th>
+                        <th class="py-1.5 text-right">Total Horas Día</th>
+                        <th class="py-1.5 text-right">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-mis-horas" class="divide-y divide-slate-700/40"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ADMIN DASHBOARD -->
+    <div id="admin-dashboard" class="hidden flex-grow flex flex-col p-4 max-w-7xl mx-auto w-full z-10">
+        <header class="glass-panel p-4 rounded-xl flex justify-between items-center mb-4 shadow-md flex-wrap gap-2">
+            <div>
+                <h1 class="text-lg font-bold text-emerald-400">Control de Asistencia</h1>
+                <p class="text-xs text-slate-300">Panel de Administración y Gestión Completa</p>
+            </div>
+            <div class="flex gap-2 items-center flex-wrap">
+                <button onclick="abrirModalManual()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-plus-circle"></i> Agregar Horas
+                </button>
+                <button onclick="restaurarRespaldoServidor()" class="bg-amber-600/80 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow" title="Restaurar desde archivo de respaldo del servidor">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> Restaurar Respaldo
+                </button>
+                <button onclick="exportarExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-file-excel"></i> Exportar Excel
+                </button>
+                <button onclick="cerrarSesion()" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-red-500/30">Cerrar Sesión</button>
+            </div>
+        </header>
+
+        <div class="glass-panel p-4 rounded-xl shadow-md mb-4">
+            <h2 class="text-xs font-semibold text-slate-200 mb-2"><i class="fa-solid fa-calendar-days text-emerald-400 mr-1"></i>Resumen de Horas y Cálculo de Nómina (Quincenal / 14 días)</h2>
+            <div class="flex flex-wrap items-end gap-3 mb-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Desde (Fecha inicio):</label>
+                    <input type="date" id="filtro-fecha-desde" class="bg-slate-900/80 border border-slate-700/80 rounded px-2 py-1 text-slate-100">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Hasta (Fecha fin):</label>
+                    <input type="date" id="filtro-fecha-hasta" class="bg-slate-900/80 border border-slate-700/80 rounded px-2 py-1 text-slate-100">
+                </div>
+                <button onclick="calcularResumenFechas()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded font-medium transition shadow">
+                    <i class="fa-solid fa-calculator mr-1"></i> Calcular Horas
+                </button>
+            </div>
+            <div class="overflow-x-auto max-h-52">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-700/60 text-slate-400">
+                            <th class="py-1">Trabajador</th>
+                            <th class="py-1">Tipo Pago</th>
+                            <th class="py-1">Horas Totales</th>
+                            <th class="py-1">Tarifa / Monto</th>
+                            <th class="py-1 text-right">Total a Pagar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-resumen-fechas" class="divide-y divide-slate-700/40">
+                        <tr><td colspan="5" class="py-3 text-center text-slate-500">Selecciona las fechas y presiona 'Calcular Horas'.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="glass-panel p-4 rounded-xl shadow-md">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-xs font-semibold text-slate-200">Personal Registrado y Tarifas</h2>
+                    <button onclick="abrirModalUsuario()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded text-xs transition">+ Nuevo</button>
+                </div>
+                <div class="overflow-x-auto max-h-64">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-700/60 text-slate-400">
+                                <th class="py-1">Usuario</th>
+                                <th class="py-1">PIN</th>
+                                <th class="py-1">Pago</th>
+                                <th class="py-1">Tarifa</th>
+                                <th class="py-1">Cargo / Área</th>
+                                <th class="py-1 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-usuarios" class="divide-y divide-slate-700/40"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="glass-panel p-4 rounded-xl shadow-md flex flex-col">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-xs font-semibold text-slate-200">Asistencias en Tiempo Real (Ordenadas y con Horas)</h2>
+                    <button onclick="cargarAdminDatos()" class="text-xs text-emerald-400 hover:underline"><i class="fa-solid fa-rotate mr-1"></i> Actualizar</button>
+                </div>
+                <div class="overflow-x-auto max-h-64 flex-grow">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-700/60 text-slate-400">
+                                <th class="py-1">Usuario</th>
+                                <th class="py-1">Entrada</th>
+                                <th class="py-1">Salida</th>
+                                <th class="py-1 text-right">Total Horas</th>
+                                <th class="py-1 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-asistencias-admin" class="divide-y divide-slate-700/40"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DETALLES DEL DÍA O TRABAJADOR -->
+    <div id="modal-detalles" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+        <div class="glass-panel p-6 rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-700 text-xs">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                <h3 id="modal-detalles-titulo" class="text-base font-bold text-emerald-400 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check"></i> Detalle de Registros
+                </h3>
+                <button onclick="cerrarModalDetalles()" class="text-slate-400 hover:text-white text-base">&times;</button>
+            </div>
+            <div class="overflow-x-auto max-h-80">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-700/60 text-slate-400">
+                            <th class="py-1.5"># ID</th>
+                            <th class="py-1.5">Entrada</th>
+                            <th class="py-1.5">Receso Inicio</th>
+                            <th class="py-1.5">Receso Fin</th>
+                            <th class="py-1.5">Salida</th>
+                            <th class="py-1.5 text-right">Total Horas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-modal-detalles" class="divide-y divide-slate-700/40"></tbody>
+                </table>
+            </div>
+            <div class="flex justify-end mt-5">
+                <button onclick="cerrarModalDetalles()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR REGISTRO -->
+    <div id="modal-editar-registro" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+        <div class="glass-panel p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700 text-xs">
+            <h3 class="text-base font-bold mb-3 text-emerald-400"><i class="fa-solid fa-pen-to-square mr-2"></i>Editar Registro de Turno</h3>
+            <form id="form-editar-registro" class="space-y-3">
+                <input type="hidden" id="edit-reg-id">
+                <div>
+                    <label class="block text-slate-300 mb-1">Trabajador</label>
+                    <input type="text" id="edit-reg-usuario" disabled class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-2 text-slate-400">
+                </div>
+                <div>
+                    <label class="block text-slate-300 mb-1">Entrada (ej. 14-10-2026 05:52 PM)</label>
+                    <input type="text" id="edit-reg-entrada" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-slate-300 mb-1">Salida (ej. 15-10-2026 12:02 AM)</label>
+                    <input type="text" id="edit-reg-salida" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" placeholder="En Curso si está vacío">
+                </div>
+                <div class="flex justify-end gap-2 mt-5">
+                    <button type="button" onclick="cerrarModalEditarRegistro()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Cancelar</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition">Guardar Cambios</button>
+                </div>
             </form>
         </div>
     </div>
 
-    <!-- WORKER / ADMIN DASHBOARD (Oculto inicialmente hasta iniciar sesión) -->
-    <div id="dashboard-screen" class="hidden flex-grow p-6 z-10 max-w-6xl mx-auto w-full">
-        <div class="flex justify-between items-center bg-slate-900/90 border border-emerald-500/30 p-4 rounded-xl mb-6 backdrop-blur-md">
-            <h2 class="text-xl font-bold text-emerald-400" id="welcome-user">Panel de Control</h2>
-            <button onclick="logout()" class="bg-red-600/80 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer">
-                Cerrar Sesión
-            </button>
-        </div>
-        <div class="bg-slate-900/90 border border-emerald-500/30 p-6 rounded-xl backdrop-blur-md text-center">
-            <p class="text-slate-300">¡Bienvenido al sistema! Conectado correctamente.</p>
+    <!-- MODAL CAMBIAR PIN -->
+    <div id="modal-cambiar-pin" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+        <div class="glass-panel p-6 rounded-2xl w-full max-w-sm shadow-2xl border border-slate-700 text-xs">
+            <h3 class="text-base font-bold mb-4 text-emerald-400 flex items-center gap-2"><i class="fa-solid fa-key"></i> Cambiar mi PIN</h3>
+            <form id="form-cambiar-pin" class="space-y-3">
+                <div>
+                    <label class="block text-slate-300 mb-1">PIN Actual</label>
+                    <input type="password" id="pin-actual" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-slate-300 mb-1">Nuevo PIN</label>
+                    <input type="password" id="pin-nuevo" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none" placeholder="Mínimo 4 números">
+                </div>
+                <div>
+                    <label class="block text-slate-300 mb-1">Confirmar Nuevo PIN</label>
+                    <input type="password" id="pin-confirmar" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                </div>
+                <div class="flex justify-end gap-2 mt-5">
+                    <button type="button" onclick="cerrarModalCambiarPin()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Cancelar</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition">Actualizar PIN</button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Script de fondo Matrix y lógica de Acceso -->
+    <!-- MODAL USUARIO ADMIN -->
+    <div id="modal-usuario" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+        <div class="glass-panel p-6 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700">
+            <h3 id="modal-titulo" class="text-base font-bold mb-4 text-emerald-400">Registrar / Editar Usuario</h3>
+            <form id="form-usuario" class="space-y-3 text-xs">
+                <input type="hidden" id="edit-antiguo">
+                <div>
+                    <label class="block text-slate-300 mb-1">Nombre de Usuario</label>
+                    <input type="text" id="input-u-nombre" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" placeholder="ej. Ricardo">
+                </div>
+                <div>
+                    <label class="block text-slate-300 mb-1">PIN de Acceso</label>
+                    <input type="password" id="input-u-pin" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-300 mb-1">Tipo de Pago</label>
+                        <select id="input-u-tipopago" onchange="actualizarLabelMonto()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                            <option value="Horas">Horas</option>
+                            <option value="Gasolina">Gasolina</option>
+                            <option value="Fijo">Fijo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label id="label-monto-tarifa" class="block text-slate-300 mb-1">Tarifa por Hora ($)</label>
+                        <input type="number" id="input-u-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="1.5">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-300 mb-1">Cargo / Área</label>
+                        <input type="text" id="input-u-area" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="Operaciones" placeholder="ej. Operaciones, Planta">
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 mb-1">Rol en Sistema</label>
+                        <select id="input-u-rol" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                            <option value="trabajador">Trabajador</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-5">
+                    <button type="button" onclick="cerrarModalUsuario()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Cancelar</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL REGISTRO MANUAL O FORMATO SIMPLE FÁCIL -->
+    <div id="modal-manual" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+        <div class="glass-panel p-6 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-700">
+            <h3 class="text-base font-bold mb-3 text-emerald-400"><i class="fa-solid fa-clock mr-2"></i>Agregar Horas (Individual o Carga Fácil)</h3>
+            
+            <div class="flex border-b border-slate-700 mb-4 text-xs font-medium">
+                <button type="button" onclick="cambiarModoManual('individual')" id="tab-ind" class="pb-2 px-3 border-b-2 border-emerald-500 text-emerald-400">Registro Individual</button>
+                <button type="button" onclick="cambiarModoManual('simple')" id="tab-simple" class="pb-2 px-3 border-b-2 border-transparent text-slate-400 hover:text-white">Carga Súper Fácil (Líneas)</button>
+            </div>
+
+            <form id="form-manual" class="space-y-3 text-xs">
+                <div id="seccion-individual">
+                    <div class="mb-2">
+                        <label class="block text-slate-300 mb-1">Seleccionar Trabajador</label>
+                        <select id="manual-usuario" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none"></select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="block text-slate-300 mb-1">Entrada (ej. 14-10-2026 05:52 PM)</label>
+                        <input type="text" id="manual-entrada" placeholder="14-10-2026 05:52 PM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                    <div class="mb-2">
+                        <label class="block text-slate-300 mb-1">Salida (ej. 15-10-2026 12:02 AM)</label>
+                        <input type="text" id="manual-salida" placeholder="15-10-2026 12:02 AM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                    <div class="flex items-center gap-2 pt-1">
+                        <input type="checkbox" id="manual-continua" class="w-4 h-4 accent-emerald-600">
+                        <label for="manual-continua" class="text-slate-300">¿Es turno CONTINÚA?</label>
+                    </div>
+                </div>
+
+                <div id="seccion-simple" class="hidden">
+                    <label class="block text-slate-300 mb-1">Pega tus registros (Trabajador | Entrada | Salida):</label>
+                    <textarea id="manual-texto-simple" rows="7" placeholder="Ronald | 14-10-2026 05:52 PM | 15-10-2026 12:02 AM
+Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 font-mono text-[11px] text-emerald-300 focus:ring-1 focus:ring-emerald-500 focus:outline-none"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-2 mt-5">
+                    <button type="button" onclick="cerrarModalManual()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Cancelar</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition">Procesar y Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SCRIPT -->
     <script>
         const canvas = document.getElementById('matrix-bg');
         const ctx = canvas.getContext('2d');
@@ -85,83 +417,792 @@
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
 
-        const characters = '01ABCDEFHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+        const characters = '01ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()';
         const fontSize = 14;
         let columns = canvas.width / fontSize;
         let drops = [];
-
-        for (let i = 0; i < columns; i++) {
-            drops[i] = 1;
-        }
+        for (let i = 0; i < columns; i++) { drops[i] = 1; }
 
         function drawMatrix() {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillStyle = 'rgba(5, 8, 17, 0.08)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-
             ctx.fillStyle = '#10b981';
             ctx.font = fontSize + 'px monospace';
 
             for (let i = 0; i < drops.length; i++) {
                 const text = characters.charAt(Math.floor(Math.random() * characters.length));
                 ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-
-                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-                    drops[i] = 0;
-                }
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) { drops[i] = 0; }
                 drops[i]++;
             }
         }
-        setInterval(drawMatrix, 33);
+        setInterval(drawMatrix, 35);
 
-        async function handleLogin(e) {
-            e.preventDefault();
-            const usuario = document.getElementById('username').value.trim();
-            const pin = document.getElementById('pin').value.trim();
-            const statusDiv = document.getElementById('login-status');
-            const btn = document.getElementById('login-btn');
+        function toggleMenuConfig() {
+            const menu = document.getElementById('menu-config');
+            menu.classList.toggle('hidden');
+        }
 
-            statusDiv.classList.add('hidden');
-            btn.textContent = "Verificando...";
-            btn.disabled = true;
+        function cerrarMenuConfig() {
+            const menu = document.getElementById('menu-config');
+            if(menu) menu.classList.add('hidden');
+        }
 
-            try {
-                // Validación directa con el backend o credenciales locales predeterminadas
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ usuario, pin })
-                });
+        window.addEventListener('click', (e) => {
+            const menu = document.getElementById('menu-config');
+            const btn = e.target.closest('button');
+            if (menu && !menu.contains(e.target) && (!btn || !btn.getAttribute('onclick')?.includes('toggleMenuConfig'))) {
+                menu.classList.add('hidden');
+            }
+        });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('login-screen').classList.add('hidden');
-                    document.getElementById('dashboard-screen').classList.remove('hidden');
-                    document.getElementById('welcome-user').textContent = `Bienvenido, ${usuario}`;
-                } else {
-                    // Fallback rápido si usas ADMIN / 1234 directo
-                    if ((usuario.toUpperCase() === "ADMIN" || usuario === "Ricardo" || usuario === "Ronald" || usuario === "Lisander" || usuario === "Daniel" || usuario === "Betzaida" || usuario === "Brayan") && pin === "1234") {
-                        document.getElementById('login-screen').classList.add('hidden');
-                        document.getElementById('dashboard-screen').classList.remove('hidden');
-                        document.getElementById('welcome-user').textContent = `Bienvenido, ${usuario}`;
-                    } else {
-                        throw new Error("Usuario o PIN incorrecto");
-                    }
-                }
-            } catch (err) {
-                statusDiv.textContent = "Usuario o PIN incorrecto. Intente nuevamente.";
-                statusDiv.classList.remove('hidden');
-            } finally {
-                btn.textContent = "Ingresar al Sistema";
-                btn.disabled = false;
+        let modoManualActual = 'individual';
+        function cambiarModoManual(modo) {
+            modoManualActual = modo;
+            const tabInd = document.getElementById('tab-ind');
+            const tabSimple = document.getElementById('tab-simple');
+            const secInd = document.getElementById('seccion-individual');
+            const secSimple = document.getElementById('seccion-simple');
+
+            if(modo === 'individual') {
+                tabInd.className = "pb-2 px-3 border-b-2 border-emerald-500 text-emerald-400";
+                tabSimple.className = "pb-2 px-3 border-b-2 border-transparent text-slate-400 hover:text-white";
+                secInd.classList.remove('hidden');
+                secSimple.classList.add('hidden');
+            } else {
+                tabSimple.className = "pb-2 px-3 border-b-2 border-emerald-500 text-emerald-400";
+                tabInd.className = "pb-2 px-3 border-b-2 border-transparent text-slate-400 hover:text-white";
+                secSimple.classList.remove('hidden');
+                secInd.classList.add('hidden');
             }
         }
 
-        function logout() {
-            document.getElementById('dashboard-screen').classList.add('hidden');
-            document.getElementById('login-screen').classList.remove('hidden');
-            document.getElementById('username').value = '';
-            document.getElementById('pin').value = '';
+        let currentUser = null;
+        let sessionTimer = null;
+        let globalAdminData = null;
+        let registrosGlobalesTrabajador = [];
+
+        function togglePass(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.remove("fa-eye");
+                icon.classList.add("fa-eye-slash");
+            } else {
+                input.type = "password";
+                icon.classList.remove("fa-eye-slash");
+                icon.classList.add("fa-eye");
+            }
         }
+
+        function abrirModalCambiarPin() {
+            document.getElementById('form-cambiar-pin').reset();
+            document.getElementById('modal-cambiar-pin').classList.remove('hidden');
+        }
+
+        function cerrarModalCambiarPin() {
+            document.getElementById('modal-cambiar-pin').classList.add('hidden');
+        }
+
+        document.getElementById('form-cambiar-pin').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const pinAct = document.getElementById('pin-actual').value;
+            const pinNuev = document.getElementById('pin-nuevo').value;
+            const pinConf = document.getElementById('pin-confirmar').value;
+
+            if(pinNuev !== pinConf) {
+                alert("El nuevo PIN y la confirmación no coinciden.");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/cambiar-pin', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ usuario: currentUser.usuario, pin_actual: pinAct, pin_nuevo: pinNuev })
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    alert("¡Tu PIN ha sido actualizado con éxito!");
+                    currentUser.pin = pinNuev;
+                    localStorage.setItem('timetracker_user', JSON.stringify(currentUser));
+                    cerrarModalCambiarPin();
+                } else {
+                    alert(data.detail || "Error al actualizar el PIN.");
+                }
+            } catch(err) {
+                alert("Error de conexión al cambiar el PIN.");
+            }
+        });
+
+        function actualizarLabelMonto() {
+            const tipo = document.getElementById('input-u-tipopago').value.toLowerCase();
+            const label = document.getElementById('label-monto-tarifa');
+            const inputMonto = document.getElementById('input-u-monto');
+            if(tipo === 'horas') {
+                label.textContent = "Tarifa por Hora ($)";
+                inputMonto.value = "1.5";
+            } else if(tipo === 'gasolina') {
+                label.textContent = "Gasolina (1.4L/h × $0.5)";
+                inputMonto.value = "0";
+            } else {
+                label.textContent = "Monto Fijo ($)";
+                inputMonto.value = "300";
+            }
+        }
+
+        function convertirFechaFlex(str) {
+            if(!str) return null;
+            str = str.trim();
+            let regexDMY = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?$/;
+            let match = str.match(regexDMY);
+            if(match) {
+                let d = match[1], m = match[2], y = match[3];
+                let hh = parseInt(match[4]), mm = match[5], ss = match[6] || '00';
+                let ampm = (match[7] || '').toUpperCase();
+                if(ampm === 'PM' && hh < 12) hh += 12;
+                if(ampm === 'AM' && hh === 12) hh = 0;
+                let horaFinal = hh >= 12 ? 'PM' : 'AM';
+                let hh12 = hh % 12 || 12;
+                return `${d}-${m}-${y} ${String(hh12).padStart(2,'0')}:${mm}:${ss} ${horaFinal}`;
+            }
+            return str;
+        }
+
+        function parseFechaHora(str) {
+            if(!str) return null;
+            let partes = str.split(' ');
+            if(partes.length < 3) return new Date(str);
+            let f = partes[0].split('-');
+            if(f.length !== 3) return new Date(str);
+            let d = parseInt(f[0]), m = parseInt(f[1]), y = parseInt(f[2]);
+            let h = partes[1].split(':');
+            let hh = parseInt(h[0]), mm = parseInt(h[1]), ss = parseInt(h[2] || 0);
+            let ampm = partes[2];
+            if(ampm && ampm.toUpperCase() === 'PM' && hh < 12) hh += 12;
+            if(ampm && ampm.toUpperCase() === 'AM' && hh === 12) hh = 0;
+            return new Date(y, m-1, d, hh, mm, ss);
+        }
+
+        function resetSessionTimer(rol) {
+            if (sessionTimer) clearTimeout(sessionTimer);
+            const minutos = (rol === 'admin') ? 10 : 5;
+            sessionTimer = setTimeout(() => {
+                alert("Sesión expirada por inactividad.");
+                cerrarSesion();
+            }, minutos * 60 * 1000);
+        }
+
+        ['click', 'keypress', 'mousemove'].forEach(evt => {
+            document.addEventListener(evt, () => {
+                if (currentUser) resetSessionTimer(currentUser.rol_sistema);
+            });
+        });
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const usuario = document.getElementById('login-usuario').value;
+            const pin = document.getElementById('login-pin').value;
+            const errDiv = document.getElementById('login-error');
+            errDiv.classList.add('hidden');
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({usuario, pin})
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    currentUser = { usuario: data.usuario, pin: data.pin || pin, rol_sistema: data.rol_sistema };
+                    localStorage.setItem('timetracker_user', JSON.stringify(currentUser));
+                    iniciarVistaSegunRol();
+                } else {
+                    errDiv.textContent = data.detail || 'Error de acceso';
+                    errDiv.classList.remove('hidden');
+                }
+            } catch(err) {
+                errDiv.textContent = 'Error de conexión con el servidor';
+                errDiv.classList.remove('hidden');
+            }
+        });
+
+        function cerrarSesion() {
+            currentUser = null;
+            localStorage.removeItem('timetracker_user');
+            if (sessionTimer) clearTimeout(sessionTimer);
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('worker-dashboard').classList.add('hidden');
+            document.getElementById('admin-dashboard').classList.add('hidden');
+            document.getElementById('login-form').reset();
+        }
+
+        function iniciarVistaSegunRol() {
+            document.getElementById('login-screen').classList.add('hidden');
+            resetSessionTimer(currentUser.rol_sistema);
+
+            if (currentUser.rol_sistema === 'admin') {
+                document.getElementById('admin-dashboard').classList.remove('hidden');
+                document.getElementById('worker-dashboard').classList.add('hidden');
+                cargarAdminDatos();
+            } else {
+                document.getElementById('worker-dashboard').classList.remove('hidden');
+                document.getElementById('admin-dashboard').classList.add('hidden');
+                document.getElementById('worker-title').textContent = `Trabajador: ${currentUser.usuario}`;
+                cargarPanelTrabajador();
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('timetracker_user');
+            if (saved) {
+                try {
+                    currentUser = JSON.parse(saved);
+                    iniciarVistaSegunRol();
+                } catch(e) { cerrarSesion(); }
+            }
+        });
+
+        async function ejecutarAccionMarcar() {
+            try {
+                const res = await fetch('/api/marcar', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
+                });
+                if(res.ok) {
+                    cargarPanelTrabajador();
+                } else {
+                    const data = await res.json();
+                    alert(data.detail || 'Error al registrar turno');
+                }
+            } catch(err) { alert('Error de conexión'); }
+        }
+
+        async function ejecutarReceso() {
+            if(!confirm("¿Deseas registrar receso / pausa?")) return;
+            try {
+                const res = await fetch('/api/receso', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
+                });
+                if(res.ok) {
+                    cargarPanelTrabajador();
+                } else {
+                    const data = await res.json();
+                    alert(data.detail || 'Error al procesar receso');
+                }
+            } catch(err) { alert('Error de conexión'); }
+        }
+
+        async function cargarPanelTrabajador() {
+            try {
+                const res = await fetch('/api/mis-horas', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    registrosGlobalesTrabajador = data.registros;
+                    renderizarTablaConsolidada(registrosGlobalesTrabajador);
+
+                    let tieneTurnoActivo = false;
+                    let estaEnReceso = false;
+
+                    data.registros.forEach(r => {
+                        if(r.salida === null) {
+                            tieneTurnoActivo = true;
+                            if(r.receso_inicio && !r.receso_fin) estaEnReceso = true;
+                        }
+                    });
+
+                    const btnTurno = document.getElementById('btn-accion-turno');
+                    const iconTurno = document.getElementById('icon-accion-turno');
+                    const textTurno = document.getElementById('text-accion-turno');
+
+                    if(!tieneTurnoActivo) {
+                        btnTurno.className = "bg-emerald-600/90 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1";
+                        iconTurno.className = "fa-solid fa-play text-lg";
+                        textTurno.textContent = "Iniciar Turno";
+                    } else if(estaEnReceso) {
+                        btnTurno.className = "bg-emerald-600/90 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1 animate-pulse";
+                        iconTurno.className = "fa-solid fa-play text-lg";
+                        textTurno.textContent = "Continuar / Reanudar Turno";
+                    } else {
+                        btnTurno.className = "bg-red-600/90 hover:bg-red-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1";
+                        iconTurno.className = "fa-solid fa-stop text-lg";
+                        textTurno.textContent = "Finalizar Turno";
+                    }
+                }
+            } catch(err) {}
+        }
+
+        function renderizarTablaConsolidada(registros) {
+            const tbody = document.getElementById('tabla-mis-horas');
+            tbody.innerHTML = '';
+            if(registros.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-500">No hay registros de horas aún.</td></tr>`;
+                return;
+            }
+
+            registros.sort((a, b) => parseFechaHora(b.entrada) - parseFechaHora(a.entrada));
+
+            let porFecha = {};
+            registros.forEach(r => {
+                let fecha = r.entrada.split(' ')[0];
+                if(!porFecha[fecha]) porFecha[fecha] = [];
+                porFecha[fecha].push(r);
+            });
+
+            for(let [fecha, regs] of Object.entries(porFecha)) {
+                let primeraEntrada = regs[0].entrada;
+                let ultimaSalida = regs[regs.length - 1].salida ? regs[regs.length - 1].salida : null;
+                let totalHorasDia = 0;
+                let enCurso = false;
+
+                regs.forEach(r => {
+                    let dE = parseFechaHora(r.entrada);
+                    let dS = parseFechaHora(r.salida);
+                    if(dE && dS) {
+                        totalHorasDia += Math.max(0, (dS - dE) / (1000 * 60 * 60));
+                    } else if(!r.salida) { enCurso = true; }
+                });
+
+                let salidaTexto = enCurso ? '<span class="text-emerald-400 font-semibold animate-pulse">En Curso</span>' : ultimaSalida;
+                let horasTexto = enCurso && totalHorasDia === 0 ? '-' : `${totalHorasDia.toFixed(2)} hrs`;
+
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-700/35 hover:bg-slate-800/40">
+                        <td class="py-2 font-medium">${fecha}</td>
+                        <td class="py-2 text-slate-300">${primeraEntrada}</td>
+                        <td class="py-2 text-slate-300">${salidaTexto}</td>
+                        <td class="py-2 text-right text-emerald-300 font-bold">${horasTexto}</td>
+                        <td class="py-2 text-right">
+                            <button onclick='abrirDetallesDia("${fecha}", ${JSON.stringify(regs).replace(/'/g, "&apos;")})' class="bg-indigo-600/40 hover:bg-indigo-600 text-indigo-300 hover:text-white px-2 py-1 rounded text-[11px] transition">Ver Detalles</button>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function abrirDetallesDia(fecha, regs) {
+            document.getElementById('modal-detalles-titulo').innerHTML = `<i class="fa-solid fa-calendar-day"></i> Detalle de Turnos y Pausas del Día: ${fecha}`;
+            const tbody = document.getElementById('tabla-modal-detalles');
+            tbody.innerHTML = '';
+
+            regs.forEach(r => {
+                let dE = parseFechaHora(r.entrada);
+                let dS = parseFechaHora(r.salida);
+                let hrs = (dE && dS) ? Math.max(0, (dS - dE) / (1000 * 60 * 60)) : 0;
+                let horasTexto = r.salida ? `${hrs.toFixed(2)} hrs` : '<span class="text-emerald-400 font-semibold">En Curso</span>';
+
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-700/30 hover:bg-slate-800/30">
+                        <td class="py-2 font-mono text-slate-400">#${r.id}</td>
+                        <td class="py-2 text-slate-200">${r.entrada}</td>
+                        <td class="py-2 text-slate-400">${r.receso_inicio || '-'}</td>
+                        <td class="py-2 text-slate-400">${r.receso_fin || '-'}</td>
+                        <td class="py-2 text-slate-200">${r.salida || 'Activo'}</td>
+                        <td class="py-2 text-right font-bold text-emerald-300">${horasTexto}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('modal-detalles').classList.remove('hidden');
+        }
+
+        function verDetallesUsuarioAdmin(usuario) {
+            if(!globalAdminData) return;
+            let regsUsuario = globalAdminData.asistencias.filter(r => r.usuario.toLowerCase() === usuario.toLowerCase());
+            document.getElementById('modal-detalles-titulo').innerHTML = `<i class="fa-solid fa-user-clock"></i> Historial Completo de Asistencias: ${usuario}`;
+            const tbody = document.getElementById('tabla-modal-detalles');
+            tbody.innerHTML = '';
+
+            if(regsUsuario.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500">Este usuario no tiene registros guardados.</td></tr>`;
+            } else {
+                regsUsuario.sort((a, b) => parseFechaHora(b.entrada) - parseFechaHora(a.entrada));
+                regsUsuario.forEach(r => {
+                    let dE = parseFechaHora(r.entrada);
+                    let dS = parseFechaHora(r.salida);
+                    let hrs = (dE && dS) ? Math.max(0, (dS - dE) / (1000 * 60 * 60)) : 0;
+                    let horasTexto = r.salida ? `${hrs.toFixed(2)} hrs` : '<span class="text-emerald-400 font-semibold">Activo</span>';
+
+                    tbody.innerHTML += `
+                        <tr class="border-b border-slate-700/30 hover:bg-slate-800/30">
+                            <td class="py-2 font-mono text-slate-400">#${r.id}</td>
+                            <td class="py-2 text-slate-200">${r.entrada}</td>
+                            <td class="py-2 text-slate-400">${r.receso_inicio || '-'}</td>
+                            <td class="py-2 text-slate-400">${r.receso_fin || '-'}</td>
+                            <td class="py-2 text-slate-200">${r.salida || 'Activo'}</td>
+                            <td class="py-2 text-right font-bold text-emerald-300">${horasTexto}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById('modal-detalles').classList.remove('hidden');
+        }
+
+        function cerrarModalDetalles() {
+            document.getElementById('modal-detalles').classList.add('hidden');
+        }
+
+        function calcularHorasWorker() {
+            const desde = document.getElementById('worker-desde').value;
+            const hasta = document.getElementById('worker-hasta').value;
+            if(!desde || !hasta) { alert("Selecciona ambas fechas."); return; }
+
+            let dDesde = new Date(desde + "T00:00:00");
+            let dHasta = new Date(hasta + "T23:59:59");
+            let total = 0;
+
+            registrosGlobalesTrabajador.forEach(r => {
+                let dEntrada = parseFechaHora(r.entrada);
+                let dSalida = parseFechaHora(r.salida);
+                if(dEntrada && dEntrada >= dDesde && dEntrada <= dHasta && dSalida) {
+                    total += Math.max(0, (dSalida - dEntrada) / (1000 * 60 * 60));
+                }
+            });
+
+            document.getElementById('worker-total-horas-rango').textContent = `${total.toFixed(2)} hrs`;
+        }
+
+        async function cargarAdminDatos() {
+            try {
+                const res = await fetch('/api/admin/datos');
+                const data = await res.json();
+                if(res.ok) {
+                    globalAdminData = data;
+                    localStorage.setItem('timetracker_backup_local', JSON.stringify(data));
+
+                    const tU = document.getElementById('tabla-usuarios');
+                    tU.innerHTML = '';
+                    let i = 0;
+                    for(let [u, info] of Object.entries(data.usuarios)) {
+                        i++;
+                        let tipoPago = info.tipo_pago || 'Horas';
+                        let montoMostrar = (tipoPago.toLowerCase() === 'horas') ? info.tarifa_hora : (tipoPago.toLowerCase() === 'gasolina' ? '1.4L/h × $0.5' : info.monto_fijo);
+                        tU.innerHTML += `
+                            <tr class="border-b border-slate-700/30">
+                                <td class="py-1.5 font-medium">${u}</td>
+                                <td class="py-1.5 text-slate-400">
+                                    <span id="pin-text-${i}">••••</span>
+                                    <button onclick="togglePinTabla('${info.pin}', 'pin-text-${i}')" class="ml-2 text-emerald-400 hover:text-white"><i class="fa-solid fa-eye text-[10px]"></i></button>
+                                </td>
+                                <td class="py-1.5 capitalize">${tipoPago}</td>
+                                <td class="py-1.5 text-emerald-300 font-semibold">${typeof montoMostrar === 'number' ? '$' + montoMostrar : montoMostrar}</td>
+                                <td class="py-1.5 text-slate-300 font-medium">${info.area || 'Operaciones'}</td>
+                                <td class="py-1.5 text-right">
+                                    <button onclick="verDetallesUsuarioAdmin('${u}')" class="text-indigo-400 hover:underline mr-2" title="Ver Historial de Asistencias">Detalles</button>
+                                    <button onclick="editarUsuario('${u}', '${info.pin}', '${tipoPago}', '${info.monto_fijo || 0}', '${info.tarifa_hora || 1.5}', '${info.area || 'Operaciones'}', '${info.rol_sistema}')" class="text-emerald-400 hover:underline mr-2">Editar</button>
+                                    <button onclick="eliminarUsuario('${u}')" class="text-red-400 hover:underline">Borrar</button>
+                                </td>
+                            </tr>
+                        `;
+                    }
+
+                    let asistenciasOrdenadas = data.asistencias.slice().sort((a, b) => parseFechaHora(b.entrada) - parseFechaHora(a.entrada));
+
+                    const tA = document.getElementById('tabla-asistencias-admin');
+                    tA.innerHTML = '';
+                    asistenciasOrdenadas.forEach(r => {
+                        let dE = parseFechaHora(r.entrada);
+                        let dS = parseFechaHora(r.salida);
+                        let hrs = (dE && dS) ? Math.max(0, (dS - dE) / (1000 * 60 * 60)) : 0;
+                        let salidaHumana = r.salida ? r.salida : '<span class="text-emerald-400 font-semibold animate-pulse">Activo</span>';
+                        let horasTexto = r.salida ? `${hrs.toFixed(2)} hrs` : '-';
+
+                        tA.innerHTML += `
+                            <tr class="border-b border-slate-700/30 hover:bg-slate-800/40">
+                                <td class="py-1.5 font-medium">${r.usuario}</td>
+                                <td class="py-1.5 text-slate-300">${r.entrada}</td>
+                                <td class="py-1.5 text-slate-300">${salidaHumana}</td>
+                                <td class="py-1.5 text-right font-bold text-emerald-300">${horasTexto}</td>
+                                <td class="py-1.5 text-right">
+                                    <button onclick='abrirModalEditarRegistro(${r.id}, "${r.usuario}", "${r.entrada}", "${r.salida || ""}")' class="text-indigo-400 hover:underline mr-2" title="Editar Registro"><i class="fa-solid fa-pen"></i></button>
+                                    <button onclick="eliminarRegistroAdmin(${r.id})" class="text-red-400 hover:underline" title="Eliminar Registro"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    const selectManual = document.getElementById('manual-usuario');
+                    selectManual.innerHTML = '';
+                    for(let u in data.usuarios) { selectManual.innerHTML += `<option value="${u}">${u}</option>`; }
+                }
+            } catch(e) {}
+        }
+
+        async function restaurarRespaldoServidor() {
+            if(!confirm("¿Deseas restaurar todos los registros y usuarios desde el respaldo del servidor?")) return;
+            try {
+                const res = await fetch('/api/admin/restaurar-respaldo', { method: 'POST' });
+                const data = await res.json();
+                if(res.ok) {
+                    alert("¡Respaldo restaurado con éxito!");
+                    cargarAdminDatos();
+                } else {
+                    restaurarRespaldoLocalNavegador();
+                }
+            } catch(err) {
+                restaurarRespaldoLocalNavegador();
+            }
+        }
+
+        async function restaurarRespaldoLocalNavegador() {
+            const backupLocal = localStorage.getItem('timetracker_backup_local');
+            if(!backupLocal) {
+                alert("No se encontró ningún respaldo local ni en el servidor.");
+                return;
+            }
+            try {
+                let dataObj = JSON.parse(backupLocal);
+                for(let r of dataObj.asistencias) {
+                    await fetch('/api/admin/registro-manual', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ usuario: r.usuario, entrada: r.entrada, salida: r.salida, es_continua: r.es_continua })
+                    });
+                }
+                alert("¡Datos restaurados exitosamente desde la copia de seguridad del navegador!");
+                cargarAdminDatos();
+            } catch(e) {
+                alert("Error al restaurar el respaldo local.");
+            }
+        }
+
+        function abrirModalEditarRegistro(id, usuario, entrada, salida) {
+            document.getElementById('edit-reg-id').value = id;
+            document.getElementById('edit-reg-usuario').value = usuario;
+            document.getElementById('edit-reg-entrada').value = entrada;
+            document.getElementById('edit-reg-salida').value = salida;
+            document.getElementById('modal-editar-registro').classList.remove('hidden');
+        }
+
+        function cerrarModalEditarRegistro() {
+            document.getElementById('modal-editar-registro').classList.add('hidden');
+        }
+
+        document.getElementById('form-editar-registro').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = parseInt(document.getElementById('edit-reg-id').value);
+            const entrada = convertirFechaFlex(document.getElementById('edit-reg-entrada').value);
+            const salidaInput = document.getElementById('edit-reg-salida').value.trim();
+            const salida = salidaInput ? convertirFechaFlex(salidaInput) : null;
+
+            try {
+                const res = await fetch('/api/admin/editar-registro', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ registro_id: id, entrada: entrada, salida: salida })
+                });
+                if(res.ok) {
+                    cerrarModalEditarRegistro();
+                    alert("Registro actualizado con éxito");
+                    cargarAdminDatos();
+                } else {
+                    const data = await res.json();
+                    alert(data.detail || "Error al actualizar registro");
+                }
+            } catch(err) {
+                alert("Error de conexión");
+            }
+        });
+
+        async function eliminarRegistroAdmin(id) {
+            if(!confirm("¿Estás seguro de eliminar este registro de asistencia?")) return;
+            try {
+                const res = await fetch(`/api/admin/eliminar-registro/${id}`, { method: 'DELETE' });
+                if(res.ok) {
+                    cargarAdminDatos();
+                } else {
+                    alert("Error al eliminar el registro.");
+                }
+            } catch(err) {
+                alert("Error de conexión");
+            }
+        }
+
+        function calcularResumenFechas() {
+            if(!globalAdminData) return;
+            const fDesde = document.getElementById('filtro-fecha-desde').value;
+            const fHasta = document.getElementById('filtro-fecha-hasta').value;
+            if(!fDesde || !fHasta) { alert("Selecciona ambas fechas."); return; }
+
+            let dDesde = new Date(fDesde + "T00:00:00");
+            let dHasta = new Date(fHasta + "T23:59:59");
+
+            let resumen = {};
+            for(let u in globalAdminData.usuarios) {
+                resumen[u] = {
+                    tipo_pago: globalAdminData.usuarios[u].tipo_pago || 'Horas',
+                    monto_fijo: globalAdminData.usuarios[u].monto_fijo || 0,
+                    tarifa_hora: globalAdminData.usuarios[u].tarifa_hora !== undefined ? globalAdminData.usuarios[u].tarifa_hora : 1.5,
+                    rol_sistema: globalAdminData.usuarios[u].rol_sistema || 'trabajador',
+                    horas: 0
+                };
+            }
+
+            globalAdminData.asistencias.forEach(r => {
+                let dEntrada = parseFechaHora(r.entrada);
+                let dSalida = parseFechaHora(r.salida);
+                if(dEntrada && dEntrada >= dDesde && dEntrada <= dHasta) {
+                    let hrs = dSalida ? Math.max(0, (dSalida - dEntrada) / (1000 * 60 * 60)) : 0;
+                    if(!resumen[r.usuario]) resumen[r.usuario] = { tipo_pago: 'Horas', monto_fijo: 0, tarifa_hora: 1.5, rol_sistema: 'trabajador', horas: 0 };
+                    resumen[r.usuario].horas += hrs;
+                }
+            });
+
+            const tR = document.getElementById('tabla-resumen-fechas');
+            tR.innerHTML = '';
+            for(let [u, info] of Object.entries(resumen)) {
+                let totalPagar = 0;
+                let tipoLower = info.tipo_pago.toLowerCase();
+                let valorTexto = "";
+
+                if(tipoLower === 'fijo') {
+                    totalPagar = info.monto_fijo;
+                    valorTexto = `$${info.monto_fijo}`;
+                } else if(tipoLower === 'gasolina') {
+                    totalPagar = info.horas * 1.4 * 0.5;
+                    valorTexto = "1.4L/h × $0.5";
+                } else {
+                    totalPagar = info.horas * info.tarifa_hora;
+                    valorTexto = `$${info.tarifa_hora}`;
+                }
+
+                tR.innerHTML += `
+                    <tr class="border-b border-slate-700/30">
+                        <td class="py-1.5 font-medium">${u}</td>
+                        <td class="py-1.5 capitalize">${info.tipo_pago}</td>
+                        <td class="py-1.5 text-emerald-300 font-semibold">${info.horas.toFixed(2)} hrs</td>
+                        <td class="py-1.5">${valorTexto}</td>
+                        <td class="py-1.5 text-right text-emerald-400 font-bold">$${totalPagar.toFixed(2)}</td>
+                    </tr>
+                `;
+            }
+        }
+
+        function togglePinTabla(pinReal, spanId) {
+            const span = document.getElementById(spanId);
+            span.textContent = (span.textContent === "••••") ? pinReal : "••••";
+        }
+
+        function abrirModalUsuario() {
+            document.getElementById('modal-titulo').textContent = "Registrar Nuevo Usuario";
+            document.getElementById('form-usuario').reset();
+            document.getElementById('edit-antiguo').value = "";
+            document.getElementById('input-u-tipopago').value = "Horas";
+            document.getElementById('input-u-area').value = "Operaciones";
+            actualizarLabelMonto();
+            document.getElementById('modal-usuario').classList.remove('hidden');
+        }
+
+        function editarUsuario(u, pin, tipo, monto, tarifa, area, rol) {
+            document.getElementById('modal-titulo').textContent = `Editar Usuario: ${u}`;
+            document.getElementById('edit-antiguo').value = u;
+            document.getElementById('input-u-nombre').value = u;
+            document.getElementById('input-u-pin').value = pin;
+            document.getElementById('input-u-tipopago').value = tipo;
+            document.getElementById('input-u-area').value = area;
+            document.getElementById('input-u-rol').value = rol;
+            actualizarLabelMonto();
+            if(tipo.toLowerCase() === 'horas') document.getElementById('input-u-monto').value = tarifa;
+            else if(tipo.toLowerCase() === 'gasolina') document.getElementById('input-u-monto').value = 0;
+            else document.getElementById('input-u-monto').value = monto;
+            document.getElementById('modal-usuario').classList.remove('hidden');
+        }
+
+        function cerrarModalUsuario() { document.getElementById('modal-usuario').classList.add('hidden'); }
+
+        function abrirModalManual() {
+            document.getElementById('form-manual').reset();
+            cambiarModoManual('individual');
+            document.getElementById('modal-manual').classList.remove('hidden');
+        }
+
+        function cerrarModalManual() { document.getElementById('modal-manual').classList.add('hidden'); }
+
+        document.getElementById('form-usuario').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const tipoPago = document.getElementById('input-u-tipopago').value;
+            const valorInput = parseFloat(document.getElementById('input-u-monto').value) || 0;
+
+            const payload = {
+                usuario_antiguo: document.getElementById('edit-antiguo').value,
+                usuario: document.getElementById('input-u-nombre').value.trim(),
+                pin: document.getElementById('input-u-pin').value,
+                tipo_pago: tipoPago,
+                monto_fijo: tipoPago.toLowerCase() === 'fijo' ? valorInput : 0.0,
+                tarifa_hora: tipoPago.toLowerCase() === 'horas' ? valorInput : 1.5,
+                area: document.getElementById('input-u-area').value || "Operaciones",
+                rol_sistema: document.getElementById('input-u-rol').value
+            };
+
+            const res = await fetch('/api/admin/usuario', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            if(res.ok) { cerrarModalUsuario(); cargarAdminDatos(); }
+            else { alert('Error al guardar usuario'); }
+        });
+
+        document.getElementById('form-manual').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(modoManualActual === 'individual') {
+                const entradaFlex = convertirFechaFlex(document.getElementById('manual-entrada').value);
+                const salidaFlex = convertirFechaFlex(document.getElementById('manual-salida').value);
+                const res = await fetch('/api/admin/registro-manual', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        usuario: document.getElementById('manual-usuario').value,
+                        entrada: entradaFlex,
+                        salida: salidaFlex,
+                        es_continua: document.getElementById('manual-continua').checked
+                    })
+                });
+                if(res.ok) { cerrarModalManual(); alert("Guardado"); cargarAdminDatos(); }
+            } else {
+                const texto = document.getElementById('manual-texto-simple').value;
+                const lineas = texto.split('\n');
+                let exitosos = 0;
+                for(let linea of lineas) {
+                    linea = linea.trim();
+                    if(!linea) continue;
+                    let partes = linea.split('|').map(p => p.trim());
+                    if(partes.length >= 3) {
+                        const res = await fetch('/api/admin/registro-manual', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                usuario: partes[0],
+                                entrada: convertirFechaFlex(partes[1]),
+                                salida: convertirFechaFlex(partes[2]),
+                                es_continua: false
+                            })
+                        });
+                        if(res.ok) exitosos++;
+                    }
+                }
+                cerrarModalManual();
+                alert(`¡Se procesaron ${exitosos} registros con éxito!`);
+                cargarAdminDatos();
+            }
+        });
+
+        async function eliminarUsuario(u) {
+            if(!confirm(`¿Eliminar al usuario ${u}?`)) return;
+            const res = await fetch(`/api/admin/usuario/${u}`, { method: 'DELETE' });
+            if(res.ok) cargarAdminDatos();
+        }
+
+        async function exportarExcel() { window.location.href = '/api/admin/exportar-excel'; }
     </script>
 </body>
 </html>
