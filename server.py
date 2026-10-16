@@ -462,32 +462,34 @@ def leer_raiz():
                 if (!tarifaInput || !resultadoSpan) return;
 
                 const tarifa = parseFloat(tarifaInput.value) || 0;
-                let sumaHorasUnicas = 0;
-                let filasVistas = new Set();
-                
-                document.querySelectorAll('tr').forEach(tr => {
-                    const textoFila = tr.textContent;
-                    const matchHrs = textoFila.match(/([0-9]+\.[0-9]+)\s*hrs/);
-                    if (matchHrs && !filasVistas.has(textoFila)) {
-                        filasVistas.add(textoFila);
-                        const val = parseFloat(matchHrs[1]);
-                        if (!isNaN(val) && val < 200) {
-                            sumaHorasUnicas += val;
-                        }
-                    }
-                });
+                let totalHorasPeriodo = 0;
 
-                if (sumaHorasUnicas === 0) {
-                    const elPeriodo = document.querySelector('#total-periodo, .total-periodo');
-                    if (elPeriodo) {
-                        const match = elPeriodo.textContent.match(/([0-9]+\.[0-9]+)/);
-                        if (match) sumaHorasUnicas = parseFloat(match[1]) || 0;
-                    }
+                // Leer directamente el indicador de Total Período oficial de la pantalla
+                const elPeriodo = document.querySelector('#total-periodo, .total-periodo') || Array.from(document.querySelectorAll('span')).find(el => el.textContent.includes('Total Período:'));
+                if (elPeriodo) {
+                    const match = elPeriodo.textContent.match(/([0-9]+\.[0-9]+)/);
+                    if (match) totalHorasPeriodo = parseFloat(match[1]) || 0;
                 }
 
-                const total = tarifa * sumaHorasUnicas;
+                // Respaldo por si acaso: sumar individualmente sin duplicados si no encuentra el elemento
+                if (totalHorasPeriodo === 0) {
+                    let filasVistas = new Set();
+                    document.querySelectorAll('tr').forEach(tr => {
+                        const textoFila = tr.textContent;
+                        const matchHrs = textoFila.match(/([0-9]+\.[0-9]+)\s*hrs/);
+                        if (matchHrs && !filasVistas.has(textoFila)) {
+                            filasVistas.add(textoFila);
+                            const val = parseFloat(matchHrs[1]);
+                            if (!isNaN(val) && val < 200) {
+                                totalHorasPeriodo += val;
+                            }
+                        }
+                    });
+                }
+
+                const total = tarifa * totalHorasPeriodo;
                 resultadoSpan.textContent = `$${total.toFixed(2)}`;
-                infoHoras.textContent = `Suma de ${sumaHorasUnicas.toFixed(2)} hrs únicas`;
+                infoHoras.textContent = `Suma de ${totalHorasPeriodo.toFixed(2)} hrs del período`;
             }
             </script>
             """
@@ -592,7 +594,6 @@ def mis_horas(req: LoginRequest):
             return {"registros": []}
             
     try:
-        # Búsqueda flexible e insensible a mayúsculas/minúsculas para los registros del trabajador
         res_all = supabase.table("asistencias").select("*").execute()
         registros_filtrados = []
         if res_all.data:
@@ -601,7 +602,6 @@ def mis_horas(req: LoginRequest):
                 if usr_reg == u.lower():
                     registros_filtrados.append(r)
         
-        # Si Supabase está vacío o no devolvió registros, verificamos con HISTORIAL_INICIAL por defecto
         if not registros_filtrados:
             for r in HISTORIAL_INICIAL:
                 if str(r.get("usuario", "")).strip().lower() == u.lower():
@@ -609,7 +609,6 @@ def mis_horas(req: LoginRequest):
 
         return {"registros": registros_filtrados}
     except Exception:
-        # Respaldo local en caso de fallo de red
         respaldo = [r for r in HISTORIAL_INICIAL if str(r.get("usuario", "")).strip().lower() == u.lower()]
         return {"registros": respaldo}
 
