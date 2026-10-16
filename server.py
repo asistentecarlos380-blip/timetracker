@@ -17,7 +17,7 @@ except Exception:
     supabase = None
 
 PERSONAL_FIJO = {
-    "ADMIN": {"usuario": "ADMIN", "pin": "1234", "rol_sistema": "admin", "tipo_pago": "Fijo", "monto_fijo": 300.0, "tarifa_hora": 1.5, "area": "Gerencia"},
+    "ADMIN": {"usuario": "ADMIN", "pin": "1234", "rol_sistema": "admin", "tipo_pago": "Semanal", "monto_fijo": 150.0, "tarifa_hora": 150.0, "area": "Gerencia"},
     "Ricardo": {"usuario": "Ricardo", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
     "Ronald": {"usuario": "Ronald", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
     "Lisander": {"usuario": "Lisander", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
@@ -132,7 +132,34 @@ def leer_raiz():
                     });
                 }, 400);
 
-                // Autocompletar la semana en curso (Lunes a Domingo) en los campos de fecha del panel trabajador/admin
+                // Asegurar que la opción Semanal aparezca en el select de tipo de pago y reemplazar "Fijo" si es necesario
+                const observerModalUsuario = new MutationObserver(() => {
+                    document.querySelectorAll('select').forEach(sel => {
+                        if (sel.innerHTML.includes('Horas') && !sel.innerHTML.includes('Semanal')) {
+                            const opt = document.createElement('option');
+                            opt.value = 'Semanal';
+                            opt.textContent = 'Semanal';
+                            sel.appendChild(opt);
+                        }
+                    });
+
+                    // Cambiar etiquetas de "Monto Fijo" a "Monto Semanal" cuando corresponda
+                    const selectPago = document.querySelector('select[name="tipo_pago"]') || Array.from(document.querySelectorAll('select')).find(s => s.value === 'Semanal' || s.value === 'Fijo');
+                    if (selectPago) {
+                        const contenedorInput = selectPago.closest('.space-y-4') || selectPago.parentElement.parentElement;
+                        if (contenedorInput) {
+                            contenedorInput.querySelectorAll('label').forEach(lbl => {
+                                if (lbl.textContent.includes('Fijo') || lbl.textContent.includes('Tarifa')) {
+                                    if (selectPago.value === 'Semanal') {
+                                        lbl.textContent = 'Monto Semanal ($)';
+                                    }
+                                }
+                            });
+                        }
+                    }
+                });
+                observerModalUsuario.observe(document.body, { childList: true, subtree: true });
+
                 setTimeout(() => {
                     let inputsFecha = [];
                     document.querySelectorAll('input').forEach(el => {
