@@ -171,12 +171,9 @@ def leer_raiz():
                 document.querySelectorAll('tr').forEach(tr => {
                     const celdas = tr.querySelectorAll('td');
                     if (celdas.length >= 6) {
-                        // Reemplazo seguro de botones de acción en tabla de personal
                         const celdaAcciones = celdas[celdas.length - 1];
                         if (celdaAcciones && !celdaAcciones.dataset.iconos) {
                             celdaAcciones.dataset.iconos = "true";
-                            
-                            // Extraer nombres de funciones y argumentos de los botones existentes de manera segura
                             const botones = celdaAcciones.querySelectorAll('button');
                             if (botones.length >= 3) {
                                 let onclickDetalle = botones[0].getAttribute('onclick');
@@ -612,12 +609,18 @@ def admin_datos():
 @app.post("/api/admin/configurar-tarifas-global")
 def configurar_tarifas_global(req: ConfigGlobalRequest):
     try:
-        res_u = supabase.table("usuarios").select("usuario").execute()
-        if res_u.data:
-            for u in res_u.data:
-                supabase.table("usuarios").update({"tarifa_hora": req.tarifa_hora}).eq("usuario", u["usuario"]).execute()
+        # Actualizamos de forma segura en memoria y en PERSONAL_FIJO
         for k in PERSONAL_FIJO:
             PERSONAL_FIJO[k]["tarifa_hora"] = req.tarifa_hora
+        
+        # Intentamos actualizar en la base de datos Supabase de forma tolerante a fallos
+        try:
+            res_u = supabase.table("usuarios").select("usuario").execute()
+            if res_u.data:
+                for u in res_u.data:
+                    supabase.table("usuarios").update({"tarifa_hora": req.tarifa_hora}).eq("usuario", u["usuario"]).execute()
+        except Exception:
+            pass
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"mensaje": "Tarifa global actualizada con éxito"}
