@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from supabase import create_client, Client
 import json
 
-# ¡IMPORTANTE! 'app' debe estar siempre al principio antes de cualquier ruta
 app = FastAPI()
 
 SUPABASE_URL = "https://dvpfynkqtjwkmcndael.supabase.co"
@@ -553,7 +552,15 @@ def mis_horas(req: LoginRequest):
                 for r in res_all.data:
                     usr_reg = str(r.get("usuario", "")).strip().lower()
                     if u.lower() == "admin" or usr_reg == u.lower():
-                        registros_filtrados.append(r)
+                        registros_filtrados.append({
+                            "id": r.get("id"),
+                            "usuario": r.get("usuario"),
+                            "entrada": r.get("entrada"),
+                            "salida": r.get("salida"),
+                            "receso_inicio": r.get("receso_inicio"),
+                            "receso_fin": r.get("receso_fin"),
+                            "es_continua": r.get("es_continua", False)
+                        })
         except Exception as e:
             print("Error al obtener mis-horas desde Supabase:", e)
 
