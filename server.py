@@ -56,15 +56,15 @@ def calcular_horas_turno(hora_entrada_str, hora_salida_str):
         "total_horas": diferencia.total_seconds() / 3600
     }
 
-# Endpoint para servir la interfaz web
+# Endpoint principal para servir la interfaz Matrix
 @app.get("/", response_class=HTMLResponse)
 def serve_index():
     if os.path.exists("index.html"):
         return FileResponse("index.html")
     return HTMLResponse("<h1>Error: index.html no encontrado</h1>", status_code=404)
 
-# Endpoint de estado/verificación para evitar que peticiones automáticas devuelvan "Not Found"
+# Endpoint de estado para prevenir errores 404 en peticiones iniciales del navegador
 @app.get("/api/status")
 @app.get("/status")
 def health_check():
-    return {"status": "ok", "message": "Sistema de asistencia operativo"}
+    return {"status": "ok", "message": "Sistema operativo"}
