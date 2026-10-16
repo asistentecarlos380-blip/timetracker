@@ -581,7 +581,6 @@ def cambiar_pin(req: CambiarPinRequest):
     pin_actual = str(req.pin_actual).strip()
     pin_nuevo = str(req.pin_nuevo).strip()
 
-    # 1. Validar y actualizar en el diccionario local PERSONAL_FIJO
     actualizado = False
     for k, v in PERSONAL_FIJO.items():
         if k.lower() == u.lower():
@@ -592,7 +591,6 @@ def cambiar_pin(req: CambiarPinRequest):
                 raise HTTPException(status_code=400, detail="PIN actual incorrecto")
             break
 
-    # 2. Actualizar también en Supabase si existe
     if supabase:
         try:
             res = supabase.table("usuarios").select("*").ilike("usuario", u).execute()
@@ -692,29 +690,24 @@ def receso(req: LoginRequest):
     u_real = "ADMIN" if u.lower() == "admin" else u.capitalize()
     hora_actual = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
     
+    # Al presionar pausa/receso, se finaliza el tiempo activo actual (congelando el tiempo)
     if supabase:
         try:
             res_all = supabase.table("asistencias").select("*").ilike("usuario", u_real).execute()
             if res_all.data:
                 for r in res_all.data:
                     if not r.get("salida"):
-                        if not r.get("receso_inicio"):
-                            supabase.table("asistencias").update({"receso_inicio": hora_actual}).eq("id", r["id"]).execute()
-                        elif not r.get("receso_fin"):
-                            supabase.table("asistencias").update({"receso_fin": hora_actual}).eq("id", r["id"]).execute()
+                        supabase.table("asistencias").update({"salida": hora_actual}).eq("id", r["id"]).execute()
                         break
         except Exception:
             pass
             
     for r in HISTORIAL_INICIAL:
         if str(r.get("usuario", "")).strip().lower() == u_real.lower() and not r.get("salida"):
-            if not r.get("receso_inicio"):
-                r["receso_inicio"] = hora_actual
-            elif not r.get("receso_fin"):
-                r["receso_fin"] = hora_actual
+            r["salida"] = hora_actual
             break
 
-    return {"mensaje": "Receso procesado"}
+    return {"mensaje": "Receso procesado y tiempo detenido"}
 
 @app.get("/api/admin/datos")
 def admin_datos():
