@@ -120,6 +120,8 @@ def leer_raiz():
 
                     if (esAdmin) {
                         enriquecerTablaPersonalAdmin();
+                    } else {
+                        vincularConfirmacionesTrabajador();
                     }
                 }, 500);
 
@@ -135,9 +137,46 @@ def leer_raiz():
                             dropdownMenu.appendChild(itemSimulador);
                         }
                     }
+                    vincularConfirmacionesTrabajador();
                 });
                 observerTrabajador.observe(document.body, { childList: true, subtree: true });
             });
+
+            function vincularConfirmacionesTrabajador() {
+                // Interceptar botón de Iniciar/Finalizar Turno (Verde/Rojo)
+                document.querySelectorAll('button').forEach(btn => {
+                    const txt = btn.textContent.trim().toLowerCase();
+                    if ((txt.includes('iniciar turno') || txt.includes('finalizar turno')) && !btn.dataset.confirmacionVinc) {
+                        btn.dataset.confirmacionVinc = "true";
+                        const originalOnClick = btn.onclick;
+                        btn.onclick = function(e) {
+                            const accionTxt = btn.textContent.trim().toLowerCase().includes('iniciar') ? 'iniciar' : 'finalizar';
+                            if (confirm(`¿Estás seguro de que deseas ${accionTxt} el turno?`)) {
+                                if (originalOnClick) originalOnClick.apply(this, arguments);
+                            } else {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }
+                        };
+                    }
+
+                    // Interceptar botón de Pausar / Receso (Naranja)
+                    if (txt.includes('pausar') || txt.includes('receso')) {
+                        if (!btn.dataset.confirmacionVinc) {
+                            btn.dataset.confirmacionVinc = "true";
+                            const originalOnClick = btn.onclick;
+                            btn.onclick = function(e) {
+                                if (confirm("¿Estás seguro de que deseas registrar una pausa / receso?")) {
+                                    if (originalOnClick) originalOnClick.apply(this, arguments);
+                                } else {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                }
+                            };
+                        }
+                    }
+                });
+            }
 
             function parsearFechaPersonalizada(str) {
                 if(!str) return null;
@@ -559,7 +598,6 @@ def forzar_cierre(req: ForzarCierreRequest):
     u_real = req.usuario.strip().capitalize()
     hora_actual = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
     
-    # 1. Cerrar en Supabase
     if supabase:
         try:
             res_all = supabase.table("asistencias").select("*").ilike("usuario", u_real).execute()
@@ -570,7 +608,6 @@ def forzar_cierre(req: ForzarCierreRequest):
         except Exception:
             pass
             
-    # 2. Cerrar en memoria local como respaldo
     for r in HISTORIAL_INICIAL:
         if str(r.get("usuario", "")).strip().lower() == u_real.lower() and not r.get("salida"):
             r["salida"] = hora_actual
@@ -623,7 +660,6 @@ def marcar(req: LoginRequest):
     u_real = "ADMIN" if u.lower() == "admin" else u.capitalize()
     hora_actual = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
     
-    # Buscar si hay un turno abierto en Supabase o en memoria local
     turno_abierto_id = None
     if supabase:
         try:
@@ -642,7 +678,6 @@ def marcar(req: LoginRequest):
         except Exception:
             pass
     else:
-        # Verificar en historial local
         encontrado_local = False
         for r in HISTORIAL_INICIAL:
             if str(r.get("usuario", "")).strip().lower() == u_real.lower() and not r.get("salida"):
