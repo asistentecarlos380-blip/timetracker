@@ -1,22 +1,15 @@
-import json
-import os
-import threading
-from datetime import datetime, timedelta
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
+import os
+import pandas as pd
+from datetime import datetime
 from supabase import create_client, Client
 
 app = FastAPI()
 
-# Bloqueo de subprocesos para evitar corrupción de datos por fichajes simultáneos
-data_lock = threading.Lock()
-
 SUPABASE_URL = "https://dvpfynkqtjwkvmcndael.supabase.co"
-SUPABASE_KEY = "eyJhGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpcCI6MioiZFhBmXBhZmZSISIsInJIa2I1MiJjGZ5mXzZ3YWYj35kY2Y3bKvWsIiWicm9sZSI6IicmF1bC1JMC1pLCJpYyJpY3YxMDImNTEwMjM0aWNzImV3ODI1NjIwMDAwMjM0QjIzYjZaR1R1WnN3NzI0ZGISI3B1ZDV2ugYm0KSFJ54giI89Y"
-
-ATTENDANCE_FILE = "attendance_history.json"
-SYSTEM_FILE = "system_data.json"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2cGZ5bmtxdGp3a3ZtY25kYWVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwODM1MDcsImV4cCI6MjEwNzY1OTUwN30.7gjZWE3AbR1ta8grbzr-Xpdd5vugYm0KSFJ54giI89Y"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -28,43 +21,254 @@ PERSONAL_FIJO = {
     "Daniel": {"usuario": "Daniel", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
     "Betzaida": {"usuario": "Betzaida", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
     "Brayan": {"usuario": "Brayan", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+    "Gerson": {"usuario": "Gerson", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+    "Matias": {"usuario": "Matias", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
+    "Planta": {"usuario": "Planta", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Gasolina", "monto_fijo": 0.0, "tarifa_hora": 0.5, "area": "Operaciones"}
 }
 
-def read_json(file_path):
-    with data_lock:
-        if not os.path.exists(file_path):
-            return {}
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            return {}
-
-def write_json(file_path, data):
-    with data_lock:
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-
-def calcular_horas_turno(hora_entrada_str, hora_salida_str):
-    fmt = "%Y-%m-%d %H:%M:%S"
-    entrada = datetime.strptime(hora_entrada_str, fmt)
-    salida = datetime.strptime(hora_salida_str, fmt)
-    diferencia = salida - entrada
-    dia_asignacion = entrada.strftime("%Y-%m-%d")
-    return {
-        "dia_asignacion": dia_asignacion,
-        "total_horas": diferencia.total_seconds() / 3600
-    }
-
-# Endpoint principal para servir la interfaz Matrix
 @app.get("/", response_class=HTMLResponse)
-def serve_index():
+def leer_raiz():
     if os.path.exists("index.html"):
-        return FileResponse("index.html")
-    return HTMLResponse("<h1>Error: index.html no encontrado</h1>", status_code=404)
+        with open("index.html", "r", encoding="utf-8") as f:
+            return f.read()
+    return "<h1>Error: index.html no encontrado.</h1>"
 
-# Endpoint de estado para prevenir errores 404 en peticiones iniciales del navegador
-@app.get("/api/status")
-@app.get("/status")
-def health_check():
-    return {"status": "ok", "message": "Sistema operativo"}
+class LoginRequest(BaseModel):
+    usuario: str
+    pin: str
+
+class RegistroManualRequest(BaseModel):
+    usuario: str
+    entrada: str
+    salida: str | None = None
+    es_continua: bool = False
+
+class EditarRegistroRequest(BaseModel):
+    registro_id: int
+    entrada: str
+    salida: str | None = None
+
+class UsuarioAdminRequest(BaseModel):
+    usuario_antiguo: str | None = None
+    usuario: str
+    pin: str
+    tipo_pago: str
+    monto_fijo: float = 0.0
+    tarifa_hora: float = 1.5
+    area: str = "Operaciones"
+    rol_sistema: str = "trabajador"
+
+class CambiarPinRequest(BaseModel):
+    usuario: str
+    pin_actual: str
+    pin_nuevo: str
+
+class ConfigGlobalRequest(BaseModel):
+    tarifa_hora: float
+
+class ForzarCierreRequest(BaseModel):
+    usuario: str
+
+@app.post("/api/login")
+def login(req: LoginRequest):
+    u = req.usuario.strip()
+    p = str(req.pin).strip()
+    if u.lower() == "admin" and p == "1234":
+        return {"usuario": "ADMIN", "pin": "1234", "rol_sistema": "admin"}
+    
+    res = supabase.table("usuarios").select("*").ilike("usuario", u).execute()
+    user_info = res.data[0] if res.data else None
+    if not user_info:
+        for k, v in PERSONAL_FIJO.items():
+            if k.lower() == u.lower():
+                user_info = v
+                break
+    if not user_info or str(user_info["pin"]).strip() != p:
+        raise HTTPException(status_code=400, detail="Credenciales inválidas")
+    return {"usuario": user_info["usuario"], "pin": req.pin, "rol_sistema": user_info.get("rol_sistema", "trabajador")}
+
+@app.post("/api/admin/forzar-cierre")
+def forzar_cierre(req: ForzarCierreRequest):
+    u_real = req.usuario.strip().capitalize()
+    hora_actual = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
+    try:
+        res_activo = supabase.table("asistencias").select("*").ilike("usuario", u_real).is_("salida", "null").execute()
+        if not res_activo.data:
+            raise HTTPException(status_code=400, detail=f"No se encontró ningún turno activo para {u_real}")
+        
+        activo = res_activo.data[0]
+        supabase.table("asistencias").update({"salida": hora_actual}).eq("id", activo["id"]).execute()
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"mensaje": f"¡Turno de {u_real} finalizado correctamente a las {hora_actual}!"}
+
+@app.post("/api/cambiar-pin")
+def cambiar_pin(req: CambiarPinRequest):
+    try:
+        supabase.table("usuarios").update({"pin": req.pin_nuevo.strip()}).ilike("usuario", req.usuario.strip()).execute()
+    except Exception:
+        pass
+    return {"mensaje": "PIN actualizado"}
+
+@app.post("/api/mis-horas")
+def mis_horas(req: LoginRequest):
+    u = req.usuario.strip()
+    if u.lower() == "admin" and str(req.pin).strip() == "1234":
+        try:
+            res_a = supabase.table("asistencias").select("*").execute()
+            return {"registros": res_a.data if res_a.data else []}
+        except Exception:
+            return {"registros": []}
+            
+    try:
+        res_all = supabase.table("asistencias").select("*").execute()
+        registros_filtrados = []
+        if res_all.data:
+            for r in res_all.data:
+                usr_reg = str(r.get("usuario", "")).strip().lower()
+                if usr_reg == u.lower():
+                    registros_filtrados.append(r)
+        return {"registros": registros_filtrados}
+    except Exception:
+        return {"registros": []}
+
+@app.post("/api/marcar")
+def marcar(req: LoginRequest):
+    u = req.usuario.strip()
+    u_real = "ADMIN" if u.lower() == "admin" else u.capitalize()
+    hora_actual = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
+    try:
+        res_activo = supabase.table("asistencias").select("*").ilike("usuario", u_real).is_("salida", "null").execute()
+        if res_activo.data:
+            activo = res_activo.data[0]
+            if activo.get("receso_inicio") and not activo.get("receso_fin"):
+                supabase.table("asistencias").update({"receso_fin": hora_actual}).eq("id", activo["id"]).execute()
+            else:
+                supabase.table("asistencias").update({"salida": hora_actual}).eq("id", activo["id"]).execute()
+        else:
+            supabase.table("asistencias").insert({
+                "usuario": u_real, "entrada": hora_actual, "receso_inicio": None, "receso_fin": None, "salida": None, "es_continua": False
+            }).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"mensaje": "Registrado con éxito"}
+
+@app.post("/api/receso")
+def receso(req: LoginRequest):
+    u = req.usuario.strip()
+    u_real = "ADMIN" if u.lower() == "admin" else u.capitalize()
+    hora_actual = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
+    try:
+        res_activo = supabase.table("asistencias").select("*").ilike("usuario", u_real).is_("salida", "null").execute()
+        if not res_activo.data:
+            raise HTTPException(status_code=400, detail="No hay turno activo")
+        activo = res_activo.data[0]
+        if not activo.get("receso_inicio"):
+            supabase.table("asistencias").update({"receso_inicio": hora_actual}).eq("id", activo["id"]).execute()
+        elif not activo.get("receso_fin"):
+            supabase.table("asistencias").update({"receso_fin": hora_actual}).eq("id", activo["id"]).execute()
+        else:
+            supabase.table("asistencias").update({"salida": hora_actual}).eq("id", activo["id"]).execute()
+            supabase.table("asistencias").insert({
+                "usuario": u_real, "entrada": hora_actual, "receso_inicio": None, "receso_fin": None, "salida": None, "es_continua": True
+            }).execute()
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"mensaje": "Receso procesado"}
+
+@app.get("/api/admin/datos")
+def admin_datos():
+    usuarios_dict = PERSONAL_FIJO.copy()
+    try:
+        res_u = supabase.table("usuarios").select("*").execute()
+        if res_u.data:
+            for u in res_u.data:
+                usuarios_dict[u["usuario"]] = u
+    except Exception:
+        pass
+
+    asistencias_list = []
+    try:
+        res_a = supabase.table("asistencias").select("*").execute()
+        if res_a.data and len(res_a.data) > 0:
+            asistencias_list = res_a.data
+    except Exception:
+        pass
+
+    return {"usuarios": usuarios_dict, "asistencias": asistencias_list}
+
+@app.post("/api/admin/configurar-tarifas-global")
+def configurar_tarifas_global(req: ConfigGlobalRequest):
+    try:
+        res_u = supabase.table("usuarios").select("usuario").execute()
+        if res_u.data:
+            for u in res_u.data:
+                supabase.table("usuarios").update({"tarifa_hora": req.tarifa_hora}).eq("usuario", u["usuario"]).execute()
+        for k in PERSONAL_FIJO:
+            PERSONAL_FIJO[k]["tarifa_hora"] = req.tarifa_hora
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"mensaje": "Tarifa global actualizada con éxito"}
+
+@app.post("/api/admin/registro-manual")
+def admin_registro_manual(req: RegistroManualRequest):
+    try:
+        supabase.table("asistencias").insert({
+            "usuario": req.usuario.strip().capitalize(), "entrada": req.entrada, "receso_inicio": None, "receso_fin": None, "salida": req.salida, "es_continua": req.es_continua
+        }).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"mensaje": "Guardado"}
+
+@app.post("/api/admin/editar-registro")
+def admin_editar_registro(req: EditarRegistroRequest):
+    try:
+        supabase.table("asistencias").update({"entrada": req.entrada, "salida": req.salida}).eq("id", req.registro_id).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"mensaje": "Actualizado"}
+
+@app.delete("/api/admin/eliminar-registro/{registro_id}")
+def admin_eliminar_registro(registro_id: int):
+    try:
+        supabase.table("asistencias").delete().eq("id", registro_id).execute()
+    except Exception:
+        pass
+    return {"mensaje": "Eliminado"}
+
+@app.post("/api/admin/usuario")
+def admin_guardar_usuario(req: UsuarioAdminRequest):
+    payload = {
+        "usuario": req.usuario.strip(), "pin": req.pin, "rol_sistema": req.rol_sistema, "tipo_pago": req.tipo_pago,
+        "monto_fijo": req.monto_fijo if req.tipo_pago.lower() == "fijo" else 0.0,
+        "tarifa_hora": req.tarifa_hora if req.tipo_pago.lower() == "horas" else 0.0, "area": req.area
+    }
+    try:
+        supabase.table("usuarios").upsert(payload).execute()
+    except Exception:
+        pass
+    return {"mensaje": "Guardado"}
+
+@app.delete("/api/admin/usuario/{usuario}")
+def admin_eliminar_usuario(usuario: str):
+    try:
+        supabase.table("usuarios").delete().ilike("usuario", usuario).execute()
+    except Exception:
+        pass
+    return {"mensaje": "Eliminado"}
+
+@app.get("/api/admin/exportar-excel")
+def exportar_excel():
+    try:
+        res_a = supabase.table("asistencias").select("*").execute()
+        data_rows = [{"ID": r["id"], "Usuario": r["usuario"], "Entrada": r["entrada"], "Salida": r["salida"] if r["salida"] else "En Curso", "Es Continua": "Sí" if r["es_continua"] else "No"} for r in res_a.data] if res_a.data else []
+    except Exception:
+        data_rows = []
+    df = pd.DataFrame(data_rows)
+    export_path = "reporte_asistencia.xlsx"
+    df.to_excel(export_path, index=False)
+    return FileResponse(export_path, filename="Reporte_Asistencia.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
