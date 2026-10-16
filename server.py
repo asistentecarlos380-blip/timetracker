@@ -209,7 +209,6 @@ def leer_raiz():
                     }
                 });
 
-                // Interceptar o añadir botón para mostrar el Modal de Total General al calcular horas
                 const botonCalcular = document.querySelector('button:has(.fa-calculator)') || Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Calcular Horas'));
                 if (botonCalcular && !botonCalcular.dataset.modalAgregado) {
                     botonCalcular.dataset.modalAgregado = "true";
@@ -233,8 +232,8 @@ def leer_raiz():
                         const valor = parseFloat(pagoStr) || 0;
                         totalGeneral += valor;
                         detalleHtml += `
-                            <div class="flex justify-between border-b border-slate-800 py-1.5 text-xs">
-                                <span class="text-slate-300">${trabajador}</span>
+                            <div class="flex justify-between border-b border-slate-800 py-2 text-sm">
+                                <span class="text-slate-200 font-medium">${trabajador}</span>
                                 <span class="font-bold text-emerald-400">$${valor.toFixed(2)}</span>
                             </div>
                         `;
@@ -251,27 +250,28 @@ def leer_raiz():
                     document.body.appendChild(modal);
                 }
 
+                // Ventana más grande (max-w-2xl) y contenedor interno con mayor altura (max-h-96) para que quepan todos sin scroll
                 modal.innerHTML = `
-                    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 text-white shadow-2xl animate-fade-in">
-                        <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                            <h3 class="text-base font-bold flex items-center gap-2 text-emerald-400">
+                    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 text-white shadow-2xl animate-fade-in">
+                        <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-3">
+                            <h3 class="text-lg font-bold flex items-center gap-2 text-emerald-400">
                                 <i class="fas fa-file-invoice-dollar"></i> Resumen de Nómina y Total General
                             </h3>
-                            <button onclick="document.getElementById('modal-total-general-emergente').remove()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+                            <button onclick="document.getElementById('modal-total-general-emergente').remove()" class="text-slate-400 hover:text-white text-xl">&times;</button>
                         </div>
                         <p class="text-xs text-slate-400 mb-3">Desglose calculado para el período seleccionado:</p>
                         
-                        <div class="max-h-56 overflow-y-auto space-y-1 mb-4 pr-1 bg-slate-950/40 p-3 rounded-xl border border-slate-800">
+                        <div class="max-h-96 overflow-y-auto space-y-1.5 mb-4 pr-1 bg-slate-950/40 p-4 rounded-xl border border-slate-800">
                             ${detalleHtml}
                         </div>
 
-                        <div class="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-3 flex justify-between items-center mb-5">
-                            <span class="text-xs font-bold uppercase tracking-wider text-emerald-300">Total General a Pagar:</span>
-                            <span class="text-xl font-black text-emerald-400">$${totalGeneral.toFixed(2)}</span>
+                        <div class="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-4 flex justify-between items-center mb-5 shadow-inner">
+                            <span class="text-sm font-bold uppercase tracking-wider text-emerald-300">Total General a Pagar:</span>
+                            <span class="text-2xl font-black text-emerald-400">$${totalGeneral.toFixed(2)}</span>
                         </div>
 
                         <div class="flex justify-end">
-                            <button onclick="document.getElementById('modal-total-general-emergente').remove()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-600/30">Cerrar Ventana</button>
+                            <button onclick="document.getElementById('modal-total-general-emergente').remove()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-bold transition shadow-lg shadow-emerald-600/30">Cerrar Ventana</button>
                         </div>
                     </div>
                 `;
