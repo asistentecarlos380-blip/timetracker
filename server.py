@@ -226,7 +226,6 @@ def leer_raiz():
                     };
                 }
 
-                // Interceptar clics en el icono de "Ver Historial" para inyectar los totales junto al botón Cerrar
                 document.querySelectorAll('.fa-eye').forEach(icono => {
                     if (!icono.dataset.totalInyectado) {
                         icono.dataset.totalInyectado = "true";
@@ -238,16 +237,14 @@ def leer_raiz():
             }
 
             function inyectarTotalesEnModalHistorialIndividual() {
-                // Buscar el modal de historial individual abierto
                 const modals = document.querySelectorAll('div.fixed');
                 modals.forEach(modal => {
                     if (modal.textContent.includes('Historial Completo de Asistencias') && !modal.dataset.totalesCalculados) {
                         modal.dataset.totalesCalculados = "true";
                         
                         let totalHoras = 0;
-                        let tarifaAplicada = 1.5; // Tarifa por defecto
+                        let tarifaAplicada = 1.5;
 
-                        // Intentar extraer la tarifa del trabajador desde la tabla principal o usar 1.5
                         const filasTabla = document.querySelectorAll('tr');
                         filasTabla.forEach(tr => {
                             if (tr.textContent.includes(modal.textContent.split(':')[1]?.trim() || '')) {
@@ -262,7 +259,6 @@ def leer_raiz():
                             }
                         });
 
-                        // Sumar todas las horas listadas en el modal
                         modal.querySelectorAll('tr').forEach(tr => {
                             const textoFila = tr.textContent;
                             const matchHrs = textoFila.match(/([0-9]+\.[0-9]+)\s*hrs/);
@@ -273,10 +269,7 @@ def leer_raiz():
                         });
 
                         const totalDinero = totalHoras * tarifaAplicada;
-
-                        // Buscar el contenedor de los botones inferiores (donde está el botón Cerrar)
-                        const botonesContenedor = modal.querySelector('button:has-text("Cerrar")')?.parentElement || 
-                                                  Array.from(modal.querySelectorAll('button')).find(el => el.textContent.trim().toLowerCase() === 'cerrar')?.parentElement;
+                        const botonesContenedor = Array.from(modal.querySelectorAll('button')).find(el => el.textContent.trim().toLowerCase() === 'cerrar')?.parentElement;
 
                         if (botonesContenedor && !document.getElementById('badge-totales-historial')) {
                             const badge = document.createElement('div');
@@ -545,19 +538,25 @@ class ForzarCierreRequest(BaseModel):
 def login(req: LoginRequest):
     u = req.usuario.strip()
     p = str(req.pin).strip()
+    
+    # 1. Verificación prioritaria y segura en PERSONAL_FIJO para garantizar acceso inmediato
     if u.lower() == "admin" and p == "1234":
         return {"usuario": "ADMIN", "pin": "1234", "rol_sistema": "admin"}
     
-    res = supabase.table("usuarios").select("*").ilike("usuario", u).execute()
-    user_info = res.data[0] if res.data else None
-    if not user_info:
-        for k, v in PERSONAL_FIJO.items():
-            if k.lower() == u.lower():
-                user_info = v
-                break
-    if not user_info or str(user_info["pin"]).strip() != p:
-        raise HTTPException(status_code=400, detail="Credenciales inválidas")
-    return {"usuario": user_info["usuario"], "pin": req.pin, "rol_sistema": user_info.get("rol_sistema", "trabajador")}
+    for k, v in PERSONAL_FIJO.items():
+        if k.lower() == u.lower() and str(v["pin"]).strip() == p:
+            return {"usuario": v["usuario"], "pin": p, "rol_sistema": v.get("rol_sistema", "trabajador")}
+
+    # 2. Respaldo por si se agregaron nuevos usuarios en Supabase
+    try:
+        res = supabase.table("usuarios").select("*").ilike("usuario", u).execute()
+        user_info = res.data[0] if res.data else None
+        if user_info and str(user_info.get("pin", "")).strip() == p:
+            return {"usuario": user_info["usuario"], "pin": p, "rol_sistema": user_info.get("rol_sistema", "trabajador")}
+    except Exception:
+        pass
+
+    raise HTTPException(status_code=400, detail="Credenciales inválidas")
 
 @app.post("/api/admin/forzar-cierre")
 def forzar_cierre(req: ForzarCierreRequest):
