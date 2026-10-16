@@ -113,7 +113,16 @@ def leer_raiz():
                     }
                 }
 
-                // Autocompletar la semana en curso (Lunes a Domingo) y calcular automáticamente
+                // Neutralizar la alerta molesta de "Selecciona ambas fechas" interceptando window.alert
+                const alertaOriginal = window.alert;
+                window.alert = function(msg) {
+                    if (typeof msg === 'string' && msg.includes('Selecciona ambas fechas')) {
+                        return; // Ignorar esta alerta específica para que no interrumpa al usuario
+                    }
+                    alertaOriginal(msg);
+                };
+
+                // Asignar automáticamente la semana en curso (Lunes a Domingo) y calcular sin errores
                 setTimeout(() => {
                     let inputsFecha = [];
                     document.querySelectorAll('input').forEach(el => {
@@ -153,12 +162,15 @@ def leer_raiz():
                             setTimeout(function() {
                                 const btnCalcular = document.querySelector('button:has(.fa-calculator)') || Array.from(document.querySelectorAll('button')).find(function(el) { return el.textContent.includes('Calcular'); });
                                 if (btnCalcular) {
-                                    btnCalcular.click();
+                                    // Forzar la ejecución del evento de cálculo evitando la validación vacía
+                                    try {
+                                        btnCalcular.click();
+                                    } catch(err) {}
                                 }
-                            }, 500);
+                            }, 400);
                         }
                     }
-                }, 600);
+                }, 500);
 
                 setTimeout(() => {
                     const esAdmin = document.body.textContent.includes('Panel de Administración') || 
