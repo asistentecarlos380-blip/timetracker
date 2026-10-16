@@ -239,7 +239,7 @@ def leer_raiz():
                         const valor = parseFloat(pagoStr) || 0;
                         totalGeneral += valor;
                         detalleHtml += `
-                            <div class="flex justify-between border-b border-slate-800 py-2 text-sm">
+                            <div class="flex justify-between border-b border-slate-800/60 py-1 px-2 text-xs">
                                 <span class="text-slate-200 font-medium">${trabajador}</span>
                                 <span class="font-bold text-emerald-400">$${valor.toFixed(2)}</span>
                             </div>
@@ -257,27 +257,28 @@ def leer_raiz():
                     document.body.appendChild(modal);
                 }
 
+                // Estilo compacto y sin scroll para que todo se vea de un vistazo en la captura
                 modal.innerHTML = `
-                    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 text-white shadow-2xl animate-fade-in">
-                        <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-3">
-                            <h3 class="text-lg font-bold flex items-center gap-2 text-emerald-400">
+                    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-5 text-white shadow-2xl animate-fade-in">
+                        <div class="flex justify-between items-center mb-2 border-b border-slate-800 pb-2">
+                            <h3 class="text-sm font-bold flex items-center gap-2 text-emerald-400">
                                 <i class="fas fa-file-invoice-dollar"></i> Resumen de Nómina y Total General
                             </h3>
-                            <button onclick="document.getElementById('modal-total-general-emergente').remove()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+                            <button onclick="document.getElementById('modal-total-general-emergente').remove()" class="text-slate-400 hover:text-white text-lg">&times;</button>
                         </div>
-                        <p class="text-xs text-slate-400 mb-3">Desglose calculado para el período seleccionado:</p>
+                        <p class="text-[11px] text-slate-400 mb-2">Desglose calculado para el período seleccionado:</p>
                         
-                        <div class="max-h-96 overflow-y-auto space-y-1.5 mb-4 pr-1 bg-slate-950/40 p-4 rounded-xl border border-slate-800">
+                        <div class="space-y-1 mb-3 bg-slate-950/40 p-2.5 rounded-xl border border-slate-800">
                             ${detalleHtml}
                         </div>
 
-                        <div class="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-4 flex justify-between items-center mb-5 shadow-inner">
-                            <span class="text-sm font-bold uppercase tracking-wider text-emerald-300">Total General a Pagar:</span>
-                            <span class="text-2xl font-black text-emerald-400">$${totalGeneral.toFixed(2)}</span>
+                        <div class="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-3 flex justify-between items-center mb-4 shadow-inner">
+                            <span class="text-xs font-bold uppercase tracking-wider text-emerald-300">Total General a Pagar:</span>
+                            <span class="text-xl font-black text-emerald-400">$${totalGeneral.toFixed(2)}</span>
                         </div>
 
                         <div class="flex justify-end">
-                            <button onclick="document.getElementById('modal-total-general-emergente').remove()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-bold transition shadow-lg shadow-emerald-600/30">Cerrar Ventana</button>
+                            <button onclick="document.getElementById('modal-total-general-emergente').remove()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-600/30">Cerrar Ventana</button>
                         </div>
                     </div>
                 `;
@@ -609,11 +610,8 @@ def admin_datos():
 @app.post("/api/admin/configurar-tarifas-global")
 def configurar_tarifas_global(req: ConfigGlobalRequest):
     try:
-        # Actualizamos de forma segura en memoria y en PERSONAL_FIJO
         for k in PERSONAL_FIJO:
             PERSONAL_FIJO[k]["tarifa_hora"] = req.tarifa_hora
-        
-        # Intentamos actualizar en la base de datos Supabase de forma tolerante a fallos
         try:
             res_u = supabase.table("usuarios").select("usuario").execute()
             if res_u.data:
