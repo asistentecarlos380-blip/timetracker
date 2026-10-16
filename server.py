@@ -113,16 +113,19 @@ def leer_raiz():
                     }
                 }
 
-                // Neutralizar alertas de validación de fechas vacías
-                const alertaOriginal = window.alert;
-                window.alert = function(msg) {
-                    if (typeof msg === 'string' && msg.includes('Selecciona ambas fechas')) {
-                        return;
-                    }
-                    alertaOriginal(msg);
-                };
+                // Neutralizar alertas de validación de fechas vacías de forma segura
+                if (window.alert && !window._alertaNeutralizada) {
+                    window._alertaNeutralizada = true;
+                    const alertaOriginal = window.alert;
+                    window.alert = function(msg) {
+                        if (typeof msg === 'string' && msg.includes('Selecciona ambas fechas')) {
+                            return;
+                        }
+                        alertaOriginal(msg);
+                    };
+                }
 
-                // Autocompletar semana en curso (Lunes a Domingo) y calcular automáticamente
+                // Autocompletar semana en curso (Lunes a Domingo) una sola vez al cargar
                 setTimeout(() => {
                     let inputsFecha = [];
                     document.querySelectorAll('input').forEach(el => {
@@ -149,13 +152,14 @@ def leer_raiz():
                         let inputHasta = inputsFecha[inputsFecha.length - 1];
 
                         const setVal = function(el, val) {
-                            el.value = val;
-                            el.dispatchEvent(new Event('input', { bubbles: true }));
-                            el.dispatchEvent(new Event('change', { bubbles: true }));
-                            el.dispatchEvent(new Event('blur', { bubbles: true }));
+                            if (el.value !== val) {
+                                el.value = val;
+                                el.dispatchEvent(new Event('input', { bubbles: true }));
+                                el.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
                         };
 
-                        if (inputDesde && inputHasta) {
+                        if (inputDesde && inputHasta && !inputDesde.value) {
                             setVal(inputDesde, lunesStr);
                             setVal(inputHasta, domingoStr);
 
@@ -164,44 +168,12 @@ def leer_raiz():
                                 if (btnCalcular) {
                                     try { btnCalcular.click(); } catch(err) {}
                                 }
-                            }, 400);
+                            }, 300);
                         }
                     }
-                }, 500);
+                }, 400);
 
-                // Asegurar opción "Semanal" y adaptar la etiqueta del input numérico (Monto Fijo / Semanal)
-                const observerModalUsuario = new MutationObserver(() => {
-                    document.querySelectorAll('select').forEach(sel => {
-                        if (sel.innerHTML.includes('Horas') && sel.innerHTML.includes('Fijo') && !sel.innerHTML.includes('Semanal')) {
-                            const opt = document.createElement('option');
-                            opt.value = 'Semanal';
-                            opt.textContent = 'Semanal';
-                            sel.appendChild(opt);
-                        }
-                    });
-
-                    // Si el tipo de pago es Semanal o Fijo, ajustar el texto de la etiqueta del monto
-                    const selectPago = document.querySelector('select[name="tipo_pago"]') || Array.from(document.querySelectorAll('select')).find(s => s.value === 'Semanal' || s.value === 'Fijo');
-                    if (selectPago) {
-                        const contenedorInput = selectPago.closest('.space-y-4') || selectPago.parentElement.parentElement;
-                        if (contenedorInput) {
-                            const labels = contenedorInput.querySelectorAll('label');
-                            labels.forEach(lbl => {
-                                if (lbl.textContent.toLowerCase().includes('tarifa') || lbl.textContent.toLowerCase().includes('monto')) {
-                                    if (selectPago.value === 'Semanal') {
-                                        lbl.textContent = 'Monto Fijo Semanal ($)';
-                                    } else if (selectPago.value === 'Fijo') {
-                                        lbl.textContent = 'Monto Fijo ($)';
-                                    } else if (selectPago.value === 'Horas') {
-                                        lbl.textContent = 'Tarifa por Hora ($)';
-                                    }
-                                }
-                            });
-                        }
-                    }
-                });
-                observerModalUsuario.observe(document.body, { childList: true, subtree: true });
-
+                // Ejecución única y ligera para enriquecer la tabla de administración sin bucles
                 setTimeout(() => {
                     const esAdmin = document.body.textContent.includes('Panel de Administración') || 
                                     document.body.textContent.includes('Personal Registrado y Tarifas') ||
@@ -212,7 +184,8 @@ def leer_raiz():
                     }
                 }, 500);
 
-                const observerTrabajador = new MutationObserver(() => {
+                // Menú desplegable para trabajadores (Simulador de Cobro) de forma segura
+                setTimeout(() => {
                     const dropdownMenu = document.querySelector('#menu-config-trabajador') || document.querySelector('.dropdown-menu') || document.querySelector('[role="menu"]') || document.querySelector('.absolute.right-0.mt-2');
                     if (dropdownMenu && !document.getElementById('simulador-cobro-btn')) {
                         if (!dropdownMenu.innerHTML.includes('Simulador')) {
@@ -224,8 +197,7 @@ def leer_raiz():
                             dropdownMenu.appendChild(itemSimulador);
                         }
                     }
-                });
-                observerTrabajador.observe(document.body, { childList: true, subtree: true });
+                }, 1000);
             });
 
             function parsearFechaPersonalizada(str) {
@@ -300,61 +272,6 @@ def leer_raiz():
                         setTimeout(mostrarModalTotalGeneral, 300);
                     };
                 }
-
-                document.querySelectorAll('.fa-eye').forEach(icono => {
-                    if (!icono.dataset.totalInyectado) {
-                        icono.dataset.totalInyectado = "true";
-                        icono.addEventListener('click', () => {
-                            setTimeout(inyectarTotalesEnModalHistorialIndividual, 250);
-                        });
-                    }
-                });
-            }
-
-            function inyectarTotalesEnModalHistorialIndividual() {
-                const modals = document.querySelectorAll('div.fixed');
-                modals.forEach(modal => {
-                    if (modal.textContent.includes('Historial Completo de Asistencias') && !modal.dataset.totalesCalculados) {
-                        modal.dataset.totalesCalculados = "true";
-                        
-                        let totalHoras = 0;
-                        let tarifaAplicada = 1.5;
-
-                        const filasTabla = document.querySelectorAll('tr');
-                        filasTabla.forEach(tr => {
-                            if (tr.textContent.includes(modal.textContent.split(':')[1]?.trim() || '')) {
-                                const celdas = tr.querySelectorAll('td');
-                                celdas.forEach(td => {
-                                    const txt = td.textContent.trim();
-                                    if (txt.startsWith('$') && !txt.includes('300')) {
-                                        const t = parseFloat(txt.replace('$', ''));
-                                        if (!isNaN(t)) tarifaAplicada = t;
-                                    }
-                                });
-                            }
-                        });
-
-                        modal.querySelectorAll('tr').forEach(tr => {
-                            const textoFila = tr.textContent;
-                            const matchHrs = textoFila.match(/([0-9]+\.[0-9]+)\s*hrs/);
-                            if (matchHrs) {
-                                const val = parseFloat(matchHrs[1]);
-                                if (!isNaN(val)) totalHoras += val;
-                            }
-                        });
-
-                        const totalDinero = totalHoras * tarifaAplicada;
-                        const botonesContenedor = Array.from(modal.querySelectorAll('button')).find(el => el.textContent.trim().toLowerCase() === 'cerrar')?.parentElement;
-
-                        if (botonesContenedor && !document.getElementById('badge-totales-historial')) {
-                            const badge = document.createElement('div');
-                            badge.id = 'badge-totales-historial';
-                            badge.className = 'flex items-center gap-3 bg-slate-950/60 border border-emerald-500/40 px-3 py-1.5 rounded-xl text-xs mr-2';
-                            badge.innerHTML = '<div><span class="text-slate-400 block text-[10px]">TOTAL HORAS</span><span class="font-bold text-indigo-300">' + totalHoras.toFixed(2) + ' hrs</span></div><div class="border-l border-slate-800 pl-3"><span class="text-slate-400 block text-[10px]">TOTAL ACUMULADO</span><span class="font-black text-emerald-400 text-sm">$' + totalDinero.toFixed(2) + '</span></div>';
-                            botonesContenedor.insertBefore(badge, botonesContenedor.firstChild);
-                        }
-                    }
-                });
             }
 
             function mostrarModalTotalGeneral() {
@@ -388,7 +305,7 @@ def leer_raiz():
             async function forzarCierreIndividual(usuario) {
                 if (!confirm('¿Estás seguro de finalizar el turno activo de ' + usuario + '?')) return;
                 try {
-                    const res = await fetch('/api/admin/forzar-cierre', {
+                    await fetch('/api/admin/forzar-cierre', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ usuario: usuario })
@@ -705,7 +622,6 @@ def admin_datos():
             res_u = supabase.table("usuarios").select("*").execute()
             if res_u.data:
                 for u in res_u.data:
-                    # Mapear correctamente monto_fijo para tipos semanales/fijos y tarifa_hora para horas
                     if u.get("tipo_pago", "").lower() in ["fijo", "semanal"] and (u.get("monto_fijo") is None or u.get("monto_fijo") == 0):
                         if u.get("tarifa_hora", 0) > 0:
                             u["monto_fijo"] = u["tarifa_hora"]
@@ -776,8 +692,6 @@ def admin_eliminar_registro(registro_id: int):
 @app.post("/api/admin/usuario")
 def admin_guardar_usuario(req: UsuarioAdminRequest):
     tipo = req.tipo_pago.strip()
-    
-    # Para pagos semanales y fijos, guardamos el valor en monto_fijo y también sincronizamos tarifa_hora para que la UI original lo refleje sin mostrar $0
     m_fijo = req.monto_fijo if tipo.lower() in ["fijo", "semanal"] else 0.0
     t_hora = req.tarifa_hora if tipo.lower() == "horas" else (req.monto_fijo if tipo.lower() in ["fijo", "semanal"] else (0.5 if tipo.lower() == "gasolina" else 0.0))
 
