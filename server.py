@@ -111,14 +111,44 @@ def leer_raiz():
                     }
                 }
 
-                // 2. Enriquecer tabla personal y iconos limpios en admin (SIN NINGÚN CUADRO DE NÓMINA GLOBAL)
+                // 2. Control estricto de vistas: Administrador vs Trabajador
                 setTimeout(() => {
                     const esAdmin = document.body.textContent.includes('Panel de Administración') || 
                                     document.body.textContent.includes('Personal Registrado y Tarifas') ||
                                     document.querySelector('button:has(.fa-file-excel)') !== null;
 
                     if (esAdmin) {
+                        // Cuadro de nómina general solo en admin
+                        const seccionNomina = document.querySelector('#resumen-horas') || document.querySelector('div:has(table)') || document.querySelector('.overflow-x-auto');
+                        if (seccionNomina && !document.getElementById('cuadro-total-nomina-general')) {
+                            const contenedorTotal = document.createElement('div');
+                            contenedorTotal.id = 'cuadro-total-nomina-general';
+                            contenedorTotal.className = 'mb-4 p-4 bg-slate-900 border border-emerald-500/50 rounded-xl flex items-center justify-between shadow-xl';
+                            contenedorTotal.innerHTML = `
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-emerald-500/20 p-3 rounded-lg text-emerald-400 text-xl">
+                                        <i class="fas fa-wallet"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-xs uppercase font-bold text-slate-400">Nómina Total a Pagar (General)</h4>
+                                        <p class="text-xs text-slate-500">Suma total incluyendo administradores, personal y planta</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span id="monto-total-nomina-general" class="text-2xl font-black text-emerald-400">$0.00</span>
+                                    <button onclick="calcularSumaTotalNomina()" class="block text-xs text-emerald-400 hover:underline mt-1">Actualizar Total</button>
+                                </div>
+                            `;
+                            seccionNomina.parentNode.insertBefore(contenedorTotal, seccionNomina);
+                            calcularSumaTotalNomina();
+                        }
+                        
+                        // Enriquecer tabla personal (espacio al lado del área, iconos limpios)
                         enriquecerTablaPersonalAdmin();
+                    } else {
+                        // ELIMINAR CUADRO DE NÓMINA TOTAL EN PANEL TRABAJADOR
+                        const cuadroTrabajador = document.getElementById('cuadro-total-nomina-general');
+                        if (cuadroTrabajador) cuadroTrabajador.remove();
                     }
                 }, 500);
 
@@ -139,6 +169,24 @@ def leer_raiz():
                 observerTrabajador.observe(document.body, { childList: true, subtree: true });
             });
 
+            window.calcularSumaTotalNomina = function() {
+                const spanTotal = document.getElementById('monto-total-nomina-general');
+                if (!spanTotal) return;
+
+                let sumaPrecisa = 0;
+                document.querySelectorAll('tr').forEach(tr => {
+                    const celdas = tr.querySelectorAll('td');
+                    if (celdas.length >= 5) {
+                        const ultimoTexto = celdas[celdas.length - 1].textContent.trim();
+                        if (ultimoTexto.startsWith('$')) {
+                            const v = parseFloat(ultimoTexto.replace('$', ''));
+                            if (!isNaN(v)) sumaPrecisa += v;
+                        }
+                    }
+                });
+                spanTotal.textContent = `$${sumaPrecisa.toFixed(2)}`;
+            }
+
             function enriquecerTablaPersonalAdmin() {
                 let usuariosActivos = new Set();
                 document.querySelectorAll('tr').forEach(tr => {
@@ -155,7 +203,7 @@ def leer_raiz():
                 document.querySelectorAll('tr').forEach(tr => {
                     const celdas = tr.querySelectorAll('td');
                     if (celdas.length >= 6) {
-                        // Iconos limpios en acciones (Detalles, Editar, Borrar)
+                        // Cambiar texto de acciones por iconos limpios (Detalles, Editar, Borrar)
                         const celdaAcciones = celdas[celdas.length - 1];
                         if (celdaAcciones && !celdaAcciones.dataset.iconos) {
                             celdaAcciones.dataset.iconos = "true";
@@ -165,7 +213,7 @@ def leer_raiz():
                                 .replace(/Borrar/g, '<i class="fas fa-trash text-rose-500 hover:text-rose-400 cursor-pointer text-base" title="Borrar"></i>');
                         }
 
-                        // Estado Activo y botón Finalizar al lado del Área
+                        // Agregar estado Activo y botón Finalizar al lado del Área (aprovechando el espacio horizontal)
                         const nombrePersonal = celdas[0].textContent.trim();
                         if (usuariosActivos.has(nombrePersonal) && !tr.dataset.enriquecido) {
                             tr.dataset.enriquecido = "true";
@@ -190,8 +238,8 @@ def leer_raiz():
             }
 
             async function forzarCierreIndividual(usuario) {
-                // Confirmación para evitar cierres por error accidental
-                if (!confirm(`¿Estás seguro de finalizar el turno activo de ${usuario}?`)) return;
+                // Confirmación obligatoria para evitar cierres por error
+                if (!confirm(`¿Estás 100% seguro de finalizar el turno activo de ${usuario}?`)) return;
                 try {
                     const res = await fetch('/api/admin/forzar-cierre', {
                         method: 'POST',
