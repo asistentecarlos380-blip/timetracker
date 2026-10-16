@@ -113,20 +113,20 @@ def leer_raiz():
                     }
                 }
 
-                // Establecer por defecto la fecha actual en el campo "Hasta" si está vacío
-                setTimeout(() => {
+                // Mantener siempre fija la fecha actual en el input "Hasta"
+                const ajustarFechaHasta = () => {
                     const inputsFecha = document.querySelectorAll('input[type="date"]');
                     if (inputsFecha.length >= 2) {
-                        // El segundo input o el que esté etiquetado como "Hasta"
                         let inputHasta = inputsFecha[inputsFecha.length - 1];
-                        if (inputHasta && !inputHasta.value) {
-                            const hoyStr = new Date().toISOString().split('T')[0];
+                        const hoyStr = new Date().toISOString().split('T')[0];
+                        if (inputHasta.value !== hoyStr) {
                             inputHasta.value = hoyStr;
-                            // Disparar evento change por si la app tiene listeners
-                            inputHasta.dispatchEvent(new Event('change', { bubbles: true }));
                         }
                     }
-                }, 300);
+                };
+
+                ajustarFechaHasta();
+                setInterval(ajustarFechaHasta, 1000);
 
                 setTimeout(() => {
                     const esAdmin = document.body.textContent.includes('Panel de Administración') || 
@@ -476,28 +476,23 @@ def leer_raiz():
                 const tarifa = parseFloat(tarifaInput.value) || 0;
                 let totalHorasPeriodo = 0;
 
-                const elPeriodo = document.querySelector('#total-periodo, .total-periodo') || Array.from(document.querySelectorAll('span')).find(el => el.textContent.includes('Total Período:'));
-                if (elPeriodo) {
-                    const match = elPeriodo.textContent.match(/([0-9]+\.[0-9]+)/);
-                    if (match) totalHorasPeriodo = parseFloat(match[1]) || 0;
-                }
-
-                if (totalHorasPeriodo === 0) {
-                    let filasVistas = new Set();
-                    document.querySelectorAll('tr').forEach(tr => {
-                        const textoFila = tr.textContent;
-                        const matchHrs = textoFila.match(/([0-9]+\.[0-9]+)\s*hrs/);
-                        if (matchHrs && !filasVistas.has(textoFila)) {
-                            if (tr.style.display !== 'none') {
-                                filasVistas.add(textoFila);
-                                const val = parseFloat(matchHrs[1]);
-                                if (!isNaN(val) && val < 200) {
-                                    totalHorasPeriodo += val;
-                                }
+                // Sumar estrictamente solo las filas de la tabla que están visibles (filtradas por el rango de fechas)
+                let filasVistas = new Set();
+                document.querySelectorAll('tr').forEach(tr => {
+                    const textoFila = tr.textContent;
+                    const matchHrs = textoFila.match(/([0-9]+\.[0-9]+)\s*hrs/);
+                    // Comprobar que la fila tenga horas, no se haya procesado y esté visible en el DOM (display !== 'none')
+                    if (matchHrs && !filasVistas.has(textoFila)) {
+                        const styleDisplay = window.getComputedStyle(tr).display;
+                        if (styleDisplay !== 'none') {
+                            filasVistas.add(textoFila);
+                            const val = parseFloat(matchHrs[1]);
+                            if (!isNaN(val) && val < 200) {
+                                totalHorasPeriodo += val;
                             }
                         }
-                    });
-                }
+                    }
+                });
 
                 const total = tarifa * totalHorasPeriodo;
                 resultadoSpan.textContent = `$${total.toFixed(2)}`;
