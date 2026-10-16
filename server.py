@@ -113,7 +113,7 @@ def leer_raiz():
                     }
                 }
 
-                // Neutralizar alertas de validación de fechas vacías de forma segura
+                // Neutralizar alertas de validación de fechas vacías
                 if (window.alert && !window._alertaNeutralizada) {
                     window._alertaNeutralizada = true;
                     const alertaOriginal = window.alert;
@@ -124,6 +124,15 @@ def leer_raiz():
                         alertaOriginal(msg);
                     };
                 }
+
+                // Asegurar que todos los inputs numéricos (tarifa, monto) permitan decimales libremente (step="any")
+                setInterval(() => {
+                    document.querySelectorAll('input[type="number"]').forEach(input => {
+                        if (input.step !== 'any') {
+                            input.setAttribute('step', 'any');
+                        }
+                    });
+                }, 500);
 
                 // Autocompletar semana en curso (Lunes a Domingo) una sola vez al cargar
                 setTimeout(() => {
@@ -173,7 +182,6 @@ def leer_raiz():
                     }
                 }, 400);
 
-                // Ejecución única y ligera para enriquecer la tabla de administración sin bucles
                 setTimeout(() => {
                     const esAdmin = document.body.textContent.includes('Panel de Administración') || 
                                     document.body.textContent.includes('Personal Registrado y Tarifas') ||
@@ -184,7 +192,6 @@ def leer_raiz():
                     }
                 }, 500);
 
-                // Menú desplegable para trabajadores (Simulador de Cobro) de forma segura
                 setTimeout(() => {
                     const dropdownMenu = document.querySelector('#menu-config-trabajador') || document.querySelector('.dropdown-menu') || document.querySelector('[role="menu"]') || document.querySelector('.absolute.right-0.mt-2');
                     if (dropdownMenu && !document.getElementById('simulador-cobro-btn')) {
@@ -322,7 +329,7 @@ def leer_raiz():
                     modal = document.createElement('div');
                     modal.id = 'modal-config-global';
                     modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4';
-                    modal.innerHTML = '<div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-6 text-white shadow-2xl"><h3 class="text-lg font-bold mb-4 flex items-center gap-2 text-emerald-400"><i class="fas fa-sliders-h"></i> Configuración Global de Tarifas</h3><p class="text-sm text-slate-400 mb-4">Actualiza la tarifa por hora para <b>todo el personal al mismo tiempo</b>.</p><div class="mb-4"><label class="block text-xs uppercase font-bold text-slate-400 mb-1">Nueva Tarifa General ($ / hora)</label><input type="number" step="0.1" id="input-tarifa-global" value="1.5" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white"></div><div class="flex justify-end gap-3 mt-6"><button onclick="document.getElementById(\\'modal-config-global\\').remove()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm">Cancelar</button><button onclick="guardarTarifaGlobal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold">Aplicar a Todos</button></div></div>';
+                    modal.innerHTML = '<div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-6 text-white shadow-2xl"><h3 class="text-lg font-bold mb-4 flex items-center gap-2 text-emerald-400"><i class="fas fa-sliders-h"></i> Configuración Global de Tarifas</h3><p class="text-sm text-slate-400 mb-4">Actualiza la tarifa por hora para <b>todo el personal al mismo tiempo</b>.</p><div class="mb-4"><label class="block text-xs uppercase font-bold text-slate-400 mb-1">Nueva Tarifa General ($ / hora)</label><input type="number" step="any" id="input-tarifa-global" value="1.5" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white"></div><div class="flex justify-end gap-3 mt-6"><button onclick="document.getElementById(\\'modal-config-global\\').remove()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm">Cancelar</button><button onclick="guardarTarifaGlobal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold">Aplicar a Todos</button></div></div>';
                     document.body.appendChild(modal);
                 }
             }
@@ -357,7 +364,7 @@ def leer_raiz():
                     modal = document.createElement('div');
                     modal.id = 'modal-simulador-trabajador';
                     modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4';
-                    modal.innerHTML = '<div class="bg-slate-900 border border-slate-700 rounded-xl max-w-sm w-full p-6 text-white shadow-2xl"><h3 class="text-lg font-bold mb-3 flex items-center gap-2 text-emerald-400"><i class="fas fa-calculator"></i> Simulador de Cobro</h3><p class="text-xs text-slate-400 mb-4">Ingresa tu tarifa referencial y visualiza tu cálculo estimado para el rango seleccionado.</p><div class="mb-4"><label class="block text-xs uppercase font-bold text-slate-400 mb-1">1. Tarifa Referencial ($ / hora)</label><input type="number" step="0.1" id="input-tarifa-ref" value="1.5" oninput="calcularTotalSimulado()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-bold text-lg"></div><div class="mb-5 bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center"><span class="block text-xs uppercase font-bold text-slate-400 mb-1">2. Total Estimado a Cobrar</span><span id="resultado-simulado-total" class="text-2xl font-black text-emerald-400">$0.00</span><span id="info-horas-base" class="block text-xs text-slate-400 mt-1">Suma total de horas</span></div><div class="flex justify-end gap-3"><button onclick="document.getElementById(\\'modal-simulador-trabajador\\').remove()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold">Cerrar</button></div></div>';
+                    modal.innerHTML = '<div class="bg-slate-900 border border-slate-700 rounded-xl max-w-sm w-full p-6 text-white shadow-2xl"><h3 class="text-lg font-bold mb-3 flex items-center gap-2 text-emerald-400"><i class="fas fa-calculator"></i> Simulador de Cobro</h3><p class="text-xs text-slate-400 mb-4">Ingresa tu tarifa referencial y visualiza tu cálculo estimado para el rango seleccionado.</p><div class="mb-4"><label class="block text-xs uppercase font-bold text-slate-400 mb-1">1. Tarifa Referencial ($ / hora)</label><input type="number" step="any" id="input-tarifa-ref" value="1.5" oninput="calcularTotalSimulado()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-bold text-lg"></div><div class="mb-5 bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center"><span class="block text-xs uppercase font-bold text-slate-400 mb-1">2. Total Estimado a Cobrar</span><span id="resultado-simulado-total" class="text-2xl font-black text-emerald-400">$0.00</span><span id="info-horas-base" class="block text-xs text-slate-400 mt-1">Suma total de horas</span></div><div class="flex justify-end gap-3"><button onclick="document.getElementById(\\'modal-simulador-trabajador\\').remove()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold">Cerrar</button></div></div>';
                     document.body.appendChild(modal);
                     calcularTotalSimulado();
                 }
