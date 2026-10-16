@@ -113,7 +113,6 @@ def leer_raiz():
                     }
                 }
 
-                // Neutralizar alertas de validación de fechas vacías
                 if (window.alert && !window._alertaNeutralizada) {
                     window._alertaNeutralizada = true;
                     const alertaOriginal = window.alert;
@@ -125,16 +124,14 @@ def leer_raiz():
                     };
                 }
 
-                // Asegurar que todos los inputs numéricos (tarifa, monto) permitan decimales libremente (step="any")
                 setInterval(() => {
                     document.querySelectorAll('input[type="number"]').forEach(input => {
                         if (input.step !== 'any') {
                             input.setAttribute('step', 'any');
                         }
                     });
-                }, 500);
+                }, 400);
 
-                // Autocompletar semana en curso (Lunes a Domingo) una sola vez al cargar
                 setTimeout(() => {
                     let inputsFecha = [];
                     document.querySelectorAll('input').forEach(el => {
@@ -361,36 +358,68 @@ def leer_raiz():
             function abrirSimuladorTrabajador() {
                 let modal = document.getElementById('modal-simulador-trabajador');
                 if (!modal) {
+                    const hoy = new Date();
+                    const diaSemana = hoy.getDay();
+                    const diffLunes = hoy.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1);
+                    const lunesSemana = new Date(new Date().setDate(diffLunes));
+                    const domingoSemana = new Date(lunesSemana);
+                    domingoSemana.setDate(lunesSemana.getDate() + 6);
+                    const pad = function(n) { return n < 10 ? '0' + n : n; };
+                    const formatDDMMYYYY = function(d) { return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear(); };
+
                     modal = document.createElement('div');
                     modal.id = 'modal-simulador-trabajador';
                     modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4';
-                    modal.innerHTML = '<div class="bg-slate-900 border border-slate-700 rounded-xl max-w-sm w-full p-6 text-white shadow-2xl"><h3 class="text-lg font-bold mb-3 flex items-center gap-2 text-emerald-400"><i class="fas fa-calculator"></i> Simulador de Cobro</h3><p class="text-xs text-slate-400 mb-4">Ingresa tu tarifa referencial y visualiza tu cálculo estimado para el rango seleccionado.</p><div class="mb-4"><label class="block text-xs uppercase font-bold text-slate-400 mb-1">1. Tarifa Referencial ($ / hora)</label><input type="number" step="any" id="input-tarifa-ref" value="1.5" oninput="calcularTotalSimulado()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-bold text-lg"></div><div class="mb-5 bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center"><span class="block text-xs uppercase font-bold text-slate-400 mb-1">2. Total Estimado a Cobrar</span><span id="resultado-simulado-total" class="text-2xl font-black text-emerald-400">$0.00</span><span id="info-horas-base" class="block text-xs text-slate-400 mt-1">Suma total de horas</span></div><div class="flex justify-end gap-3"><button onclick="document.getElementById(\\'modal-simulador-trabajador\\').remove()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold">Cerrar</button></div></div>';
+                    modal.innerHTML = '<div class="bg-slate-900 border border-slate-700 rounded-xl max-w-sm w-full p-6 text-white shadow-2xl"><h3 class="text-lg font-bold mb-3 flex items-center gap-2 text-emerald-400"><i class="fas fa-calculator"></i> Simulador de Cobro</h3><p class="text-xs text-slate-400 mb-3">Selecciona el rango de fechas y tu tarifa para calcular.</p><div class="grid grid-cols-2 gap-2 mb-3"><div><label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Desde</label><input type="text" id="sim-desde" value="' + formatDDMMYYYY(lunesSemana) + '" onchange="calcularTotalSimulado()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"></div><div><label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Hasta</label><input type="text" id="sim-hasta" value="' + formatDDMMYYYY(domingoSemana) + '" onchange="calcularTotalSimulado()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"></div></div><div class="mb-3"><label class="block text-xs uppercase font-bold text-slate-400 mb-1">Tarifa ($ / hora)</label><input type="number" step="any" id="input-tarifa-ref" value="1.5" oninput="calcularTotalSimulado()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-bold text-sm"></div><div class="mb-4 bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center"><span class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Total Estimado a Cobrar</span><span id="resultado-simulado-total" class="text-xl font-black text-emerald-400">$0.00</span><span id="info-horas-base" class="block text-[11px] text-slate-400 mt-1">Suma total de horas</span></div><div class="flex justify-end gap-2"><button onclick="document.getElementById(\\'modal-simulador-trabajador\\').remove()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold">Cerrar</button></div></div>';
                     document.body.appendChild(modal);
                     calcularTotalSimulado();
                 }
+            }
+
+            function parsearFechaDMY(str) {
+                if (!str) return null;
+                let p = str.split('/');
+                if (p.length !== 3) return null;
+                return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
             }
 
             function calcularTotalSimulado() {
                 const tarifaInput = document.getElementById('input-tarifa-ref');
                 const resultadoSpan = document.getElementById('resultado-simulado-total');
                 const infoHoras = document.getElementById('info-horas-base');
-                if (!tarifaInput || !resultadoSpan) return;
+                const simDesde = document.getElementById('sim-desde');
+                const simHasta = document.getElementById('sim-hasta');
+                if (!tarifaInput || !resultadoSpan || !simDesde || !simHasta) return;
 
                 const tarifa = parseFloat(tarifaInput.value) || 0;
-                let totalHorasPeriodo = 0;
+                const fechaIni = parsearFechaDMY(simDesde.value);
+                const fechaFin = parsearFechaDMY(simHasta.value);
+                if (fechaFin) fechaFin.setHours(23, 59, 59, 999);
 
+                let totalHorasPeriodo = 0;
                 let filasVistas = new Set();
+
                 document.querySelectorAll('tr').forEach(tr => {
                     const textoFila = tr.textContent;
                     const matchHrs = textoFila.match(/([0-9]+\.[0-9]+)\s*hrs/);
                     if (matchHrs && !filasVistas.has(textoFila)) {
-                        const styleDisplay = window.getComputedStyle(tr).display;
-                        if (styleDisplay !== 'none') {
-                            filasVistas.add(textoFila);
-                            const val = parseFloat(matchHrs[1]);
-                            if (!isNaN(val) && val < 200) {
-                                totalHorasPeriodo += val;
+                        filasVistas.add(textoFila);
+                        const val = parseFloat(matchHrs[1]);
+                        
+                        let celdas = tr.querySelectorAll('td');
+                        if (celdas.length >= 2 && fechaIni && fechaFin) {
+                            let fechaTxt = celdas[0].textContent.trim();
+                            let partesF = fechaTxt.split('-');
+                            if (partesF.length === 3) {
+                                let fFila = new Date(parseInt(partesF[2]), parseInt(partesF[1]) - 1, parseInt(partesF[0]));
+                                if (fFila >= fechaIni && fFila <= fechaFin) {
+                                    if (!isNaN(val) && val < 200) totalHorasPeriodo += val;
+                                }
+                            } else {
+                                if (!isNaN(val) && val < 200) totalHorasPeriodo += val;
                             }
+                        } else {
+                            if (!isNaN(val) && val < 200) totalHorasPeriodo += val;
                         }
                     }
                 });
