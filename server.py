@@ -225,6 +225,77 @@ def leer_raiz():
                         setTimeout(mostrarModalTotalGeneral, 300);
                     };
                 }
+
+                // Interceptar clics en el icono de "Ver Historial" para inyectar los totales junto al botón Cerrar
+                document.querySelectorAll('.fa-eye').forEach(icono => {
+                    if (!icono.dataset.totalInyectado) {
+                        icono.dataset.totalInyectado = "true";
+                        icono.addEventListener('click', () => {
+                            setTimeout(inyectarTotalesEnModalHistorialIndividual, 250);
+                        });
+                    }
+                });
+            }
+
+            function inyectarTotalesEnModalHistorialIndividual() {
+                // Buscar el modal de historial individual abierto
+                const modals = document.querySelectorAll('div.fixed');
+                modals.forEach(modal => {
+                    if (modal.textContent.includes('Historial Completo de Asistencias') && !modal.dataset.totalesCalculados) {
+                        modal.dataset.totalesCalculados = "true";
+                        
+                        let totalHoras = 0;
+                        let tarifaAplicada = 1.5; // Tarifa por defecto
+
+                        // Intentar extraer la tarifa del trabajador desde la tabla principal o usar 1.5
+                        const filasTabla = document.querySelectorAll('tr');
+                        filasTabla.forEach(tr => {
+                            if (tr.textContent.includes(modal.textContent.split(':')[1]?.trim() || '')) {
+                                const celdas = tr.querySelectorAll('td');
+                                celdas.forEach(td => {
+                                    const txt = td.textContent.trim();
+                                    if (txt.startsWith('$') && !txt.includes('300')) {
+                                        const t = parseFloat(txt.replace('$', ''));
+                                        if (!isNaN(t)) tarifaAplicada = t;
+                                    }
+                                });
+                            }
+                        });
+
+                        // Sumar todas las horas listadas en el modal
+                        modal.querySelectorAll('tr').forEach(tr => {
+                            const textoFila = tr.textContent;
+                            const matchHrs = textoFila.match(/([0-9]+\.[0-9]+)\s*hrs/);
+                            if (matchHrs) {
+                                const val = parseFloat(matchHrs[1]);
+                                if (!isNaN(val)) totalHoras += val;
+                            }
+                        });
+
+                        const totalDinero = totalHoras * tarifaAplicada;
+
+                        // Buscar el contenedor de los botones inferiores (donde está el botón Cerrar)
+                        const botonesContenedor = modal.querySelector('button:has-text("Cerrar")')?.parentElement || 
+                                                  Array.from(modal.querySelectorAll('button')).find(el => el.textContent.trim().toLowerCase() === 'cerrar')?.parentElement;
+
+                        if (botonesContenedor && !document.getElementById('badge-totales-historial')) {
+                            const badge = document.createElement('div');
+                            badge.id = 'badge-totales-historial';
+                            badge.className = 'flex items-center gap-3 bg-slate-950/60 border border-emerald-500/40 px-3 py-1.5 rounded-xl text-xs mr-2';
+                            badge.innerHTML = `
+                                <div>
+                                    <span class="text-slate-400 block text-[10px]">TOTAL HORAS</span>
+                                    <span class="font-bold text-indigo-300">${totalHoras.toFixed(2)} hrs</span>
+                                </div>
+                                <div class="border-l border-slate-800 pl-3">
+                                    <span class="text-slate-400 block text-[10px]">TOTAL ACUMULADO</span>
+                                    <span class="font-black text-emerald-400 text-sm">$${totalDinero.toFixed(2)}</span>
+                                </div>
+                            `;
+                            botonesContenedor.insertBefore(badge, botonesContenedor.firstChild);
+                        }
+                    }
+                });
             }
 
             function mostrarModalTotalGeneral() {
@@ -257,7 +328,6 @@ def leer_raiz():
                     document.body.appendChild(modal);
                 }
 
-                // Estilo compacto y sin scroll para que todo se vea de un vistazo en la captura
                 modal.innerHTML = `
                     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-5 text-white shadow-2xl animate-fade-in">
                         <div class="flex justify-between items-center mb-2 border-b border-slate-800 pb-2">
