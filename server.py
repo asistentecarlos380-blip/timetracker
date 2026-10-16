@@ -46,25 +46,25 @@ def write_json(file_path, data):
             json.dump(data, f, ensure_ascii=False, indent=4)
 
 def calcular_horas_turno(hora_entrada_str, hora_salida_str):
-    """
-    Calcula las horas trabajadas asegurando que si el turno cruza la medianoche,
-    se acredite y asigne al día de inicio del turno.
-    """
     fmt = "%Y-%m-%d %H:%M:%S"
     entrada = datetime.strptime(hora_entrada_str, fmt)
     salida = datetime.strptime(hora_salida_str, fmt)
-    
     diferencia = salida - entrada
     dia_asignacion = entrada.strftime("%Y-%m-%d")
-    
     return {
         "dia_asignacion": dia_asignacion,
         "total_horas": diferencia.total_seconds() / 3600
     }
 
-# Ruta principal para servir la interfaz Matrix sin errores de "Not Found"
+# Endpoint para servir la interfaz web
 @app.get("/", response_class=HTMLResponse)
 def serve_index():
     if os.path.exists("index.html"):
         return FileResponse("index.html")
-    return HTMLResponse("<h1>Error: index.html no encontrado en el servidor</h1>", status_px=404)
+    return HTMLResponse("<h1>Error: index.html no encontrado</h1>", status_code=404)
+
+# Endpoint de estado/verificación para evitar que peticiones automáticas devuelvan "Not Found"
+@app.get("/api/status")
+@app.get("/status")
+def health_check():
+    return {"status": "ok", "message": "Sistema de asistencia operativo"}
