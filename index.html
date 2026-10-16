@@ -50,17 +50,30 @@
                     </div>
                 </div>
 
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-3 rounded-lg shadow-lg shadow-emerald-900/30 transition-all cursor-pointer">
+                <button type="submit" id="login-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-3 rounded-lg shadow-lg shadow-emerald-900/30 transition-all cursor-pointer">
                     Ingresar al Sistema
                 </button>
 
-                <!-- Mensaje de estado oculto por defecto para evitar el "Not Found" -->
+                <!-- Mensaje de error/estado -->
                 <div id="login-status" class="text-red-400 text-xs text-center mt-2 hidden"></div>
             </form>
         </div>
     </div>
 
-    <!-- Script de fondo Matrix -->
+    <!-- WORKER / ADMIN DASHBOARD (Oculto inicialmente hasta iniciar sesión) -->
+    <div id="dashboard-screen" class="hidden flex-grow p-6 z-10 max-w-6xl mx-auto w-full">
+        <div class="flex justify-between items-center bg-slate-900/90 border border-emerald-500/30 p-4 rounded-xl mb-6 backdrop-blur-md">
+            <h2 class="text-xl font-bold text-emerald-400" id="welcome-user">Panel de Control</h2>
+            <button onclick="logout()" class="bg-red-600/80 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer">
+                Cerrar Sesión
+            </button>
+        </div>
+        <div class="bg-slate-900/90 border border-emerald-500/30 p-6 rounded-xl backdrop-blur-md text-center">
+            <p class="text-slate-300">¡Bienvenido al sistema! Conectado correctamente.</p>
+        </div>
+    </div>
+
+    <!-- Script de fondo Matrix y lógica de Acceso -->
     <script>
         const canvas = document.getElementById('matrix-bg');
         const ctx = canvas.getContext('2d');
@@ -100,9 +113,54 @@
         }
         setInterval(drawMatrix, 33);
 
-        function handleLogin(e) {
+        async function handleLogin(e) {
             e.preventDefault();
-            // Lógica de inicio de sesión conectada a tu backend
+            const usuario = document.getElementById('username').value.trim();
+            const pin = document.getElementById('pin').value.trim();
+            const statusDiv = document.getElementById('login-status');
+            const btn = document.getElementById('login-btn');
+
+            statusDiv.classList.add('hidden');
+            btn.textContent = "Verificando...";
+            btn.disabled = true;
+
+            try {
+                // Validación directa con el backend o credenciales locales predeterminadas
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario, pin })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('login-screen').classList.add('hidden');
+                    document.getElementById('dashboard-screen').classList.remove('hidden');
+                    document.getElementById('welcome-user').textContent = `Bienvenido, ${usuario}`;
+                } else {
+                    // Fallback rápido si usas ADMIN / 1234 directo
+                    if ((usuario.toUpperCase() === "ADMIN" || usuario === "Ricardo" || usuario === "Ronald" || usuario === "Lisander" || usuario === "Daniel" || usuario === "Betzaida" || usuario === "Brayan") && pin === "1234") {
+                        document.getElementById('login-screen').classList.add('hidden');
+                        document.getElementById('dashboard-screen').classList.remove('hidden');
+                        document.getElementById('welcome-user').textContent = `Bienvenido, ${usuario}`;
+                    } else {
+                        throw new Error("Usuario o PIN incorrecto");
+                    }
+                }
+            } catch (err) {
+                statusDiv.textContent = "Usuario o PIN incorrecto. Intente nuevamente.";
+                statusDiv.classList.remove('hidden');
+            } finally {
+                btn.textContent = "Ingresar al Sistema";
+                btn.disabled = false;
+            }
+        }
+
+        function logout() {
+            document.getElementById('dashboard-screen').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('pin').value = '';
         }
     </script>
 </body>
