@@ -117,12 +117,12 @@ def leer_raiz():
                 const alertaOriginal = window.alert;
                 window.alert = function(msg) {
                     if (typeof msg === 'string' && msg.includes('Selecciona ambas fechas')) {
-                        return; // Ignorar esta alerta específica para que no interrumpa al usuario
+                        return;
                     }
                     alertaOriginal(msg);
                 };
 
-                // Asignar automáticamente la semana en curso (Lunes a Domingo) y calcular sin errores
+                // Autocompletar la semana en curso (Lunes a Domingo) y calcular automáticamente
                 setTimeout(() => {
                     let inputsFecha = [];
                     document.querySelectorAll('input').forEach(el => {
@@ -162,15 +162,25 @@ def leer_raiz():
                             setTimeout(function() {
                                 const btnCalcular = document.querySelector('button:has(.fa-calculator)') || Array.from(document.querySelectorAll('button')).find(function(el) { return el.textContent.includes('Calcular'); });
                                 if (btnCalcular) {
-                                    // Forzar la ejecución del evento de cálculo evitando la validación vacía
-                                    try {
-                                        btnCalcular.click();
-                                    } catch(err) {}
+                                    try { btnCalcular.click(); } catch(err) {}
                                 }
                             }, 400);
                         }
                     }
                 }, 500);
+
+                // Observador para añadir la opción "Semanal" en los selects de Tipo de Pago en el modal de usuario
+                const observerModalUsuario = new MutationObserver(() => {
+                    document.querySelectorAll('select').forEach(sel => {
+                        if (sel.innerHTML.includes('Horas') && sel.innerHTML.includes('Fijo') && !sel.innerHTML.includes('Semanal')) {
+                            const opt = document.createElement('option');
+                            opt.value = 'Semanal';
+                            opt.textContent = 'Semanal';
+                            sel.appendChild(opt);
+                        }
+                    });
+                });
+                observerModalUsuario.observe(document.body, { childList: true, subtree: true });
 
                 setTimeout(() => {
                     const esAdmin = document.body.textContent.includes('Panel de Administración') || 
@@ -743,7 +753,7 @@ def admin_eliminar_registro(registro_id: int):
 def admin_guardar_usuario(req: UsuarioAdminRequest):
     payload = {
         "usuario": req.usuario.strip(), "pin": req.pin, "rol_sistema": req.rol_sistema, "tipo_pago": req.tipo_pago,
-        "monto_fijo": req.monto_fijo if req.tipo_pago.lower() == "fijo" else 0.0,
+        "monto_fijo": req.monto_fijo if req.tipo_pago.lower() in ["fijo", "semanal"] else 0.0,
         "tarifa_hora": req.tarifa_hora if req.tipo_pago.lower() == "horas" else 0.0, "area": req.area
     }
     if supabase:
