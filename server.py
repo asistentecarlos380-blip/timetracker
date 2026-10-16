@@ -113,7 +113,7 @@ def leer_raiz():
                     }
                 }
 
-                // Auto-configurar semana en curso (Lunes a Domingo) y calcular automáticamente al iniciar
+                // Asignar automáticamente la semana en curso (Lunes a Domingo) y disparar el cálculo sin errores
                 setTimeout(() => {
                     const inputsFecha = document.querySelectorAll('input[type="date"]');
                     if (inputsFecha.length >= 2) {
@@ -131,25 +131,33 @@ def leer_raiz():
                         let inputDesde = inputsFecha[inputsFecha.length - 2];
                         let inputHasta = inputsFecha[inputsFecha.length - 1];
 
-                        if (inputDesde) {
-                            inputDesde.value = lunesStr;
-                            inputDesde.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-                        if (inputHasta) {
-                            inputHasta.value = domingoStr;
-                            inputHasta.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
+                        if (inputDesde && inputHasta) {
+                            const setNativeValue = (element, value) => {
+                                const valueSetter = Object.getOwnPropertyDescriptor(element, 'value').set;
+                                const prototype = Object.getPrototypeOf(element);
+                                const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, 'value').set;
+                                
+                                if (valueSetter && valueSetter !== prototypeValueSetter) {
+                                    prototypeValueSetter.call(element, value);
+                                } else {
+                                    valueSetter.call(element, value);
+                                }
+                                element.dispatchEvent(new Event('input', { bubbles: true }));
+                                element.dispatchEvent(new Event('change', { bubbles: true }));
+                            };
 
-                        // Simular clic automático en el botón de calcular para mostrar las horas de inmediato
-                        const btnCalcular = document.querySelector('button:has(.fa-calculator)') || Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Calcular'));
-                        if (btnCalcular) {
-                            // Pequeño retraso para asegurar que los datos del trabajador ya hayan cargado en la tabla
+                            setNativeValue(inputDesde, lunesStr);
+                            setNativeValue(inputHasta, domingoStr);
+
                             setTimeout(() => {
-                                btnCalcular.click();
-                            }, 300);
+                                const btnCalcular = document.querySelector('button:has(.fa-calculator)') || Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Calcular'));
+                                if (btnCalcular) {
+                                    btnCalcular.click();
+                                }
+                            }, 400);
                         }
                     }
-                }, 500);
+                }, 600);
 
                 setTimeout(() => {
                     const esAdmin = document.body.textContent.includes('Panel de Administración') || 
