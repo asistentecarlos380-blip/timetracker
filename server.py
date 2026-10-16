@@ -8,8 +8,8 @@ from supabase import create_client, Client
 
 app = FastAPI()
 
-SUPABASE_URL = "https://dvpfynkqtjwkvmcndael.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2cGZ5bmtxdGp3a3ZtY25kYWVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwODM1MDcsImV4cCI6MjEwNzY1OTUwN30.7gjZWE3AbR1ta8grbzr-Xpdd5vugYm0KSFJ54giI89Y"
+SUPABASE_URL = "https://dvpfynkqtjwkmcndael.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2cGZ5bmtxdGp3a21jbmRhZWwiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc5MjA4MzUwNywiZXhwIjoyMTA3NjU5NTA3fQ.7gjZWE3AbR1ta8grbzr-Xpdd5vugYm0KSFJ54giI89Y"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -26,11 +26,400 @@ PERSONAL_FIJO = {
     "Planta": {"usuario": "Planta", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Gasolina", "monto_fijo": 0.0, "tarifa_hora": 0.5, "area": "Operaciones"}
 }
 
+HISTORIAL_INICIAL = [
+    {"usuario": "Ronald", "entrada": "14-10-2026 05:52:00 PM", "salida": "15-10-2026 12:02:00 AM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "14-10-2026 03:40:00 PM", "salida": "15-10-2026 02:58:00 AM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "14-10-2026 12:32:00 PM", "salida": "14-10-2026 06:02:00 PM", "es_continua": False},
+    {"usuario": "Betzaida", "entrada": "14-10-2026 12:32:00 PM", "salida": "14-10-2026 06:01:00 PM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "14-10-2026 12:00:00 PM", "salida": "15-10-2026 12:04:00 AM", "es_continua": False},
+    {"usuario": "Ronald", "entrada": "13-10-2026 05:35:00 PM", "salida": "14-10-2026 12:10:00 AM", "es_continua": False},
+    {"usuario": "Gerson", "entrada": "13-10-2026 05:30:00 PM", "salida": "13-10-2026 11:13:00 PM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "13-10-2026 04:30:00 PM", "salida": "14-10-2026 02:09:00 AM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "13-10-2026 10:59:00 AM", "salida": "14-10-2026 12:10:00 AM", "es_continua": False},
+    {"usuario": "Betzaida", "entrada": "13-10-2026 10:12:00 AM", "salida": "13-10-2026 06:03:00 PM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "13-10-2026 08:53:00 AM", "salida": "13-10-2026 06:01:00 PM", "es_continua": False},
+    {"usuario": "Planta", "entrada": "12-10-2026 06:50:00 PM", "salida": "12-10-2026 11:55:00 PM", "es_continua": False},
+    {"usuario": "Ronald", "entrada": "12-10-2026 05:29:00 PM", "salida": "12-10-2026 11:21:00 PM", "es_continua": False},
+    {"usuario": "Gerson", "entrada": "12-10-2026 05:15:00 PM", "salida": "12-10-2026 11:01:00 PM", "es_continua": False},
+    {"usuario": "Matias", "entrada": "12-10-2026 03:22:00 PM", "salida": "12-10-2026 05:14:00 PM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "12-10-2026 03:21:00 PM", "salida": "13-10-2026 03:12:00 AM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "12-10-2026 11:09:00 AM", "salida": "13-10-2026 03:02:00 AM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "12-10-2026 11:00:00 AM", "salida": "13-10-2026 12:02:00 AM", "es_continua": False},
+    {"usuario": "Matias", "entrada": "11-10-2026 03:50:00 PM", "salida": "11-10-2026 07:54:00 PM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "11-10-2026 03:32:00 PM", "salida": "12-10-2026 02:35:00 AM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "11-10-2026 11:45:00 AM", "salida": "11-10-2026 08:16:00 PM", "es_continua": False},
+    {"usuario": "Ronald", "entrada": "11-10-2026 10:20:00 AM", "salida": "11-10-2026 05:04:00 PM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "11-10-2026 10:14:00 AM", "salida": "11-10-2026 07:54:00 PM", "es_continua": False},
+    {"usuario": "Betzaida", "entrada": "11-10-2026 10:14:00 AM", "salida": "11-10-2026 07:57:00 PM", "es_continua": False},
+    {"usuario": "Matias", "entrada": "10-10-2026 06:15:00 PM", "salida": "10-10-2026 11:30:00 PM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "10-10-2026 04:30:00 PM", "salida": "10-10-2026 11:30:00 PM", "es_continua": False},
+    {"usuario": "Ronald", "entrada": "10-10-2026 02:02:00 PM", "salida": "10-10-2026 11:10:00 PM", "es_continua": False},
+    {"usuario": "Betzaida", "entrada": "10-10-2026 12:55:00 PM", "salida": "10-10-2026 05:30:00 PM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "10-10-2026 11:10:00 AM", "salida": "10-10-2026 11:30:00 PM", "es_continua": False},
+    {"usuario": "Gerson", "entrada": "10-10-2026 10:17:00 AM", "salida": "10-10-2026 05:16:00 PM", "es_continua": False},
+    {"usuario": "Ronald", "entrada": "09-10-2026 03:53:00 PM", "salida": "10-10-2026 12:31:00 AM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "09-10-2026 03:19:00 PM", "salida": "10-10-2026 02:35:00 AM", "es_continua": False},
+    {"usuario": "Planta", "entrada": "09-10-2026 11:40:00 AM", "salida": "09-10-2026 05:20:00 PM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "09-10-2026 11:00:00 AM", "salida": "09-10-2026 06:00:00 PM", "es_continua": False},
+    {"usuario": "Betzaida", "entrada": "09-10-2026 11:00:00 AM", "salida": "09-10-2026 05:47:00 PM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "09-10-2026 09:56:00 AM", "salida": "10-10-2026 02:35:00 AM", "es_continua": False},
+    {"usuario": "Gerson", "entrada": "08-10-2026 05:39:00 PM", "salida": "08-10-2026 11:09:00 PM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "08-10-2026 11:36:00 AM", "salida": "09-10-2026 02:26:00 AM", "es_continua": False},
+    {"usuario": "Betzaida", "entrada": "08-10-2026 11:03:00 AM", "salida": "08-10-2026 05:17:00 PM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "08-10-2026 10:59:00 AM", "salida": "09-10-2026 12:02:00 AM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "08-10-2026 09:13:00 AM", "salida": "08-10-2026 06:08:00 PM", "es_continua": False},
+    {"usuario": "Ronald", "entrada": "07-10-2026 05:40:00 PM", "salida": "07-10-2026 11:58:00 PM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "07-10-2026 03:09:00 PM", "salida": "08-10-2026 03:42:00 AM", "es_continua": False},
+    {"usuario": "Betzaida", "entrada": "07-10-2026 01:30:00 PM", "salida": "07-10-2026 05:43:00 PM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "07-10-2026 11:00:00 AM", "salida": "08-10-2026 12:01:00 AM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "07-10-2026 10:01:00 AM", "salida": "08-10-2026 03:16:00 AM", "es_continua": False},
+    {"usuario": "Gerson", "entrada": "06-10-2026 05:59:00 PM", "salida": "06-10-2026 11:07:00 PM", "es_continua": False},
+    {"usuario": "Ronald", "entrada": "06-10-2026 05:52:00 PM", "salida": "07-10-2026 12:00:00 AM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "06-10-2026 03:00:00 PM", "salida": "07-10-2026 02:42:00 AM", "es_continua": False},
+    {"usuario": "Planta", "entrada": "06-10-2026 12:40:00 PM", "salida": "06-10-2026 06:20:00 PM", "es_continua": False},
+    {"usuario": "Brayan", "entrada": "06-10-2026 11:15:00 AM", "salida": "06-10-2026 07:12:00 PM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "06-10-2026 11:00:00 AM", "salida": "07-10-2026 12:02:00 AM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "06-10-2026 08:54:00 AM", "salida": "06-10-2026 07:12:00 PM", "es_continua": False},
+    {"usuario": "Ronald", "entrada": "05-10-2026 06:36:00 PM", "salida": "06-10-2026 12:01:00 AM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "05-10-2026 04:30:00 PM", "salida": "06-10-2026 03:24:00 AM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "05-10-2026 01:15:00 PM", "salida": "06-10-2026 03:24:00 AM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "05-10-2026 12:00:00 PM", "salida": "06-10-2026 12:02:00 AM", "es_continua": False}
+]
+
 @app.get("/", response_class=HTMLResponse)
 def leer_raiz():
     if os.path.exists("index.html"):
         with open("index.html", "r", encoding="utf-8") as f:
-            return f.read()
+            content = f.read()
+            
+            patch_ui = """
+            <script>
+            document.addEventListener("DOMContentLoaded", () => {
+                // 1. Tuerca global en panel admin y botón de Auditoría
+                const headerActions = document.querySelector('header') || document.querySelector('.flex.justify-between') || document.querySelector('#panel-admin');
+                if (headerActions && !document.getElementById('btn-config-global')) {
+                    const btnConfig = document.createElement('button');
+                    btnConfig.id = 'btn-config-global';
+                    btnConfig.className = 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white p-2.5 rounded-lg text-sm flex items-center justify-center shadow transition ml-2 border border-slate-700';
+                    btnConfig.title = 'Configuración Global de Tarifas';
+                    btnConfig.innerHTML = '<i class="fas fa-cog"></i>';
+                    btnConfig.onclick = abrirModalConfigGlobal;
+
+                    const btnAuditoria = document.createElement('button');
+                    btnAuditoria.id = 'btn-auditoria-global';
+                    btnAuditoria.className = 'bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow border border-indigo-500/40 ml-2';
+                    btnAuditoria.innerHTML = '<i class="fas fa-history"></i> Auditoría';
+                    btnAuditoria.onclick = abrirModalAuditoria;
+                    
+                    const btnExcel = document.querySelector('button:has(.fa-file-excel)') || document.querySelector('#exportar-excel') || headerActions.querySelector('button');
+                    if (btnExcel && btnExcel.parentNode) {
+                        btnExcel.parentNode.insertBefore(btnConfig, btnExcel.nextSibling);
+                        btnExcel.parentNode.insertBefore(btnAuditoria, btnConfig.nextSibling);
+                    }
+                }
+
+                // 2. Enriquecer tabla personal y iconos limpios en admin con Alerta Inteligente de Turnos Largos (>10 horas)
+                setTimeout(() => {
+                    const esAdmin = document.body.textContent.includes('Panel de Administración') || 
+                                    document.body.textContent.includes('Personal Registrado y Tarifas') ||
+                                    document.querySelector('button:has(.fa-file-excel)') !== null;
+
+                    if (esAdmin) {
+                        enriquecerTablaPersonalAdmin();
+                    }
+                }, 500);
+
+                // 3. Simulador de cobro trabajador en su menú
+                const observerTrabajador = new MutationObserver(() => {
+                    const dropdownMenu = document.querySelector('#menu-config-trabajador') || document.querySelector('.dropdown-menu') || document.querySelector('[role="menu"]') || document.querySelector('.absolute.right-0.mt-2');
+                    if (dropdownMenu && !document.getElementById('simulador-cobro-btn')) {
+                        if (!dropdownMenu.innerHTML.includes('Simulador')) {
+                            const itemSimulador = document.createElement('a');
+                            itemSimulador.id = 'simulador-cobro-btn';
+                            itemSimulador.className = 'block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white cursor-pointer flex items-center gap-2';
+                            itemSimulador.innerHTML = '<i class="fas fa-calculator text-emerald-400"></i> Simulador de Cobro';
+                            itemSimulador.onclick = abrirSimuladorTrabajador;
+                            dropdownMenu.appendChild(itemSimulador);
+                        }
+                    }
+                });
+                observerTrabajador.observe(document.body, { childList: true, subtree: true });
+            });
+
+            function parsearFechaPersonalizada(str) {
+                if(!str) return null;
+                let partes = str.split(' ');
+                if(partes.length < 3) return new Date(str);
+                let f = partes[0].split('-');
+                if(f.length !== 3) return new Date(str);
+                let d = parseInt(f[0]), m = parseInt(f[1]), y = parseInt(f[2]);
+                let h = partes[1].split(':');
+                let hh = parseInt(h[0]), mm = parseInt(h[1]), ss = parseInt(h[2] || 0);
+                let ampm = partes[2];
+                if(ampm && ampm.toUpperCase() === 'PM' && hh < 12) hh += 12;
+                if(ampm && ampm.toUpperCase() === 'AM' && hh === 12) hh = 0;
+                return new Date(y, m-1, d, hh, mm, ss);
+            }
+
+            function enriquecerTablaPersonalAdmin() {
+                let usuariosActivosInfo = {};
+                
+                // Mapear turnos en tiempo real para calcular tiempo activo exacto
+                document.querySelectorAll('tr').forEach(tr => {
+                    const celdas = tr.querySelectorAll('td');
+                    if (celdas.length >= 4) {
+                        const nombreUsr = celdas[0].textContent.trim();
+                        const entradaTxt = celdas[1].textContent.trim();
+                        const salidaTxt = celdas[2].textContent.trim();
+                        if (salidaTxt.toLowerCase().includes('curso') || salidaTxt.toLowerCase().includes('activo')) {
+                            let fechaEntrada = parsearFechaPersonalizada(entradaTxt);
+                            let horasAbierto = fechaEntrada ? (new Date() - fechaEntrada) / (1000 * 60 * 60) : 0;
+                            usuariosActivosInfo[nombreUsr] = horasAbierto;
+                        }
+                    }
+                });
+
+                document.querySelectorAll('tr').forEach(tr => {
+                    const celdas = tr.querySelectorAll('td');
+                    if (celdas.length >= 6) {
+                        // Iconos limpios en acciones (Detalles, Editar, Borrar)
+                        const celdaAcciones = celdas[celdas.length - 1];
+                        if (celdaAcciones && !celdaAcciones.dataset.iconos) {
+                            celdaAcciones.dataset.iconos = "true";
+                            celdaAcciones.innerHTML = celdaAcciones.innerHTML
+                                .replace(/Detalles/g, '<i class="fas fa-eye text-indigo-400 hover:text-indigo-300 cursor-pointer text-base mr-3" title="Detalles"></i>')
+                                .replace(/Editar/g, '<i class="fas fa-edit text-emerald-400 hover:text-emerald-300 cursor-pointer text-base mr-3" title="Editar"></i>')
+                                .replace(/Borrar/g, '<i class="fas fa-trash text-rose-500 hover:text-rose-400 cursor-pointer text-base" title="Borrar"></i>');
+                        }
+
+                        // Estado Activo y botón Finalizar con Alerta Inteligente si supera 10 horas
+                        const nombrePersonal = celdas[0].textContent.trim();
+                        if (usuariosActivosInfo[nombrePersonal] !== undefined && !tr.dataset.enriquecido) {
+                            tr.dataset.enriquecido = "true";
+                            const horasActivo = usuariosActivosInfo[nombrePersonal];
+                            const esTurnoExtendido = horasActivo >= 10;
+                            
+                            const celdaArea = celdas[4]; 
+                            if (celdaArea && !celdaArea.innerHTML.includes('Activo')) {
+                                const areaTexto = celdaArea.textContent.trim();
+                                celdaArea.innerHTML = `
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span>${areaTexto}</span>
+                                        <span class="px-2.5 py-0.5 ${esTurnoExtendido ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'} rounded-full text-xs font-bold inline-flex items-center gap-1 shadow-sm" title="${esTurnoExtendido ? '¡Alerta! Lleva más de 10 horas activo' : 'Turno Activo'}">
+                                            <span class="w-1.5 h-1.5 rounded-full ${esTurnoExtendido ? 'bg-amber-400 animate-ping' : 'bg-emerald-400 animate-pulse'}"></span> 
+                                            ${esTurnoExtendido ? '⚠️ >10h Activo' : 'Activo'}
+                                        </span>
+                                        <button onclick="forzarCierreIndividual('${nombrePersonal}')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full text-xs font-bold shadow transition inline-flex items-center" title="Forzar cierre de turno">
+                                            Finalizar
+                                        </button>
+                                    </div>
+                                `;
+                            }
+                        }
+                    }
+                });
+            }
+
+            async function forzarCierreIndividual(usuario) {
+                if (!confirm(`¿Estás seguro de finalizar el turno activo de ${usuario}?`)) return;
+                try {
+                    const res = await fetch('/api/admin/forzar-cierre', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ usuario: usuario })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        alert(data.mensaje || "¡Turno finalizado con éxito!");
+                        location.reload();
+                    } else {
+                        alert(data.detail || "Error al finalizar el turno.");
+                    }
+                } catch(e) {
+                    alert("Error de conexión: " + e);
+                }
+            }
+
+            async function abrirModalAuditoria() {
+                try {
+                    const res = await fetch('/api/admin/auditoria');
+                    const logs = await res.json();
+                    
+                    let modal = document.getElementById('modal-auditoria');
+                    if (!modal) {
+                        modal = document.createElement('div');
+                        modal.id = 'modal-auditoria';
+                        modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4';
+                        document.body.appendChild(modal);
+                    }
+                    
+                    let htmlLogs = logs.map(l => `
+                        <tr class="border-b border-slate-800 text-xs">
+                            <td class="py-2 text-slate-400">${l.fecha}</td>
+                            <td class="py-2 font-bold text-emerald-400">${l.accion}</td>
+                            <td class="py-2 text-slate-300">${l.detalle}</td>
+                        </tr>
+                    `).join('') || `<tr><td colspan="3" class="py-4 text-center text-slate-500">No hay registros de auditoría aún.</td></tr>`;
+
+                    modal.innerHTML = `
+                        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-2xl w-full p-6 text-white shadow-2xl">
+                            <h3 class="text-lg font-bold mb-3 flex items-center gap-2 text-indigo-400">
+                                <i class="fas fa-history"></i> Bitácora de Auditoría del Administrador
+                            </h3>
+                            <p class="text-xs text-slate-400 mb-4">Registro cronológico de cambios manuales, cierres forzados y ajustes globales.</p>
+                            
+                            <div class="max-h-80 overflow-y-auto border border-slate-800 rounded-lg p-2 bg-slate-950/50">
+                                <table class="w-full text-left">
+                                    <thead>
+                                        <tr class="text-slate-400 text-xs border-b border-slate-800">
+                                            <th class="py-2">Fecha y Hora</th>
+                                            <th class="py-2">Acción</th>
+                                            <th class="py-2">Detalle</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>${htmlLogs}</tbody>
+                                </table>
+                            </div>
+
+                            <div class="flex justify-end mt-5">
+                                <button onclick="document.getElementById('modal-auditoria').remove()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold">Cerrar</button>
+                            </div>
+                        </div>
+                    `;
+                } catch(e) {
+                    alert("No se pudo cargar la bitácora de auditoría.");
+                }
+            }
+
+            function abrirModalConfigGlobal() {
+                let modal = document.getElementById('modal-config-global');
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.id = 'modal-config-global';
+                    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4';
+                    modal.innerHTML = `
+                        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-6 text-white shadow-2xl">
+                            <h3 class="text-lg font-bold mb-4 flex items-center gap-2 text-emerald-400">
+                                <i class="fas fa-sliders-h"></i> Configuración Global de Tarifas
+                            </h3>
+                            <p class="text-sm text-slate-400 mb-4">
+                                Actualiza la tarifa por hora para <b>todo el personal al mismo tiempo</b>.
+                            </p>
+                            <div class="mb-4">
+                                <label class="block text-xs uppercase font-bold text-slate-400 mb-1">Nueva Tarifa General ($ / hora)</label>
+                                <input type="number" step="0.1" id="input-tarifa-global" value="1.5" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white">
+                            </div>
+                            <div class="flex justify-end gap-3 mt-6">
+                                <button onclick="document.getElementById('modal-config-global').remove()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm">Cancelar</button>
+                                <button onclick="guardarTarifaGlobal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold">Aplicar a Todos</button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(modal);
+                }
+            }
+
+            async function guardarTarifaGlobal() {
+                const nuevaTarifa = parseFloat(document.getElementById('input-tarifa-global').value);
+                if (isNaN(nuevaTarifa) || nuevaTarifa < 0) {
+                    alert("Por favor ingresa una tarifa válida.");
+                    return;
+                }
+                try {
+                    const res = await fetch('/api/admin/configurar-tarifas-global', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ tarifa_hora: nuevaTarifa })
+                    });
+                    if (res.ok) {
+                        alert("¡Tarifa global aplicada con éxito a todo el personal!");
+                        document.getElementById('modal-config-global').remove();
+                        location.reload();
+                    } else {
+                        alert("Hubo un error al actualizar las tarifas.");
+                    }
+                } catch(e) {
+                    alert("Error de conexión: " + e);
+                }
+            }
+
+            function abrirSimuladorTrabajador() {
+                let modal = document.getElementById('modal-simulador-trabajador');
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.id = 'modal-simulador-trabajador';
+                    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4';
+                    modal.innerHTML = `
+                        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-sm w-full p-6 text-white shadow-2xl">
+                            <h3 class="text-lg font-bold mb-3 flex items-center gap-2 text-emerald-400">
+                                <i class="fas fa-calculator"></i> Simulador de Cobro
+                            </h3>
+                            <p class="text-xs text-slate-400 mb-4">
+                                Ingresa tu tarifa referencial y visualiza tu cálculo estimado.
+                            </p>
+                            
+                            <div class="mb-4">
+                                <label class="block text-xs uppercase font-bold text-slate-400 mb-1">1. Tarifa Referencial ($ / hora)</label>
+                                <input type="number" step="0.1" id="input-tarifa-ref" value="1.5" oninput="calcularTotalSimulado()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-bold text-lg">
+                            </div>
+
+                            <div class="mb-5 bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center">
+                                <span class="block text-xs uppercase font-bold text-slate-400 mb-1">2. Total Estimado a Cobrar</span>
+                                <span id="resultado-simulado-total" class="text-2xl font-black text-emerald-400">$0.00</span>
+                                <span id="info-horas-base" class="block text-xs text-slate-400 mt-1">Suma total de horas</span>
+                            </div>
+
+                            <div class="flex justify-end gap-3">
+                                <button onclick="document.getElementById('modal-simulador-trabajador').remove()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold">Cerrar</button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(modal);
+                    calcularTotalSimulado();
+                }
+            }
+
+            function calcularTotalSimulado() {
+                const tarifaInput = document.getElementById('input-tarifa-ref');
+                const resultadoSpan = document.getElementById('resultado-simulado-total');
+                const infoHoras = document.getElementById('info-horas-base');
+                if (!tarifaInput || !resultadoSpan) return;
+
+                const tarifa = parseFloat(tarifaInput.value) || 0;
+                let sumaHorasUnicas = 0;
+                let filasVistas = new Set();
+                
+                document.querySelectorAll('tr').forEach(tr => {
+                    const textoFila = tr.textContent;
+                    const matchHrs = textoFila.match(/([0-9]+\.[0-9]+)\s*hrs/);
+                    if (matchHrs && !filasVistas.has(textoFila)) {
+                        filasVistas.add(textoFila);
+                        const val = parseFloat(matchHrs[1]);
+                        if (!isNaN(val) && val < 200) {
+                            sumaHorasUnicas += val;
+                        }
+                    }
+                });
+
+                if (sumaHorasUnicas === 0) {
+                    const elPeriodo = document.querySelector('#total-periodo, .total-periodo');
+                    if (elPeriodo) {
+                        const match = elPeriodo.textContent.match(/([0-9]+\.[0-9]+)/);
+                        if (match) sumaHorasUnicas = parseFloat(match[1]) || 0;
+                    }
+                }
+
+                const total = tarifa * sumaHorasUnicas;
+                resultadoSpan.textContent = `$${total.toFixed(2)}`;
+                infoHoras.textContent = `Suma de ${sumaHorasUnicas.toFixed(2)} hrs únicas`;
+            }
+            </script>
+            """
+            
+            footer_v = '<div style="text-align:center; padding:15px; color:#64748b; font-size:13px; font-family:monospace;">Control de Asistencia — v1.1.0</div></body>'
+            if "</body>" in content:
+                content = content.replace("</body>", patch_ui + footer_v)
+            return content
     return "<h1>Error: index.html no encontrado.</h1>"
 
 class LoginRequest(BaseModel):
@@ -69,6 +458,13 @@ class ConfigGlobalRequest(BaseModel):
 class ForzarCierreRequest(BaseModel):
     usuario: str
 
+def registrar_auditoria(accion: str, detalle: str):
+    try:
+        fecha_str = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
+        supabase.table("auditoria").insert({"fecha": fecha_str, "accion": accion, "detalle": detalle}).execute()
+    except Exception:
+        pass
+
 @app.post("/api/login")
 def login(req: LoginRequest):
     u = req.usuario.strip()
@@ -98,11 +494,20 @@ def forzar_cierre(req: ForzarCierreRequest):
         
         activo = res_activo.data[0]
         supabase.table("asistencias").update({"salida": hora_actual}).eq("id", activo["id"]).execute()
+        registrar_auditoria("FORZAR CIERRE", f"Turno de {u_real} cerrado manualmente a las {hora_actual}")
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail=str(e))
     return {"mensaje": f"¡Turno de {u_real} finalizado correctamente a las {hora_actual}!"}
+
+@app.get("/api/admin/auditoria")
+def obtener_auditoria():
+    try:
+        res = supabase.table("auditoria").select("*").order("id", desc=True).limit(50).execute()
+        return res.data if res.data else []
+    except Exception:
+        return []
 
 @app.post("/api/cambiar-pin")
 def cambiar_pin(req: CambiarPinRequest):
@@ -196,8 +601,12 @@ def admin_datos():
         res_a = supabase.table("asistencias").select("*").execute()
         if res_a.data and len(res_a.data) > 0:
             asistencias_list = res_a.data
+        else:
+            supabase.table("asistencias").insert(HISTORIAL_INICIAL).execute()
+            res_a_nuevas = supabase.table("asistencias").select("*").execute()
+            asistencias_list = res_a_nuevas.data if res_a_nuevas.data else HISTORIAL_INICIAL
     except Exception:
-        pass
+        asistencias_list = HISTORIAL_INICIAL
 
     return {"usuarios": usuarios_dict, "asistencias": asistencias_list}
 
@@ -210,6 +619,7 @@ def configurar_tarifas_global(req: ConfigGlobalRequest):
                 supabase.table("usuarios").update({"tarifa_hora": req.tarifa_hora}).eq("usuario", u["usuario"]).execute()
         for k in PERSONAL_FIJO:
             PERSONAL_FIJO[k]["tarifa_hora"] = req.tarifa_hora
+        registrar_auditoria("TARIFA GLOBAL", f"Se actualizó la tarifa general a ${req.tarifa_hora}/h")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"mensaje": "Tarifa global actualizada con éxito"}
@@ -220,6 +630,7 @@ def admin_registro_manual(req: RegistroManualRequest):
         supabase.table("asistencias").insert({
             "usuario": req.usuario.strip().capitalize(), "entrada": req.entrada, "receso_inicio": None, "receso_fin": None, "salida": req.salida, "es_continua": req.es_continua
         }).execute()
+        registrar_auditoria("REGISTRO MANUAL", f"Se agregó turno manual para {req.usuario}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"mensaje": "Guardado"}
@@ -228,6 +639,7 @@ def admin_registro_manual(req: RegistroManualRequest):
 def admin_editar_registro(req: EditarRegistroRequest):
     try:
         supabase.table("asistencias").update({"entrada": req.entrada, "salida": req.salida}).eq("id", req.registro_id).execute()
+        registrar_auditoria("EDICIÓN TURNO", f"Se modificó el registro de asistencia ID #{req.registro_id}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"mensaje": "Actualizado"}
@@ -236,6 +648,7 @@ def admin_editar_registro(req: EditarRegistroRequest):
 def admin_eliminar_registro(registro_id: int):
     try:
         supabase.table("asistencias").delete().eq("id", registro_id).execute()
+        registrar_auditoria("ELIMINAR TURNO", f"Se eliminó el registro ID #{registro_id}")
     except Exception:
         pass
     return {"mensaje": "Eliminado"}
@@ -249,6 +662,7 @@ def admin_guardar_usuario(req: UsuarioAdminRequest):
     }
     try:
         supabase.table("usuarios").upsert(payload).execute()
+        registrar_auditoria("GESTIÓN USUARIO", f"Se creó/actualizó al usuario {req.usuario}")
     except Exception:
         pass
     return {"mensaje": "Guardado"}
@@ -257,6 +671,7 @@ def admin_guardar_usuario(req: UsuarioAdminRequest):
 def admin_eliminar_usuario(usuario: str):
     try:
         supabase.table("usuarios").delete().ilike("usuario", usuario).execute()
+        registrar_auditoria("ELIMINAR USUARIO", f"Se eliminó al usuario {usuario}")
     except Exception:
         pass
     return {"mensaje": "Eliminado"}
@@ -271,4 +686,5 @@ def exportar_excel():
     df = pd.DataFrame(data_rows)
     export_path = "reporte_asistencia.xlsx"
     df.to_excel(export_path, index=False)
+    registrar_auditoria("EXPORTAR", "Se exportó el reporte quincenal en Excel")
     return FileResponse(export_path, filename="Reporte_Asistencia.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
