@@ -95,7 +95,7 @@ def leer_raiz():
             patch_ui = """
             <script>
             document.addEventListener("DOMContentLoaded", () => {
-                // 1. Tuerca global en panel admin (sin botón grande de forzar cierre)
+                // 1. Tuerca global en panel admin
                 const headerActions = document.querySelector('header') || document.querySelector('.flex.justify-between') || document.querySelector('#panel-admin');
                 if (headerActions && !document.getElementById('btn-config-global')) {
                     const btnConfig = document.createElement('button');
@@ -111,11 +111,15 @@ def leer_raiz():
                     }
                 }
 
-                // 2. Cuadro de Total General de Nómina EXCLUSIVO para el Administrador (Eliminado del trabajador)
+                // 2. Control estricto de vistas: Administrador vs Trabajador
                 setTimeout(() => {
-                    const esAdmin = sessionStorage.getItem('usuario') === 'ADMIN' || localStorage.getItem('usuario') === 'ADMIN' || document.body.textContent.includes('Panel de Administración');
-                    
+                    // Verificar si estamos en la vista de administración
+                    const esAdmin = document.body.textContent.includes('Panel de Administración') || 
+                                    document.body.textContent.includes('Personal Registrado y Tarifas') ||
+                                    document.querySelector('button:has(.fa-file-excel)') !== null;
+
                     if (esAdmin) {
+                        // Añadir cuadro de nómina general en admin si no existe
                         const seccionNomina = document.querySelector('#resumen-horas') || document.querySelector('div:has(table)') || document.querySelector('.overflow-x-auto');
                         if (seccionNomina && !document.getElementById('cuadro-total-nomina-general')) {
                             const contenedorTotal = document.createElement('div');
@@ -140,14 +144,14 @@ def leer_raiz():
                             calcularSumaTotalNomina();
                         }
                         
-                        // Añadir indicador "Activo" y botón de finalizar en la tabla de Personal Registrado
+                        // Enriquecer tabla de personal con estado Activo y botón de finalizar alineados en píldora
                         enriquecerTablaPersonalAdmin();
                     } else {
-                        // Asegurarse de eliminar cualquier cuadro de nómina por si acaso estuviera en vista de trabajador
+                        // REQUISITO ESTRICTO: Eliminar por completo cualquier cuadro de nómina total del panel de trabajador
                         const cuadroTrabajador = document.getElementById('cuadro-total-nomina-general');
                         if (cuadroTrabajador) cuadroTrabajador.remove();
                     }
-                }, 800);
+                }, 600);
 
                 // 3. Simulador de cobro trabajador en su menú
                 const observerTrabajador = new MutationObserver(() => {
@@ -186,7 +190,6 @@ def leer_raiz():
             }
 
             function enriquecerTablaPersonalAdmin() {
-                // Detectar qué usuarios tienen turnos activos en la tabla de tiempo real
                 let usuariosActivos = new Set();
                 document.querySelectorAll('tr').forEach(tr => {
                     const celdas = tr.querySelectorAll('td');
@@ -199,27 +202,32 @@ def leer_raiz():
                     }
                 });
 
-                // En la tabla de Personal Registrado, inyectar el estado Activo y botón de finalizar al lado
                 document.querySelectorAll('tr').forEach(tr => {
                     const celdas = tr.querySelectorAll('td');
                     if (celdas.length >= 6 && !tr.dataset.enriquecido) {
                         const nombrePersonal = celdas[0].textContent.trim();
                         if (usuariosActivos.has(nombrePersonal)) {
                             tr.dataset.enriquecido = "true";
-                            const celdaArea = celdas[4]; // Columna de Área / Cargo
+                            const celdaArea = celdas[4]; // Columna de Cargo / Área
                             if (celdaArea && !celdaArea.innerHTML.includes('Activo')) {
+                                // Contenedor flex con alineación perfecta para que ambos botones/píldoras queden a la misma altura
+                                const wrapper = document.createElement('div');
+                                wrapper.className = 'flex items-center gap-2 mt-1';
+                                
                                 const badgeActivo = document.createElement('span');
-                                badgeActivo.className = 'ml-3 px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-full text-xs font-bold inline-flex items-center gap-1';
-                                badgeActivo.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Activo';
+                                badgeActivo.className = 'px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm';
+                                badgeActivo.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Activo';
                                 
                                 const btnFinalizarCorto = document.createElement('button');
-                                btnFinalizarCorto.className = 'ml-2 px-2 py-0.5 bg-rose-600/80 hover:bg-rose-700 text-white rounded text-xs font-bold shadow transition';
+                                btnFinalizarCorto.className = 'px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full text-xs font-bold shadow transition inline-flex items-center';
                                 btnFinalizarCorto.title = 'Finalizar Turno de ' + nombrePersonal;
                                 btnFinalizarCorto.innerHTML = 'Finalizar';
                                 btnFinalizarCorto.onclick = () => forzarCierreIndividual(nombrePersonal);
 
-                                celdaArea.appendChild(badgeActivo);
-                                celdaArea.appendChild(btnFinalizarCorto);
+                                wrapper.appendChild(badgeActivo);
+                                wrapper.appendChild(btnFinalizarCorto);
+                                
+                                celdaArea.appendChild(wrapper);
                             }
                         }
                     }
