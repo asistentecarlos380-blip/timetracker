@@ -113,6 +113,21 @@ def leer_raiz():
                     }
                 }
 
+                // Establecer por defecto la fecha actual en el campo "Hasta" si está vacío
+                setTimeout(() => {
+                    const inputsFecha = document.querySelectorAll('input[type="date"]');
+                    if (inputsFecha.length >= 2) {
+                        // El segundo input o el que esté etiquetado como "Hasta"
+                        let inputHasta = inputsFecha[inputsFecha.length - 1];
+                        if (inputHasta && !inputHasta.value) {
+                            const hoyStr = new Date().toISOString().split('T')[0];
+                            inputHasta.value = hoyStr;
+                            // Disparar evento change por si la app tiene listeners
+                            inputHasta.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }
+                }, 300);
+
                 setTimeout(() => {
                     const esAdmin = document.body.textContent.includes('Panel de Administración') || 
                                     document.body.textContent.includes('Personal Registrado y Tarifas') ||
@@ -428,7 +443,7 @@ def leer_raiz():
                                 <i class="fas fa-calculator"></i> Simulador de Cobro
                             </h3>
                             <p class="text-xs text-slate-400 mb-4">
-                                Ingresa tu tarifa referencial y visualiza tu cálculo estimado.
+                                Ingresa tu tarifa referencial y visualiza tu cálculo estimado para el rango seleccionado.
                             </p>
                             
                             <div class="mb-4">
@@ -473,10 +488,12 @@ def leer_raiz():
                         const textoFila = tr.textContent;
                         const matchHrs = textoFila.match(/([0-9]+\.[0-9]+)\s*hrs/);
                         if (matchHrs && !filasVistas.has(textoFila)) {
-                            filasVistas.add(textoFila);
-                            const val = parseFloat(matchHrs[1]);
-                            if (!isNaN(val) && val < 200) {
-                                totalHorasPeriodo += val;
+                            if (tr.style.display !== 'none') {
+                                filasVistas.add(textoFila);
+                                const val = parseFloat(matchHrs[1]);
+                                if (!isNaN(val) && val < 200) {
+                                    totalHorasPeriodo += val;
+                                }
                             }
                         }
                     });
@@ -484,7 +501,7 @@ def leer_raiz():
 
                 const total = tarifa * totalHorasPeriodo;
                 resultadoSpan.textContent = `$${total.toFixed(2)}`;
-                infoHoras.textContent = `Suma de ${totalHorasPeriodo.toFixed(2)} hrs del período`;
+                infoHoras.textContent = `Suma de ${totalHorasPeriodo.toFixed(2)} hrs del período seleccionado`;
             }
             </script>
             """
@@ -690,7 +707,6 @@ def receso(req: LoginRequest):
     u_real = "ADMIN" if u.lower() == "admin" else u.capitalize()
     hora_actual = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
     
-    # Al presionar pausa/receso, se finaliza el tiempo activo actual (congelando el tiempo)
     if supabase:
         try:
             res_all = supabase.table("asistencias").select("*").ilike("usuario", u_real).execute()
