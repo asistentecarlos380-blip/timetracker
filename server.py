@@ -95,7 +95,7 @@ def leer_raiz():
             patch_ui = """
             <script>
             document.addEventListener("DOMContentLoaded", () => {
-                // 1. Tuerca global en panel admin y botón de Auditoría
+                // 1. Tuerca global en panel admin (SIN BOTÓN DE AUDITORÍA)
                 const headerActions = document.querySelector('header') || document.querySelector('.flex.justify-between') || document.querySelector('#panel-admin');
                 if (headerActions && !document.getElementById('btn-config-global')) {
                     const btnConfig = document.createElement('button');
@@ -104,17 +104,10 @@ def leer_raiz():
                     btnConfig.title = 'Configuración Global de Tarifas';
                     btnConfig.innerHTML = '<i class="fas fa-cog"></i>';
                     btnConfig.onclick = abrirModalConfigGlobal;
-
-                    const btnAuditoria = document.createElement('button');
-                    btnAuditoria.id = 'btn-auditoria-global';
-                    btnAuditoria.className = 'bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow border border-indigo-500/40 ml-2';
-                    btnAuditoria.innerHTML = '<i class="fas fa-history"></i> Auditoría';
-                    btnAuditoria.onclick = abrirModalAuditoria;
                     
                     const btnExcel = document.querySelector('button:has(.fa-file-excel)') || document.querySelector('#exportar-excel') || headerActions.querySelector('button');
                     if (btnExcel && btnExcel.parentNode) {
                         btnExcel.parentNode.insertBefore(btnConfig, btnExcel.nextSibling);
-                        btnExcel.parentNode.insertBefore(btnAuditoria, btnConfig.nextSibling);
                     }
                 }
 
@@ -164,7 +157,6 @@ def leer_raiz():
             function enriquecerTablaPersonalAdmin() {
                 let usuariosActivosInfo = {};
                 
-                // Mapear turnos en tiempo real para calcular tiempo activo exacto
                 document.querySelectorAll('tr').forEach(tr => {
                     const celdas = tr.querySelectorAll('td');
                     if (celdas.length >= 4) {
@@ -182,7 +174,6 @@ def leer_raiz():
                 document.querySelectorAll('tr').forEach(tr => {
                     const celdas = tr.querySelectorAll('td');
                     if (celdas.length >= 6) {
-                        // Iconos limpios en acciones (Detalles, Editar, Borrar)
                         const celdaAcciones = celdas[celdas.length - 1];
                         if (celdaAcciones && !celdaAcciones.dataset.iconos) {
                             celdaAcciones.dataset.iconos = "true";
@@ -192,7 +183,6 @@ def leer_raiz():
                                 .replace(/Borrar/g, '<i class="fas fa-trash text-rose-500 hover:text-rose-400 cursor-pointer text-base" title="Borrar"></i>');
                         }
 
-                        // Estado Activo y botón Finalizar con Alerta Inteligente si supera 10 horas
                         const nombrePersonal = celdas[0].textContent.trim();
                         if (usuariosActivosInfo[nombrePersonal] !== undefined && !tr.dataset.enriquecido) {
                             tr.dataset.enriquecido = "true";
@@ -218,6 +208,73 @@ def leer_raiz():
                         }
                     }
                 });
+
+                // Interceptar o añadir botón para mostrar el Modal de Total General al calcular horas
+                const botonCalcular = document.querySelector('button:has(.fa-calculator)') || Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Calcular Horas'));
+                if (botonCalcular && !botonCalcular.dataset.modalAgregado) {
+                    botonCalcular.dataset.modalAgregado = "true";
+                    const eventoOriginal = botonCalcular.onclick;
+                    botonCalcular.onclick = function(e) {
+                        if (eventoOriginal) eventoOriginal.apply(this, arguments);
+                        setTimeout(mostrarModalTotalGeneral, 300);
+                    };
+                }
+            }
+
+            function mostrarModalTotalGeneral() {
+                let totalGeneral = 0;
+                let detalleHtml = '';
+
+                document.querySelectorAll('#tabla-resumen-fechas tr').forEach(tr => {
+                    const celdas = tr.querySelectorAll('td');
+                    if (celdas.length >= 5) {
+                        const trabajador = celdas[0].textContent.trim();
+                        const pagoStr = celdas[4].textContent.trim().replace('$', '');
+                        const valor = parseFloat(pagoStr) || 0;
+                        totalGeneral += valor;
+                        detalleHtml += `
+                            <div class="flex justify-between border-b border-slate-800 py-1.5 text-xs">
+                                <span class="text-slate-300">${trabajador}</span>
+                                <span class="font-bold text-emerald-400">$${valor.toFixed(2)}</span>
+                            </div>
+                        `;
+                    }
+                });
+
+                if (!detalleHtml) return;
+
+                let modal = document.getElementById('modal-total-general-emergente');
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.id = 'modal-total-general-emergente';
+                    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4';
+                    document.body.appendChild(modal);
+                }
+
+                modal.innerHTML = `
+                    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 text-white shadow-2xl animate-fade-in">
+                        <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+                            <h3 class="text-base font-bold flex items-center gap-2 text-emerald-400">
+                                <i class="fas fa-file-invoice-dollar"></i> Resumen de Nómina y Total General
+                            </h3>
+                            <button onclick="document.getElementById('modal-total-general-emergente').remove()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+                        </div>
+                        <p class="text-xs text-slate-400 mb-3">Desglose calculado para el período seleccionado:</p>
+                        
+                        <div class="max-h-56 overflow-y-auto space-y-1 mb-4 pr-1 bg-slate-950/40 p-3 rounded-xl border border-slate-800">
+                            ${detalleHtml}
+                        </div>
+
+                        <div class="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-3 flex justify-between items-center mb-5">
+                            <span class="text-xs font-bold uppercase tracking-wider text-emerald-300">Total General a Pagar:</span>
+                            <span class="text-xl font-black text-emerald-400">$${totalGeneral.toFixed(2)}</span>
+                        </div>
+
+                        <div class="flex justify-end">
+                            <button onclick="document.getElementById('modal-total-general-emergente').remove()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-600/30">Cerrar Ventana</button>
+                        </div>
+                    </div>
+                `;
             }
 
             async function forzarCierreIndividual(usuario) {
@@ -237,57 +294,6 @@ def leer_raiz():
                     }
                 } catch(e) {
                     alert("Error de conexión: " + e);
-                }
-            }
-
-            async function abrirModalAuditoria() {
-                try {
-                    const res = await fetch('/api/admin/auditoria');
-                    const logs = await res.json();
-                    
-                    let modal = document.getElementById('modal-auditoria');
-                    if (!modal) {
-                        modal = document.createElement('div');
-                        modal.id = 'modal-auditoria';
-                        modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4';
-                        document.body.appendChild(modal);
-                    }
-                    
-                    let htmlLogs = logs.map(l => `
-                        <tr class="border-b border-slate-800 text-xs">
-                            <td class="py-2 text-slate-400">${l.fecha}</td>
-                            <td class="py-2 font-bold text-emerald-400">${l.accion}</td>
-                            <td class="py-2 text-slate-300">${l.detalle}</td>
-                        </tr>
-                    `).join('') || `<tr><td colspan="3" class="py-4 text-center text-slate-500">No hay registros de auditoría aún.</td></tr>`;
-
-                    modal.innerHTML = `
-                        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-2xl w-full p-6 text-white shadow-2xl">
-                            <h3 class="text-lg font-bold mb-3 flex items-center gap-2 text-indigo-400">
-                                <i class="fas fa-history"></i> Bitácora de Auditoría del Administrador
-                            </h3>
-                            <p class="text-xs text-slate-400 mb-4">Registro cronológico de cambios manuales, cierres forzados y ajustes globales.</p>
-                            
-                            <div class="max-h-80 overflow-y-auto border border-slate-800 rounded-lg p-2 bg-slate-950/50">
-                                <table class="w-full text-left">
-                                    <thead>
-                                        <tr class="text-slate-400 text-xs border-b border-slate-800">
-                                            <th class="py-2">Fecha y Hora</th>
-                                            <th class="py-2">Acción</th>
-                                            <th class="py-2">Detalle</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>${htmlLogs}</tbody>
-                                </table>
-                            </div>
-
-                            <div class="flex justify-end mt-5">
-                                <button onclick="document.getElementById('modal-auditoria').remove()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold">Cerrar</button>
-                            </div>
-                        </div>
-                    `;
-                } catch(e) {
-                    alert("No se pudo cargar la bitácora de auditoría.");
                 }
             }
 
@@ -458,13 +464,6 @@ class ConfigGlobalRequest(BaseModel):
 class ForzarCierreRequest(BaseModel):
     usuario: str
 
-def registrar_auditoria(accion: str, detalle: str):
-    try:
-        fecha_str = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
-        supabase.table("auditoria").insert({"fecha": fecha_str, "accion": accion, "detalle": detalle}).execute()
-    except Exception:
-        pass
-
 @app.post("/api/login")
 def login(req: LoginRequest):
     u = req.usuario.strip()
@@ -494,20 +493,11 @@ def forzar_cierre(req: ForzarCierreRequest):
         
         activo = res_activo.data[0]
         supabase.table("asistencias").update({"salida": hora_actual}).eq("id", activo["id"]).execute()
-        registrar_auditoria("FORZAR CIERRE", f"Turno de {u_real} cerrado manualmente a las {hora_actual}")
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail=str(e))
     return {"mensaje": f"¡Turno de {u_real} finalizado correctamente a las {hora_actual}!"}
-
-@app.get("/api/admin/auditoria")
-def obtener_auditoria():
-    try:
-        res = supabase.table("auditoria").select("*").order("id", desc=True).limit(50).execute()
-        return res.data if res.data else []
-    except Exception:
-        return []
 
 @app.post("/api/cambiar-pin")
 def cambiar_pin(req: CambiarPinRequest):
@@ -619,7 +609,6 @@ def configurar_tarifas_global(req: ConfigGlobalRequest):
                 supabase.table("usuarios").update({"tarifa_hora": req.tarifa_hora}).eq("usuario", u["usuario"]).execute()
         for k in PERSONAL_FIJO:
             PERSONAL_FIJO[k]["tarifa_hora"] = req.tarifa_hora
-        registrar_auditoria("TARIFA GLOBAL", f"Se actualizó la tarifa general a ${req.tarifa_hora}/h")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"mensaje": "Tarifa global actualizada con éxito"}
@@ -630,7 +619,6 @@ def admin_registro_manual(req: RegistroManualRequest):
         supabase.table("asistencias").insert({
             "usuario": req.usuario.strip().capitalize(), "entrada": req.entrada, "receso_inicio": None, "receso_fin": None, "salida": req.salida, "es_continua": req.es_continua
         }).execute()
-        registrar_auditoria("REGISTRO MANUAL", f"Se agregó turno manual para {req.usuario}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"mensaje": "Guardado"}
@@ -639,7 +627,6 @@ def admin_registro_manual(req: RegistroManualRequest):
 def admin_editar_registro(req: EditarRegistroRequest):
     try:
         supabase.table("asistencias").update({"entrada": req.entrada, "salida": req.salida}).eq("id", req.registro_id).execute()
-        registrar_auditoria("EDICIÓN TURNO", f"Se modificó el registro de asistencia ID #{req.registro_id}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"mensaje": "Actualizado"}
@@ -648,7 +635,6 @@ def admin_editar_registro(req: EditarRegistroRequest):
 def admin_eliminar_registro(registro_id: int):
     try:
         supabase.table("asistencias").delete().eq("id", registro_id).execute()
-        registrar_auditoria("ELIMINAR TURNO", f"Se eliminó el registro ID #{registro_id}")
     except Exception:
         pass
     return {"mensaje": "Eliminado"}
@@ -662,7 +648,6 @@ def admin_guardar_usuario(req: UsuarioAdminRequest):
     }
     try:
         supabase.table("usuarios").upsert(payload).execute()
-        registrar_auditoria("GESTIÓN USUARIO", f"Se creó/actualizó al usuario {req.usuario}")
     except Exception:
         pass
     return {"mensaje": "Guardado"}
@@ -671,7 +656,6 @@ def admin_guardar_usuario(req: UsuarioAdminRequest):
 def admin_eliminar_usuario(usuario: str):
     try:
         supabase.table("usuarios").delete().ilike("usuario", usuario).execute()
-        registrar_auditoria("ELIMINAR USUARIO", f"Se eliminó al usuario {usuario}")
     except Exception:
         pass
     return {"mensaje": "Eliminado"}
@@ -686,5 +670,4 @@ def exportar_excel():
     df = pd.DataFrame(data_rows)
     export_path = "reporte_asistencia.xlsx"
     df.to_excel(export_path, index=False)
-    registrar_auditoria("EXPORTAR", "Se exportó el reporte quincenal en Excel")
     return FileResponse(export_path, filename="Reporte_Asistencia.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
