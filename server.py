@@ -577,12 +577,40 @@ def forzar_cierre(req: ForzarCierreRequest):
 
 @app.post("/api/cambiar-pin")
 def cambiar_pin(req: CambiarPinRequest):
+    u = req.usuario.strip()
+    pin_actual = str(req.pin_actual).strip()
+    pin_nuevo = str(req.pin_nuevo).strip()
+
+    # 1. Validar y actualizar en el diccionario local PERSONAL_FIJO
+    actualizado = False
+    for k, v in PERSONAL_FIJO.items():
+        if k.lower() == u.lower():
+            if str(v["pin"]).strip() == pin_actual:
+                PERSONAL_FIJO[k]["pin"] = pin_nuevo
+                actualizado = True
+            else:
+                raise HTTPException(status_code=400, detail="PIN actual incorrecto")
+            break
+
+    # 2. Actualizar también en Supabase si existe
     if supabase:
         try:
-            supabase.table("usuarios").update({"pin": req.pin_nuevo.strip()}).ilike("usuario", req.usuario.strip()).execute()
-        except Exception:
-            pass
-    return {"mensaje": "PIN actualizado"}
+            res = supabase.table("usuarios").select("*").ilike("usuario", u).execute()
+            if res.data:
+                user_info = res.data[0]
+                if str(user_info.get("pin", "")).strip() == pin_actual:
+                    supabase.table("usuarios").update({"pin": pin_nuevo}).ilike("usuario", u).execute()
+                    actualizado = True
+                elif not actualizado:
+                    raise HTTPException(status_code=400, detail="PIN actual incorrecto")
+        except Exception as e:
+            if isinstance(e, HTTPException):
+                raise e
+
+    if not actualizado:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    return {"mensaje": "PIN actualizado con éxito"}
 
 @app.post("/api/mis-horas")
 def mis_horas(req: LoginRequest):
