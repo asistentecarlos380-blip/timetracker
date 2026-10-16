@@ -113,7 +113,7 @@ def leer_raiz():
                     }
                 }
 
-                // Neutralizar la alerta molesta de "Selecciona ambas fechas" interceptando window.alert
+                // Neutralizar alertas de validación de fechas vacías
                 const alertaOriginal = window.alert;
                 window.alert = function(msg) {
                     if (typeof msg === 'string' && msg.includes('Selecciona ambas fechas')) {
@@ -122,7 +122,7 @@ def leer_raiz():
                     alertaOriginal(msg);
                 };
 
-                // Autocompletar la semana en curso (Lunes a Domingo) y calcular automáticamente
+                // Autocompletar semana en curso (Lunes a Domingo) y calcular automáticamente
                 setTimeout(() => {
                     let inputsFecha = [];
                     document.querySelectorAll('input').forEach(el => {
@@ -169,7 +169,7 @@ def leer_raiz():
                     }
                 }, 500);
 
-                // Observador para añadir la opción "Semanal" en los selects de Tipo de Pago en el modal de usuario
+                // Asegurar que la opción "Semanal" esté presente en el desplegable de Tipo de Pago del modal
                 const observerModalUsuario = new MutationObserver(() => {
                     document.querySelectorAll('select').forEach(sel => {
                         if (sel.innerHTML.includes('Horas') && sel.innerHTML.includes('Fijo') && !sel.innerHTML.includes('Semanal')) {
@@ -751,20 +751,41 @@ def admin_eliminar_registro(registro_id: int):
 
 @app.post("/api/admin/usuario")
 def admin_guardar_usuario(req: UsuarioAdminRequest):
+    tipo = req.tipo_pago.strip()
+    
+    # Asignar correctamente según el tipo de pago seleccionado en la interfaz
+    m_fijo = req.monto_fijo if tipo.lower() in ["fijo", "semanal"] else 0.0
+    t_hora = req.tarifa_hora if tipo.lower() == "horas" else (0.5 if tipo.lower() == "gasolina" else 0.0)
+
     payload = {
-        "usuario": req.usuario.strip(), "pin": req.pin, "rol_sistema": req.rol_sistema, "tipo_pago": req.tipo_pago,
-        "monto_fijo": req.monto_fijo if req.tipo_pago.lower() in ["fijo", "semanal"] else 0.0,
-        "tarifa_hora": req.tarifa_hora if req.tipo_pago.lower() == "horas" else 0.0, "area": req.area
+        "usuario": req.usuario.strip(),
+        "pin": str(req.pin).strip(),
+        "rol_sistema": req.rol_sistema,
+        "tipo_pago": tipo,
+        "monto_fijo": m_fijo,
+        "tarifa_hora": t_hora,
+        "area": req.area
     }
+    
+    # Actualizar localmente también para persistencia inmediata
+    PERSONAL_FIJO[req.usuario.strip()] = payload
+
     if supabase:
         try:
+            # Si existía un usuario antiguo con otro nombre, limpiarlo
+            if req.usuario_antiguo and req.usuario_antiguo.strip() != req.usuario.strip():
+                supabase.table("usuarios").delete().ilike("usuario", req.usuario_antiguo.strip()).execute()
+            
             supabase.table("usuarios").upsert(payload).execute()
-        except Exception:
-            pass
-    return {"mensaje": "Guardado"}
+        except Exception as e:
+            print("Error al guardar usuario en Supabase:", e)
+            
+    return {"mensaje": "Guardado exitosamente"}
 
 @app.delete("/api/admin/usuario/{usuario}")
 def admin_eliminar_usuario(usuario: str):
+    if usuario in PERSONAL_FIJO:
+        del PERSONAL_FIJO[usuario]
     if supabase:
         try:
             supabase.table("usuarios").delete().ilike("usuario", usuario).execute()
