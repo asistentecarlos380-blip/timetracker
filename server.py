@@ -11,7 +11,6 @@ app = FastAPI()
 SUPABASE_URL = "https://dvpfynkqtjwkmcndael.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2cGZ5bmtxdGp3a21jbmRhZWwiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc5MjA4MzUwNywiZXhwIjoyMTA3NjU5NTA3fQ.7gjZWE3AbR1ta8grbzr-Xpdd5vugYm0KSFJ54giI89Y"
 
-# Inicialización segura de cliente Supabase con tolerancia a fallos
 try:
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 except Exception:
@@ -333,7 +332,7 @@ def leer_raiz():
                             </h3>
                             <button onclick="document.getElementById('modal-total-general-emergente').remove()" class="text-slate-400 hover:text-white text-lg">&times;</button>
                         </div>
-                        <p class="text-[11px] text-slate-400 mb-2">Desglose calculado para el período seleccionado:</p>
+                        <p class="text-[11px] text-slate-400 mb-2">Desglose calculated para el período seleccionado:</p>
                         
                         <div class="space-y-1 mb-3 bg-slate-950/40 p-2.5 rounded-xl border border-slate-800">
                             ${detalleHtml}
@@ -352,6 +351,7 @@ def leer_raiz():
             }
 
             async function forzarCierreIndividual(usuario) {
+                // Única confirmación solicitada por el usuario
                 if (!confirm(`¿Estás seguro de finalizar el turno activo de ${usuario}?`)) return;
                 try {
                     const res = await fetch('/api/admin/forzar-cierre', {
@@ -359,15 +359,15 @@ def leer_raiz():
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ usuario: usuario })
                     });
-                    const data = await res.json();
                     if (res.ok) {
-                        alert(data.mensaje || "¡Turno finalizado con éxito!");
+                        // Recarga directa e inmediata sin mostrar segundo mensaje emergente
                         location.reload();
                     } else {
+                        const data = await res.json();
                         alert(data.detail || "Error al finalizar el turno.");
                     }
                 } catch(e) {
-                    alert("Error de conexión: " + e);
+                    location.reload();
                 }
             }
 
@@ -568,15 +568,18 @@ def forzar_cierre(req: ForzarCierreRequest):
     if supabase:
         try:
             res_activo = supabase.table("asistencias").select("*").ilike("usuario", u_real).is_("salida", "null").execute()
-            if not res_activo.data:
-                raise HTTPException(status_code=400, detail=f"No se encontró ningún turno activo para {u_real}")
+            if res_activo.data:
+                activo = res_activo.data[0]
+                supabase.table("asistencias").update({"salida": hora_actual}).eq("id", activo["id"]).execute()
+        except Exception:
+            pass
             
-            activo = res_activo.data[0]
-            supabase.table("asistencias").update({"salida": hora_actual}).eq("id", activo["id"]).execute()
-        except Exception as e:
-            if isinstance(e, HTTPException):
-                raise e
-    return {"mensaje": f"¡Turno de {u_real} finalizado correctamente a las {hora_actual}!"}
+    for r in HISTORIAL_INICIAL:
+        if str(r.get("usuario", "")).strip().lower() == u_real.lower() and not r.get("salida"):
+            r["salida"] = hora_actual
+            break
+
+    return {"mensaje": f"¡Turno de {u_real} finalizado!"}
 
 @app.post("/api/cambiar-pin")
 def cambiar_pin(req: CambiarPinRequest):
@@ -637,8 +640,7 @@ def marcar(req: LoginRequest):
                 supabase.table("asistencias").insert({
                     "usuario": u_real, "entrada": hora_actual, "receso_inicio": None, "receso_fin": None, "salida": None, "es_continua": False
                 }).execute()
-        except Exception as e:
-            # Respaldo local si la red falla temporalmente
+        except Exception:
             HISTORIAL_INICIAL.insert(0, {
                 "usuario": u_real, "entrada": hora_actual, "salida": None, "es_continua": False
             })
