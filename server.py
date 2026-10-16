@@ -113,13 +113,12 @@ def leer_raiz():
 
                 // 2. Control estricto de vistas: Administrador vs Trabajador
                 setTimeout(() => {
-                    // Verificar si estamos en la vista de administración
                     const esAdmin = document.body.textContent.includes('Panel de Administración') || 
                                     document.body.textContent.includes('Personal Registrado y Tarifas') ||
                                     document.querySelector('button:has(.fa-file-excel)') !== null;
 
                     if (esAdmin) {
-                        // Añadir cuadro de nómina general en admin si no existe
+                        // Cuadro de nómina general solo en admin
                         const seccionNomina = document.querySelector('#resumen-horas') || document.querySelector('div:has(table)') || document.querySelector('.overflow-x-auto');
                         if (seccionNomina && !document.getElementById('cuadro-total-nomina-general')) {
                             const contenedorTotal = document.createElement('div');
@@ -144,14 +143,14 @@ def leer_raiz():
                             calcularSumaTotalNomina();
                         }
                         
-                        // Enriquecer tabla de personal con estado Activo y botón de finalizar alineados en píldora
+                        // Enriquecer tabla personal (espacio al lado del área, iconos limpios)
                         enriquecerTablaPersonalAdmin();
                     } else {
-                        // REQUISITO ESTRICTO: Eliminar por completo cualquier cuadro de nómina total del panel de trabajador
+                        // ELIMINAR CUADRO DE NÓMINA TOTAL EN PANEL TRABAJADOR
                         const cuadroTrabajador = document.getElementById('cuadro-total-nomina-general');
                         if (cuadroTrabajador) cuadroTrabajador.remove();
                     }
-                }, 600);
+                }, 500);
 
                 // 3. Simulador de cobro trabajador en su menú
                 const observerTrabajador = new MutationObserver(() => {
@@ -185,7 +184,6 @@ def leer_raiz():
                         }
                     }
                 });
-
                 spanTotal.textContent = `$${sumaPrecisa.toFixed(2)}`;
             }
 
@@ -204,30 +202,35 @@ def leer_raiz():
 
                 document.querySelectorAll('tr').forEach(tr => {
                     const celdas = tr.querySelectorAll('td');
-                    if (celdas.length >= 6 && !tr.dataset.enriquecido) {
-                        const nombrePersonal = celdas[0].textContent.trim();
-                        if (usuariosActivos.has(nombrePersonal)) {
-                            tr.dataset.enriquecido = "true";
-                            const celdaArea = celdas[4]; // Columna de Cargo / Área
-                            if (celdaArea && !celdaArea.innerHTML.includes('Activo')) {
-                                // Contenedor flex con alineación perfecta para que ambos botones/píldoras queden a la misma altura
-                                const wrapper = document.createElement('div');
-                                wrapper.className = 'flex items-center gap-2 mt-1';
-                                
-                                const badgeActivo = document.createElement('span');
-                                badgeActivo.className = 'px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm';
-                                badgeActivo.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Activo';
-                                
-                                const btnFinalizarCorto = document.createElement('button');
-                                btnFinalizarCorto.className = 'px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full text-xs font-bold shadow transition inline-flex items-center';
-                                btnFinalizarCorto.title = 'Finalizar Turno de ' + nombrePersonal;
-                                btnFinalizarCorto.innerHTML = 'Finalizar';
-                                btnFinalizarCorto.onclick = () => forzarCierreIndividual(nombrePersonal);
+                    if (celdas.length >= 6) {
+                        // Cambiar texto de acciones por iconos limpios (Detalles, Editar, Borrar)
+                        const celdaAcciones = celdas[celdas.length - 1];
+                        if (celdaAcciones && !celdaAcciones.dataset.iconos) {
+                            celdaAcciones.dataset.iconos = "true";
+                            celdaAcciones.innerHTML = celdaAcciones.innerHTML
+                                .replace(/Detalles/g, '<i class="fas fa-eye text-indigo-400 hover:text-indigo-300 cursor-pointer text-base mr-3" title="Detalles"></i>')
+                                .replace(/Editar/g, '<i class="fas fa-edit text-emerald-400 hover:text-emerald-300 cursor-pointer text-base mr-3" title="Editar"></i>')
+                                .replace(/Borrar/g, '<i class="fas fa-trash text-rose-500 hover:text-rose-400 cursor-pointer text-base" title="Borrar"></i>');
+                        }
 
-                                wrapper.appendChild(badgeActivo);
-                                wrapper.appendChild(btnFinalizarCorto);
-                                
-                                celdaArea.appendChild(wrapper);
+                        // Agregar estado Activo y botón Finalizar al lado del Área (aprovechando el espacio horizontal)
+                        const nombrePersonal = celdas[0].textContent.trim();
+                        if (usuariosActivos.has(nombrePersonal) && !tr.dataset.enriquecido) {
+                            tr.dataset.enriquecido = "true";
+                            const celdaArea = celdas[4]; 
+                            if (celdaArea && !celdaArea.innerHTML.includes('Activo')) {
+                                const areaTexto = celdaArea.textContent.trim();
+                                celdaArea.innerHTML = `
+                                    <div class="flex items-center gap-3">
+                                        <span>${areaTexto}</span>
+                                        <span class="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-full text-xs font-bold inline-flex items-center gap-1 shadow-sm">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Activo
+                                        </span>
+                                        <button onclick="forzarCierreIndividual('${nombrePersonal}')" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full text-xs font-bold shadow transition inline-flex items-center">
+                                            Finalizar
+                                        </button>
+                                    </div>
+                                `;
                             }
                         }
                     }
@@ -235,7 +238,8 @@ def leer_raiz():
             }
 
             async function forzarCierreIndividual(usuario) {
-                if (!confirm(`¿Estás seguro de finalizar el turno activo de ${usuario}?`)) return;
+                // Confirmación obligatoria para evitar cierres por error
+                if (!confirm(`¿Estás 100% seguro de finalizar el turno activo de ${usuario}?`)) return;
                 try {
                     const res = await fetch('/api/admin/forzar-cierre', {
                         method: 'POST',
