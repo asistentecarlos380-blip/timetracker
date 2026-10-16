@@ -132,10 +132,11 @@ def leer_raiz():
                     });
                 }, 400);
 
+                // Autocompletar la semana en curso (Lunes a Domingo) en los campos de fecha del panel trabajador/admin
                 setTimeout(() => {
                     let inputsFecha = [];
                     document.querySelectorAll('input').forEach(el => {
-                        if ((el.placeholder && el.placeholder.includes('dd/mm/aaaa')) || el.type === 'date') {
+                        if ((el.placeholder && el.placeholder.includes('dd/mm/aaaa')) || el.type === 'date' || el.id.includes('desde') || el.id.includes('hasta')) {
                             inputsFecha.push(el);
                         }
                     });
@@ -158,24 +159,22 @@ def leer_raiz():
                         let inputHasta = inputsFecha[inputsFecha.length - 1];
 
                         const setVal = function(el, val) {
-                            if (el.value !== val) {
+                            if (el && !el.value) {
                                 el.value = val;
                                 el.dispatchEvent(new Event('input', { bubbles: true }));
                                 el.dispatchEvent(new Event('change', { bubbles: true }));
                             }
                         };
 
-                        if (inputDesde && inputHasta && !inputDesde.value) {
-                            setVal(inputDesde, lunesStr);
-                            setVal(inputHasta, domingoStr);
+                        setVal(inputDesde, lunesStr);
+                        setVal(inputHasta, domingoStr);
 
-                            setTimeout(function() {
-                                const btnCalcular = document.querySelector('button:has(.fa-calculator)') || Array.from(document.querySelectorAll('button')).find(function(el) { return el.textContent.includes('Calcular'); });
-                                if (btnCalcular) {
-                                    try { btnCalcular.click(); } catch(err) {}
-                                }
-                            }, 300);
-                        }
+                        setTimeout(function() {
+                            const btnCalcular = document.querySelector('button:has(.fa-calculator)') || Array.from(document.querySelectorAll('button')).find(function(el) { return el.textContent.includes('Calcular'); });
+                            if (btnCalcular) {
+                                try { btnCalcular.click(); } catch(err) {}
+                            }
+                        }, 300);
                     }
                 }, 400);
 
