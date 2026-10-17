@@ -5,7 +5,6 @@ import os
 import pandas as pd
 from datetime import datetime, timedelta
 from supabase import create_client, Client
-import json
 
 app = FastAPI()
 
@@ -18,7 +17,7 @@ except Exception:
     supabase = None
 
 PERSONAL_FIJO = {
-    "ADMIN": {"usuario": "ADMIN", "pin": "1234", "rol_sistema": "admin", "tipo_pago": "Semanal", "monto_fijo": 150.0, "tarifa_hora": 150.0, "area": "Gerencia"},
+    "ADMIN": {"usuario": "ADMIN", "pin": "1234", "rol_sistema": "admin", "tipo_pago": "Fijo", "monto_fijo": 300.0, "tarifa_hora": 1.5, "area": "Gerencia"},
     "Ricardo": {"usuario": "Ricardo", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
     "Ronald": {"usuario": "Ronald", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
     "Lisander": {"usuario": "Lisander", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Horas", "monto_fijo": 0.0, "tarifa_hora": 1.5, "area": "Operaciones"},
@@ -30,18 +29,74 @@ PERSONAL_FIJO = {
     "Planta": {"usuario": "Planta", "pin": "1234", "rol_sistema": "trabajador", "tipo_pago": "Gasolina", "monto_fijo": 0.0, "tarifa_hora": 0.5, "area": "Operaciones"}
 }
 
+HISTORIAL_INICIAL = [
+    {"usuario": "Ronald", "entrada": "14-10-2026 05:52:00 PM", "salida": "15-10-2026 12:02:00 AM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "14-10-2026 03:40:00 PM", "salida": "15-10-2026 02:58:00 AM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "14-10-2026 12:32:00 PM", "salida": "14-10-2026 06:02:00 PM", "es_continua": False},
+    {"usuario": "Betzaida", "entrada": "14-10-2026 12:32:00 PM", "salida": "14-10-2026 06:01:00 PM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "14-10-2026 12:00:00 PM", "salida": "15-10-2026 12:04:00 AM", "es_continua": False},
+    {"usuario": "Ronald", "entrada": "13-10-2026 05:35:00 PM", "salida": "14-10-2026 12:10:00 AM", "es_continua": False},
+    {"usuario": "Gerson", "entrada": "13-10-2026 05:30:00 PM", "salida": "13-10-2026 11:13:00 PM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "13-10-2026 04:30:00 PM", "salida": "14-10-2026 02:09:00 AM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "13-10-2026 10:59:00 AM", "salida": "14-10-2026 12:10:00 AM", "es_continua": False},
+    {"usuario": "Betzaida", "entrada": "13-10-2026 10:12:00 AM", "salida": "13-10-2026 06:03:00 PM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "13-10-2026 08:53:00 AM", "salida": "13-10-2026 06:01:00 PM", "es_continua": False},
+    {"usuario": "Planta", "entrada": "12-10-2026 06:50:00 PM", "salida": "12-10-2026 11:55:00 PM", "es_continua": False},
+    {"usuario": "Ronald", "entrada": "12-10-2026 05:29:00 PM", "salida": "12-10-2026 11:21:00 PM", "es_continua": False},
+    {"usuario": "Gerson", "entrada": "12-10-2026 05:15:00 PM", "salida": "12-10-2026 11:01:00 PM", "es_continua": False},
+    {"usuario": "Matias", "entrada": "12-10-2026 03:22:00 PM", "salida": "12-10-2026 05:14:00 PM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "12-10-2026 03:21:00 PM", "salida": "13-10-2026 03:12:00 AM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "12-10-2026 11:09:00 AM", "salida": "13-10-2026 03:02:00 AM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "12-10-2026 11:00:00 AM", "salida": "13-10-2026 12:02:00 AM", "es_continua": False},
+    {"usuario": "Matias", "entrada": "11-10-2026 03:50:00 PM", "salida": "11-10-2026 07:54:00 PM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "11-10-2026 03:32:00 PM", "salida": "12-10-2026 02:35:00 AM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "11-10-2026 11:45:00 AM", "salida": "11-10-2026 08:16:00 PM", "es_continua": False},
+    {"usuario": "Ronald", "entrada": "11-10-2026 10:20:00 AM", "salida": "11-10-2026 05:04:00 PM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "11-10-2026 10:14:00 AM", "salida": "11-10-2026 07:54:00 PM", "es_continua": False},
+    {"usuario": "Betzaida", "entrada": "11-10-2026 10:14:00 AM", "salida": "11-10-2026 07:57:00 PM", "es_continua": False},
+    {"usuario": "Matias", "entrada": "10-10-2026 06:15:00 PM", "salida": "10-10-2026 11:30:00 PM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "10-10-2026 04:30:00 PM", "salida": "10-10-2026 11:30:00 PM", "es_continua": False},
+    {"usuario": "Ronald", "entrada": "10-10-2026 02:02:00 PM", "salida": "10-10-2026 11:10:00 PM", "es_continua": False},
+    {"usuario": "Betzaida", "entrada": "10-10-2026 12:55:00 PM", "salida": "10-10-2026 05:30:00 PM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "10-10-2026 11:10:00 AM", "salida": "10-10-2026 11:30:00 PM", "es_continua": False},
+    {"usuario": "Gerson", "entrada": "10-10-2026 10:17:00 AM", "salida": "10-10-2026 05:16:00 PM", "es_continua": False},
+    {"usuario": "Ronald", "entrada": "09-10-2026 03:53:00 PM", "salida": "10-10-2026 12:31:00 AM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "09-10-2026 03:19:00 PM", "salida": "10-10-2026 02:35:00 AM", "es_continua": False},
+    {"usuario": "Planta", "entrada": "09-10-2026 11:40:00 AM", "salida": "09-10-2026 05:20:00 PM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "09-10-2026 11:00:00 AM", "salida": "09-10-2026 06:00:00 PM", "es_continua": False},
+    {"usuario": "Betzaida", "entrada": "09-10-2026 11:00:00 AM", "salida": "09-10-2026 05:47:00 PM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "09-10-2026 09:56:00 AM", "salida": "10-10-2026 02:35:00 AM", "es_continua": False},
+    {"usuario": "Gerson", "entrada": "08-10-2026 05:39:00 PM", "salida": "08-10-2026 11:09:00 PM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "08-10-2026 11:36:00 AM", "salida": "09-10-2026 02:26:00 AM", "es_continua": False},
+    {"usuario": "Betzaida", "entrada": "08-10-2026 11:03:00 AM", "salida": "08-10-2026 05:17:00 PM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "08-10-2026 10:59:00 AM", "salida": "09-10-2026 12:02:00 AM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "08-10-2026 09:13:00 AM", "salida": "08-10-2026 06:08:00 PM", "es_continua": False},
+    {"usuario": "Ronald", "entrada": "07-10-2026 05:40:00 PM", "salida": "07-10-2026 11:58:00 PM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "07-10-2026 03:09:00 PM", "salida": "08-10-2026 03:42:00 AM", "es_continua": False},
+    {"usuario": "Betzaida", "entrada": "07-10-2026 01:30:00 PM", "salida": "07-10-2026 05:43:00 PM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "07-10-2026 11:00:00 AM", "salida": "08-10-2026 12:01:00 AM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "07-10-2026 10:01:00 AM", "salida": "08-10-2026 03:16:00 AM", "es_continua": False},
+    {"usuario": "Gerson", "entrada": "06-10-2026 05:59:00 PM", "salida": "06-10-2026 11:07:00 PM", "es_continua": False},
+    {"usuario": "Ronald", "entrada": "06-10-2026 05:52:00 PM", "salida": "07-10-2026 12:00:00 AM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "06-10-2026 03:00:00 PM", "salida": "07-10-2026 02:42:00 AM", "es_continua": False},
+    {"usuario": "Planta", "entrada": "06-10-2026 12:40:00 PM", "salida": "06-10-2026 06:20:00 PM", "es_continua": False},
+    {"usuario": "Brayan", "entrada": "06-10-2026 11:15:00 AM", "salida": "06-10-2026 07:12:00 PM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "06-10-2026 11:00:00 AM", "salida": "07-10-2026 12:02:00 AM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "06-10-2026 08:54:00 AM", "salida": "06-10-2026 07:12:00 PM", "es_continua": False},
+    {"usuario": "Ronald", "entrada": "05-10-2026 06:36:00 PM", "salida": "06-10-2026 12:01:00 AM", "es_continua": False},
+    {"usuario": "Daniel", "entrada": "05-10-2026 04:30:00 PM", "salida": "06-10-2026 03:24:00 AM", "es_continua": False},
+    {"usuario": "Ricardo", "entrada": "05-10-2026 01:15:00 PM", "salida": "06-10-2026 03:24:00 AM", "es_continua": False},
+    {"usuario": "Lisander", "entrada": "05-10-2026 12:00:00 PM", "salida": "06-10-2026 12:02:00 AM", "es_continua": False}
+]
+
 @app.get("/", response_class=HTMLResponse)
 def leer_raiz():
     if os.path.exists("index.html"):
         with open("index.html", "r", encoding="utf-8") as f:
             content = f.read()
             
-            personal_json = json.dumps(PERSONAL_FIJO)
-            
             patch_ui = """
             <script>
-            window._dbPersonalGlobal = """ + personal_json + """;
-
             document.addEventListener("DOMContentLoaded", () => {
                 const headerActions = document.querySelector('header') || document.querySelector('.flex.justify-between') || document.querySelector('#panel-admin');
                 if (headerActions && !document.getElementById('btn-config-global')) {
@@ -77,34 +132,7 @@ def leer_raiz():
                     });
                 }, 400);
 
-                const observerModalUsuario = new MutationObserver(() => {
-                    document.querySelectorAll('select').forEach(sel => {
-                        if (sel.innerHTML.includes('Horas') && !sel.innerHTML.includes('Semanal')) {
-                            const opt = document.createElement('option');
-                            opt.value = 'Semanal';
-                            opt.textContent = 'Semanal';
-                            sel.appendChild(opt);
-                        }
-                    });
-
-                    const selectPago = document.querySelector('select[name="tipo_pago"]') || Array.from(document.querySelectorAll('select')).find(s => s.value === 'Semanal' || s.value === 'Fijo');
-                    if (selectPago) {
-                        const contenedorInput = selectPago.closest('.space-y-4') || selectPago.parentElement.parentElement;
-                        if (contenedorInput) {
-                            contenedorInput.querySelectorAll('label').forEach(lbl => {
-                                if (lbl.textContent.toLowerCase().includes('fijo') || lbl.textContent.toLowerCase().includes('tarifa') || lbl.textContent.toLowerCase().includes('monto')) {
-                                    if (selectPago.value === 'Semanal') {
-                                        lbl.textContent = 'Monto Semanal ($)';
-                                    } else if (selectPago.value === 'Horas') {
-                                        lbl.textContent = 'Tarifa por Hora ($)';
-                                    }
-                                }
-                            });
-                        }
-                    }
-                });
-                observerModalUsuario.observe(document.body, { childList: true, subtree: true });
-
+                // Autocompletar la semana en curso (Lunes a Domingo) en los campos de fecha del panel trabajador/admin
                 setTimeout(() => {
                     let inputsFecha = [];
                     document.querySelectorAll('input').forEach(el => {
@@ -224,17 +252,6 @@ def leer_raiz():
                         }
 
                         const nombrePersonal = celdas[0].textContent.trim();
-                        
-                        if (celdas.length >= 4) {
-                            let pagoTipoTxt = celdas[2] ? celdas[2].textContent.trim() : '';
-                            if (pagoTipoTxt.toLowerCase() === 'semanal' || pagoTipoTxt.toLowerCase() === 'fijo') {
-                                if (window._dbPersonalGlobal && window._dbPersonalGlobal[nombrePersonal]) {
-                                    let montoSe = window._dbPersonalGlobal[nombrePersonal].monto_fijo || window._dbPersonalGlobal[nombrePersonal].tarifa_hora || 150;
-                                    celdas[3].textContent = '$' + parseFloat(montoSe).toFixed(2);
-                                }
-                            }
-                        }
-
                         if (usuariosActivosInfo[nombrePersonal] !== undefined && !tr.dataset.enriquecido) {
                             tr.dataset.enriquecido = "true";
                             const horasActivo = usuariosActivosInfo[nombrePersonal];
@@ -255,28 +272,9 @@ def leer_raiz():
                     const eventoOriginal = botonCalcular.onclick;
                     botonCalcular.onclick = function(e) {
                         if (eventoOriginal) eventoOriginal.apply(this, arguments);
-                        setTimeout(corregirCalculosSemanalesEnResumen, 200);
-                        setTimeout(mostrarModalTotalGeneral, 400);
+                        setTimeout(mostrarModalTotalGeneral, 300);
                     };
                 }
-            }
-
-            function corregirCalculosSemanalesEnResumen() {
-                document.querySelectorAll('#tabla-resumen-fechas tr, table tr').forEach(tr => {
-                    const celdas = tr.querySelectorAll('td');
-                    if (celdas.length >= 5) {
-                        let trabajador = celdas[0].textContent.trim();
-                        if (window._dbPersonalGlobal && window._dbPersonalGlobal[trabajador]) {
-                            let usrData = window._dbPersonalGlobal[trabajador];
-                            let tipoP = (usrData.tipo_pago || '').toLowerCase();
-                            if (tipoP === 'semanal' || tipoP === 'fijo') {
-                                let montoF = usrData.monto_fijo || usrData.tarifa_hora || 150.0;
-                                celdas[3].textContent = '1 Semana';
-                                celdas[4].textContent = '$' + parseFloat(montoF).toFixed(2);
-                            }
-                        }
-                    }
-                });
             }
 
             function mostrarModalTotalGeneral() {
@@ -287,18 +285,8 @@ def leer_raiz():
                     const celdas = tr.querySelectorAll('td');
                     if (celdas.length >= 5) {
                         const trabajador = celdas[0].textContent.trim();
-                        let pagoStr = celdas[4].textContent.trim().replace('$', '');
-                        let valor = parseFloat(pagoStr) || 0;
-                        
-                        if (window._dbPersonalGlobal && window._dbPersonalGlobal[trabajador]) {
-                            let usrData = window._dbPersonalGlobal[trabajador];
-                            let tipoP = (usrData.tipo_pago || '').toLowerCase();
-                            if (tipoP === 'semanal' || tipoP === 'fijo') {
-                                valor = usrData.monto_fijo || usrData.tarifa_hora || 150.0;
-                                celdas[4].textContent = '$' + valor.toFixed(2);
-                            }
-                        }
-
+                        const pagoStr = celdas[4].textContent.trim().replace('$', '');
+                        const valor = parseFloat(pagoStr) || 0;
                         totalGeneral += valor;
                         detalleHtml += '<div class="flex justify-between border-b border-slate-800/60 py-1 px-2 text-xs"><span class="text-slate-200 font-medium">' + trabajador + '</span><span class="font-bold text-emerald-400">$' + valor.toFixed(2) + '</span></div>';
                     }
@@ -314,7 +302,7 @@ def leer_raiz():
                     document.body.appendChild(modal);
                 }
 
-                modal.innerHTML = '<div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-5 text-white shadow-2xl animate-fade-in"><div class="flex justify-between items-center mb-2 border-b border-slate-800 pb-2"><h3 class="text-sm font-bold flex items-center gap-2 text-emerald-400"><i class="fas fa-file-invoice-dollar"></i> Resumen de Nómina y Total General</h3><button onclick="document.getElementById(\\'modal-total-general-emergente\\').remove()" class="text-slate-400 hover:text-white text-lg">&times;</button></div><p class="text-[11px] text-slate-400 mb-2">Desglose calculado para el período seleccionado:</p><div class="space-y-1 mb-3 bg-slate-950/40 p-2.5 rounded-xl border border-slate-800 max-h-60 overflow-y-auto">' + detalleHtml + '</div><div class="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-3 flex justify-between items-center mb-4 shadow-inner"><span class="text-xs font-bold uppercase tracking-wider text-emerald-300">Total General a Pagar:</span><span class="text-xl font-black text-emerald-400">$' + totalGeneral.toFixed(2) + '</span></div><div class="flex justify-end"><button onclick="document.getElementById(\\'modal-total-general-emergente\\').remove()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-600/30">Cerrar Ventana</button></div></div>';
+                modal.innerHTML = '<div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-5 text-white shadow-2xl animate-fade-in"><div class="flex justify-between items-center mb-2 border-b border-slate-800 pb-2"><h3 class="text-sm font-bold flex items-center gap-2 text-emerald-400"><i class="fas fa-file-invoice-dollar"></i> Resumen de Nómina y Total General</h3><button onclick="document.getElementById(\\'modal-total-general-emergente\\').remove()" class="text-slate-400 hover:text-white text-lg">&times;</button></div><p class="text-[11px] text-slate-400 mb-2">Desglose calculado para el período seleccionado:</p><div class="space-y-1 mb-3 bg-slate-950/40 p-2.5 rounded-xl border border-slate-800">' + detalleHtml + '</div><div class="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-3 flex justify-between items-center mb-4 shadow-inner"><span class="text-xs font-bold uppercase tracking-wider text-emerald-300">Total General a Pagar:</span><span class="text-xl font-black text-emerald-400">$' + totalGeneral.toFixed(2) + '</span></div><div class="flex justify-end"><button onclick="document.getElementById(\\'modal-total-general-emergente\\').remove()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-600/30">Cerrar Ventana</button></div></div>';
             }
 
             async function forzarCierreIndividual(usuario) {
@@ -403,6 +391,10 @@ def leer_raiz():
                 if (!tarifaInput || !resultadoSpan || !simDesde || !simHasta) return;
 
                 const tarifa = parseFloat(tarifaInput.value) || 0;
+                const fechaIni = parsearFechaDMY(simDesde.value);
+                const fechaFin = parsearFechaDMY(simHasta.value);
+                if (fechaFin) fechaFin.setHours(23, 59, 59, 999);
+
                 let totalHorasPeriodo = 0;
                 let filasVistas = new Set();
 
@@ -412,7 +404,22 @@ def leer_raiz():
                     if (matchHrs && !filasVistas.has(textoFila)) {
                         filasVistas.add(textoFila);
                         const val = parseFloat(matchHrs[1]);
-                        if (!isNaN(val) && val < 200) totalHorasPeriodo += val;
+                        
+                        let celdas = tr.querySelectorAll('td');
+                        if (celdas.length >= 2 && fechaIni && fechaFin) {
+                            let fechaTxt = celdas[0].textContent.trim();
+                            let partesF = fechaTxt.split('-');
+                            if (partesF.length === 3) {
+                                let fFila = new Date(parseInt(partesF[2]), parseInt(partesF[1]) - 1, parseInt(partesF[0]));
+                                if (fFila >= fechaIni && fFila <= fechaFin) {
+                                    if (!isNaN(val) && val < 200) totalHorasPeriodo += val;
+                                }
+                            } else {
+                                if (!isNaN(val) && val < 200) totalHorasPeriodo += val;
+                            }
+                        } else {
+                            if (!isNaN(val) && val < 200) totalHorasPeriodo += val;
+                        }
                     }
                 });
 
@@ -500,8 +507,12 @@ def forzar_cierre(req: ForzarCierreRequest):
                 for r in res_all.data:
                     if not r.get("salida"):
                         supabase.table("asistencias").update({"salida": hora_actual}).eq("id", r["id"]).execute()
-        except Exception as e:
-            print("Error al forzar cierre en Supabase:", e)
+        except Exception:
+            pass
+            
+    for r in HISTORIAL_INICIAL:
+        if str(r.get("usuario", "")).strip().lower() == u_real.lower() and not r.get("salida"):
+            r["salida"] = hora_actual
 
     return {"mensaje": f"Turno de {u_real} finalizado"}
 
@@ -543,26 +554,31 @@ def cambiar_pin(req: CambiarPinRequest):
 @app.post("/api/mis-horas")
 def mis_horas(req: LoginRequest):
     u = req.usuario.strip()
+    if u.lower() == "admin" and str(req.pin).strip() == "1234":
+        if supabase:
+            try:
+                res_a = supabase.table("asistencias").select("*").execute()
+                return {"registros": res_a.data if res_a.data else []}
+            except Exception:
+                pass
+        return {"registros": HISTORIAL_INICIAL}
+            
     registros_filtrados = []
-    
     if supabase:
         try:
             res_all = supabase.table("asistencias").select("*").execute()
             if res_all.data:
                 for r in res_all.data:
                     usr_reg = str(r.get("usuario", "")).strip().lower()
-                    if u.lower() == "admin" or usr_reg == u.lower():
-                        registros_filtrados.append({
-                            "id": r.get("id"),
-                            "usuario": r.get("usuario"),
-                            "entrada": r.get("entrada"),
-                            "salida": r.get("salida"),
-                            "receso_inicio": r.get("receso_inicio"),
-                            "receso_fin": r.get("receso_fin"),
-                            "es_continua": r.get("es_continua", False)
-                        })
-        except Exception as e:
-            print("Error al obtener mis-horas desde Supabase:", e)
+                    if usr_reg == u.lower():
+                        registros_filtrados.append(r)
+        except Exception:
+            pass
+            
+    if not registros_filtrados:
+        for r in HISTORIAL_INICIAL:
+            if str(r.get("usuario", "")).strip().lower() == u.lower():
+                registros_filtrados.append(r)
 
     return {"registros": registros_filtrados}
 
@@ -587,15 +603,25 @@ def marcar(req: LoginRequest):
     if turno_abierto_id and supabase:
         try:
             supabase.table("asistencias").update({"salida": hora_actual}).eq("id", turno_abierto_id).execute()
-        except Exception as e:
-            print("Error al marcar salida en Supabase:", e)
+        except Exception:
+            pass
     else:
-        nuevo_registro = {"usuario": u_real, "entrada": hora_actual, "receso_inicio": None, "receso_fin": None, "salida": None, "es_continua": False}
-        if supabase:
-            try:
-                supabase.table("asistencias").insert(nuevo_registro).execute()
-            except Exception as e:
-                print("Error al insertar nueva entrada en Supabase:", e)
+        encontrado_local = False
+        for r in HISTORIAL_INICIAL:
+            if str(r.get("usuario", "")).strip().lower() == u_real.lower() and not r.get("salida"):
+                r["salida"] = hora_actual
+                encontrado_local = True
+                break
+                
+        if not encontrado_local:
+            nuevo_registro = {"usuario": u_real, "entrada": hora_actual, "receso_inicio": None, "receso_fin": None, "salida": None, "es_continua": False}
+            if supabase:
+                try:
+                    supabase.table("asistencias").insert(nuevo_registro).execute()
+                except Exception:
+                    HISTORIAL_INICIAL.insert(0, nuevo_registro)
+            else:
+                HISTORIAL_INICIAL.insert(0, nuevo_registro)
         
     return {"mensaje": "Registrado con éxito"}
 
@@ -613,8 +639,13 @@ def receso(req: LoginRequest):
                     if not r.get("salida"):
                         supabase.table("asistencias").update({"salida": hora_actual}).eq("id", r["id"]).execute()
                         break
-        except Exception as e:
-            print("Error al procesar receso en Supabase:", e)
+        except Exception:
+            pass
+            
+    for r in HISTORIAL_INICIAL:
+        if str(r.get("usuario", "")).strip().lower() == u_real.lower() and not r.get("salida"):
+            r["salida"] = hora_actual
+            break
 
     return {"mensaje": "Receso procesado y tiempo detenido"}
 
@@ -626,24 +657,23 @@ def admin_datos():
             res_u = supabase.table("usuarios").select("*").execute()
             if res_u.data:
                 for u in res_u.data:
-                    tipo = str(u.get("tipo_pago", "")).lower()
-                    if tipo in ["fijo", "semanal"]:
-                        if not u.get("monto_fijo") or u.get("monto_fijo") == 0:
-                            u["monto_fijo"] = u.get("tarifa_hora", 150.0)
-                        if not u.get("tarifa_hora") or u.get("tarifa_hora") == 0:
-                            u["tarifa_hora"] = u["monto_fijo"]
+                    if u.get("tipo_pago", "").lower() in ["fijo", "semanal"] and (u.get("monto_fijo") is None or u.get("monto_fijo") == 0):
+                        if u.get("tarifa_hora", 0) > 0:
+                            u["monto_fijo"] = u["tarifa_hora"]
                     usuarios_dict[u["usuario"]] = u
-        except Exception as e:
-            print("Error al cargar usuarios desde Supabase:", e)
+        except Exception:
+            pass
 
-    asistencias_list = []
+    asistencias_list = HISTORIAL_INICIAL
     if supabase:
         try:
             res_a = supabase.table("asistencias").select("*").execute()
-            if res_a.data is not None:
+            if res_a.data and len(res_a.data) > 0:
                 asistencias_list = res_a.data
-        except Exception as e:
-            print("Error al cargar asistencias desde Supabase:", e)
+            else:
+                supabase.table("asistencias").insert(HISTORIAL_INICIAL).execute()
+        except Exception:
+            pass
 
     return {"usuarios": usuarios_dict, "asistencias": asistencias_list}
 
@@ -658,8 +688,8 @@ def configurar_tarifas_global(req: ConfigGlobalRequest):
                 if res_u.data:
                     for u in res_u.data:
                         supabase.table("usuarios").update({"tarifa_hora": req.tarifa_hora}).eq("usuario", u["usuario"]).execute()
-            except Exception as e:
-                print("Error al configurar tarifa global en Supabase:", e)
+            except Exception:
+                pass
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"mensaje": "Tarifa global actualizada con éxito"}
@@ -670,8 +700,10 @@ def admin_registro_manual(req: RegistroManualRequest):
     if supabase:
         try:
             supabase.table("asistencias").insert(nuevo).execute()
-        except Exception as e:
-            print("Error al insertar registro manual en Supabase:", e)
+        except Exception:
+            HISTORIAL_INICIAL.insert(0, nuevo)
+    else:
+        HISTORIAL_INICIAL.insert(0, nuevo)
     return {"mensaje": "Guardado"}
 
 @app.post("/api/admin/editar-registro")
@@ -679,8 +711,8 @@ def admin_editar_registro(req: EditarRegistroRequest):
     if supabase:
         try:
             supabase.table("asistencias").update({"entrada": req.entrada, "salida": req.salida}).eq("id", req.registro_id).execute()
-        except Exception as e:
-            print("Error al editar registro en Supabase:", e)
+        except Exception:
+            pass
     return {"mensaje": "Actualizado"}
 
 @app.delete("/api/admin/eliminar-registro/{registro_id}")
@@ -688,24 +720,15 @@ def admin_eliminar_registro(registro_id: int):
     if supabase:
         try:
             supabase.table("asistencias").delete().eq("id", registro_id).execute()
-        except Exception as e:
-            print("Error al eliminar registro en Supabase:", e)
+        except Exception:
+            pass
     return {"mensaje": "Eliminado"}
 
 @app.post("/api/admin/usuario")
 def admin_guardar_usuario(req: UsuarioAdminRequest):
     tipo = req.tipo_pago.strip()
-    val_monto = req.monto_fijo if req.monto_fijo > 0 else req.tarifa_hora
-    
-    if tipo.lower() in ["fijo", "semanal"]:
-        m_fijo = val_monto if val_monto > 0 else 150.0
-        t_hora = m_fijo
-    elif tipo.lower() == "gasolina":
-        m_fijo = 0.0
-        t_hora = 0.5
-    else:
-        m_fijo = 0.0
-        t_hora = req.tarifa_hora if req.tarifa_hora > 0 else 1.5
+    m_fijo = req.monto_fijo if tipo.lower() in ["fijo", "semanal"] else 0.0
+    t_hora = req.tarifa_hora if tipo.lower() == "horas" else (req.monto_fijo if tipo.lower() in ["fijo", "semanal"] else (0.5 if tipo.lower() == "gasolina" else 0.0))
 
     payload = {
         "usuario": req.usuario.strip(),
@@ -737,8 +760,8 @@ def admin_eliminar_usuario(usuario: str):
     if supabase:
         try:
             supabase.table("usuarios").delete().ilike("usuario", usuario).execute()
-        except Exception as e:
-            print("Error al eliminar usuario en Supabase:", e)
+        except Exception:
+            pass
     return {"mensaje": "Eliminado"}
 
 @app.get("/api/admin/exportar-excel")
@@ -749,9 +772,11 @@ def exportar_excel():
             res_a = supabase.table("asistencias").select("*").execute()
             if res_a.data:
                 data_rows = [{"ID": r["id"], "Usuario": r["usuario"], "Entrada": r["entrada"], "Salida": r["salida"] if r["salida"] else "En Curso", "Es Continua": "Sí" if r["es_continua"] else "No"} for r in res_a.data]
-        except Exception as e:
-            print("Error al exportar excel desde Supabase:", e)
-            
+        except Exception:
+            pass
+    if not data_rows:
+        data_rows = [{"ID": i+1, "Usuario": r["usuario"], "Entrada": r["entrada"], "Salida": r.get("salida", "En Curso"), "Es Continua": "No"} for i, r in enumerate(HISTORIAL_INICIAL)]
+        
     df = pd.DataFrame(data_rows)
     export_path = "reporte_asistencia.xlsx"
     df.to_excel(export_path, index=False)
