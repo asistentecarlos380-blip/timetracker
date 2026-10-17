@@ -333,12 +333,11 @@
                             <option value="Horas">Horas</option>
                             <option value="Gasolina">Gasolina</option>
                             <option value="Fijo">Fijo</option>
-                            <option value="Semanal">Semanal</option>
                         </select>
                     </div>
                     <div>
                         <label id="label-monto-tarifa" class="block text-slate-300 mb-1">Tarifa por Hora ($)</label>
-                        <input type="number" id="input-u-monto" step="any" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="1.5">
+                        <input type="number" id="input-u-monto" step="0.01" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none" value="1.5">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
@@ -508,12 +507,12 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
 
         document.getElementById('form-cambiar-pin').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const pinActual = document.getElementById('pin-actual').value;
-            const pinNuevo = document.getElementById('pin-nuevo').value;
-            const pinConfirmar = document.getElementById('pin-confirmar').value;
+            const pinAct = document.getElementById('pin-actual').value;
+            const pinNuev = document.getElementById('pin-nuevo').value;
+            const pinConf = document.getElementById('pin-confirmar').value;
 
-            if (pinNuevo !== pinConfirmar) {
-                alert("Los nuevos PINs no coinciden.");
+            if(pinNuev !== pinConf) {
+                alert("El nuevo PIN y la confirmación no coinciden.");
                 return;
             }
 
@@ -521,257 +520,459 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
                 const res = await fetch('/api/cambiar-pin', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ usuario: currentUser.usuario, pin_actual: pinActual, pin_nuevo: pinNuevo })
+                    body: JSON.stringify({ usuario: currentUser.usuario, pin_actual: pinAct, pin_nuevo: pinNuev })
                 });
                 const data = await res.json();
-                if (res.ok) {
-                    alert("¡PIN actualizado con éxito!");
+                if(res.ok) {
+                    alert("¡Tu PIN ha sido actualizado con éxito!");
+                    currentUser.pin = pinNuev;
+                    localStorage.setItem('timetracker_user', JSON.stringify(currentUser));
                     cerrarModalCambiarPin();
                 } else {
-                    alert(data.detail || "Error al actualizar PIN.");
+                    alert(data.detail || "Error al actualizar el PIN.");
                 }
             } catch(err) {
-                alert("Error de conexión.");
+                alert("Error de conexión al cambiar el PIN.");
             }
+        });
+
+        function actualizarLabelMonto() {
+            const tipo = document.getElementById('input-u-tipopago').value.toLowerCase();
+            const label = document.getElementById('label-monto-tarifa');
+            const inputMonto = document.getElementById('input-u-monto');
+            if(tipo === 'horas') {
+                label.textContent = "Tarifa por Hora ($)";
+                inputMonto.value = "1.5";
+            } else if(tipo === 'gasolina') {
+                label.textContent = "Gasolina (1.4L/h × $0.5)";
+                inputMonto.value = "0";
+            } else {
+                label.textContent = "Monto Fijo ($)";
+                inputMonto.value = "300";
+            }
+        }
+
+        function convertirFechaFlex(str) {
+            if(!str) return null;
+            str = str.trim();
+            let regexDMY = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?$/;
+            let match = str.match(regexDMY);
+            if(match) {
+                let d = match[1], m = match[2], y = match[3];
+                let hh = parseInt(match[4]), mm = match[5], ss = match[6] || '00';
+                let ampm = (match[7] || '').toUpperCase();
+                if(ampm === 'PM' && hh < 12) hh += 12;
+                if(ampm === 'AM' && hh === 12) hh = 0;
+                let horaFinal = hh >= 12 ? 'PM' : 'AM';
+                let hh12 = hh % 12 || 12;
+                return `${d}-${m}-${y} ${String(hh12).padStart(2,'0')}:${mm}:${ss} ${horaFinal}`;
+            }
+            return str;
+        }
+
+        function parseFechaHora(str) {
+            if(!str) return null;
+            let partes = str.split(' ');
+            if(partes.length < 3) return new Date(str);
+            let f = partes[0].split('-');
+            if(f.length !== 3) return new Date(str);
+            let d = parseInt(f[0]), m = parseInt(f[1]), y = parseInt(f[2]);
+            let h = partes[1].split(':');
+            let hh = parseInt(h[0]), mm = parseInt(h[1]), ss = parseInt(h[2] || 0);
+            let ampm = partes[2];
+            if(ampm && ampm.toUpperCase() === 'PM' && hh < 12) hh += 12;
+            if(ampm && ampm.toUpperCase() === 'AM' && hh === 12) hh = 0;
+            return new Date(y, m-1, d, hh, mm, ss);
+        }
+
+        function resetSessionTimer(rol) {
+            if (sessionTimer) clearTimeout(sessionTimer);
+            const minutos = (rol === 'admin') ? 10 : 5;
+            sessionTimer = setTimeout(() => {
+                alert("Sesión expirada por inactividad.");
+                cerrarSesion();
+            }, minutos * 60 * 1000);
+        }
+
+        ['click', 'keypress', 'mousemove'].forEach(evt => {
+            document.addEventListener(evt, () => {
+                if (currentUser) resetSessionTimer(currentUser.rol_sistema);
+            });
         });
 
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const usuario = document.getElementById('login-usuario').value.trim();
-            const pin = document.getElementById('login-pin').value.trim();
-            const errorDiv = document.getElementById('login-error');
+            const usuario = document.getElementById('login-usuario').value;
+            const pin = document.getElementById('login-pin').value;
+            const errDiv = document.getElementById('login-error');
+            errDiv.classList.add('hidden');
 
             try {
                 const res = await fetch('/api/login', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ usuario, pin })
+                    body: JSON.stringify({usuario, pin})
                 });
                 const data = await res.json();
-
-                if (res.ok) {
-                    currentUser = data;
-                    sessionStorage.setItem('currentUser', JSON.stringify(data));
-                    document.getElementById('login-screen').classList.add('hidden');
-                    if (data.rol_sistema === 'admin') {
-                        document.getElementById('admin-dashboard').classList.remove('hidden');
-                        cargarAdminDatos();
-                    } else {
-                        document.getElementById('worker-dashboard').classList.remove('hidden');
-                        document.getElementById('worker-title').textContent = 'Panel de Trabajador: ' + data.usuario;
-                        cargarPanelTrabajador();
-                    }
+                if(res.ok) {
+                    currentUser = { usuario: data.usuario, pin: data.pin || pin, rol_sistema: data.rol_sistema };
+                    localStorage.setItem('timetracker_user', JSON.stringify(currentUser));
+                    iniciarVistaSegunRol();
                 } else {
-                    errorDiv.textContent = data.detail || "Credenciales incorrectas";
-                    errorDiv.classList.remove('hidden');
+                    errDiv.textContent = data.detail || 'Error de acceso';
+                    errDiv.classList.remove('hidden');
                 }
-            } catch (err) {
-                errorDiv.textContent = "Error de conexión con el servidor";
-                errorDiv.classList.remove('hidden');
-            }
-        });
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const savedUser = sessionStorage.getItem('currentUser');
-            if (savedUser) {
-                currentUser = JSON.parse(savedUser);
-                document.getElementById('login-screen').classList.add('hidden');
-                if (currentUser.rol_sistema === 'admin') {
-                    document.getElementById('admin-dashboard').classList.remove('hidden');
-                    cargarAdminDatos();
-                } else {
-                    document.getElementById('worker-dashboard').classList.remove('hidden');
-                    document.getElementById('worker-title').textContent = 'Panel de Trabajador: ' + currentUser.usuario;
-                    cargarPanelTrabajador();
-                }
+            } catch(err) {
+                errDiv.textContent = 'Error de conexión con el servidor';
+                errDiv.classList.remove('hidden');
             }
         });
 
         function cerrarSesion() {
             currentUser = null;
-            sessionStorage.removeItem('currentUser');
-            if (sessionTimer) clearInterval(sessionTimer);
-            document.getElementById('admin-dashboard').classList.add('hidden');
-            document.getElementById('worker-dashboard').classList.add('hidden');
+            localStorage.removeItem('timetracker_user');
+            if (sessionTimer) clearTimeout(sessionTimer);
             document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('worker-dashboard').classList.add('hidden');
+            document.getElementById('admin-dashboard').classList.add('hidden');
             document.getElementById('login-form').reset();
-            document.getElementById('login-error').classList.add('hidden');
         }
 
-        async function cargarPanelTrabajador() {
-            if (!currentUser) return;
-            try {
-                const res = await fetch('/api/mis-horas', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ usuario: currentUser.usuario, pin: currentUser.pin })
-                });
-                const data = await res.json();
-                registrosGlobalesTrabajador = data.registros || [];
-                
-                const tbody = document.getElementById('tabla-mis-horas');
-                if (!tbody) return;
-                tbody.innerHTML = '';
+        function iniciarVistaSegunRol() {
+            document.getElementById('login-screen').classList.add('hidden');
+            resetSessionTimer(currentUser.rol_sistema);
 
-                if (registrosGlobalesTrabajador.length > 0) {
-                    registrosGlobalesTrabajador.forEach(r => {
-                        const tr = document.createElement('tr');
-                        tr.className = 'border-b border-slate-700/40 hover:bg-slate-800/40';
-                        const fechaStr = r.entrada ? r.entrada.split(' ')[0] : '';
-                        const salidaTxt = r.salida ? r.salida : '<span class="text-emerald-400 font-bold animate-pulse">En Curso</span>';
-                        tr.innerHTML = `
-                            <td class="py-2 px-2 text-slate-300">${fechaStr}</td>
-                            <td class="py-2 px-2 text-slate-300">${r.entrada || ''}</td>
-                            <td class="py-2 px-2 text-slate-300">${salidaTxt}</td>
-                            <td class="py-2 px-2 text-right font-bold text-emerald-400">-</td>
-                            <td class="py-2 px-2 text-right text-slate-400">-</td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-slate-500">No hay registros de horas aún.</td></tr>';
-                }
-            } catch (e) {
-                console.error("Error al cargar horas del trabajador", e);
+            if (currentUser.rol_sistema === 'admin') {
+                document.getElementById('admin-dashboard').classList.remove('hidden');
+                document.getElementById('worker-dashboard').classList.add('hidden');
+                cargarAdminDatos();
+            } else {
+                document.getElementById('worker-dashboard').classList.remove('hidden');
+                document.getElementById('admin-dashboard').classList.add('hidden');
+                document.getElementById('worker-title').textContent = `Trabajador: ${currentUser.usuario}`;
+                cargarPanelTrabajador();
             }
         }
 
+        window.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('timetracker_user');
+            if (saved) {
+                try {
+                    currentUser = JSON.parse(saved);
+                    iniciarVistaSegunRol();
+                } catch(e) { cerrarSesion(); }
+            }
+        });
+
         async function ejecutarAccionMarcar() {
-            if (!currentUser) return;
             try {
                 const res = await fetch('/api/marcar', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ usuario: currentUser.usuario, pin: currentUser.pin })
+                    body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
                 });
-                if (res.ok) {
+                if(res.ok) {
                     cargarPanelTrabajador();
+                } else {
+                    const data = await res.json();
+                    alert(data.detail || 'Error al registrar turno');
                 }
-            } catch(e) {}
+            } catch(err) { alert('Error de conexión'); }
         }
 
         async function ejecutarReceso() {
-            if (!currentUser) return;
+            if(!confirm("¿Deseas registrar receso / pausa?")) return;
             try {
-                await fetch('/api/receso', {
+                const res = await fetch('/api/receso', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ usuario: currentUser.usuario, pin: currentUser.pin })
+                    body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
                 });
-                cargarPanelTrabajador();
-            } catch(e) {}
+                if(res.ok) {
+                    cargarPanelTrabajador();
+                } else {
+                    const data = await res.json();
+                    alert(data.detail || 'Error al procesar receso');
+                }
+            } catch(err) { alert('Error de conexión'); }
+        }
+
+        async function cargarPanelTrabajador() {
+            try {
+                const res = await fetch('/api/mis-horas', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({usuario: currentUser.usuario, pin: currentUser.pin})
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    registrosGlobalesTrabajador = data.registros;
+                    renderizarTablaConsolidada(registrosGlobalesTrabajador);
+
+                    let tieneTurnoActivo = false;
+                    let estaEnReceso = false;
+
+                    data.registros.forEach(r => {
+                        if(r.salida === null) {
+                            tieneTurnoActivo = true;
+                            if(r.receso_inicio && !r.receso_fin) estaEnReceso = true;
+                        }
+                    });
+
+                    const btnTurno = document.getElementById('btn-accion-turno');
+                    const iconTurno = document.getElementById('icon-accion-turno');
+                    const textTurno = document.getElementById('text-accion-turno');
+
+                    if(!tieneTurnoActivo) {
+                        btnTurno.className = "bg-emerald-600/90 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1";
+                        iconTurno.className = "fa-solid fa-play text-lg";
+                        textTurno.textContent = "Iniciar Turno";
+                    } else if(estaEnReceso) {
+                        btnTurno.className = "bg-emerald-600/90 hover:bg-emerald-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1 animate-pulse";
+                        iconTurno.className = "fa-solid fa-play text-lg";
+                        textTurno.textContent = "Continuar / Reanudar Turno";
+                    } else {
+                        btnTurno.className = "bg-red-600/90 hover:bg-red-500 text-white p-3 rounded-xl font-medium shadow-lg transition flex flex-col items-center justify-center gap-1";
+                        iconTurno.className = "fa-solid fa-stop text-lg";
+                        textTurno.textContent = "Finalizar Turno";
+                    }
+                }
+            } catch(err) {}
+        }
+
+        function renderizarTablaConsolidada(registros) {
+            const tbody = document.getElementById('tabla-mis-horas');
+            tbody.innerHTML = '';
+            if(registros.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-500">No hay registros de horas aún.</td></tr>`;
+                return;
+            }
+
+            registros.sort((a, b) => parseFechaHora(b.entrada) - parseFechaHora(a.entrada));
+
+            let porFecha = {};
+            registros.forEach(r => {
+                let fecha = r.entrada.split(' ')[0];
+                if(!porFecha[fecha]) porFecha[fecha] = [];
+                porFecha[fecha].push(r);
+            });
+
+            for(let [fecha, regs] of Object.entries(porFecha)) {
+                let primeraEntrada = regs[0].entrada;
+                let ultimaSalida = regs[regs.length - 1].salida ? regs[regs.length - 1].salida : null;
+                let totalHorasDia = 0;
+                let enCurso = false;
+
+                regs.forEach(r => {
+                    let dE = parseFechaHora(r.entrada);
+                    let dS = parseFechaHora(r.salida);
+                    if(dE && dS) {
+                        totalHorasDia += Math.max(0, (dS - dE) / (1000 * 60 * 60));
+                    } else if(!r.salida) { enCurso = true; }
+                });
+
+                let salidaTexto = enCurso ? '<span class="text-emerald-400 font-semibold animate-pulse">En Curso</span>' : ultimaSalida;
+                let horasTexto = enCurso && totalHorasDia === 0 ? '-' : `${totalHorasDia.toFixed(2)} hrs`;
+
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-700/35 hover:bg-slate-800/40">
+                        <td class="py-2 font-medium">${fecha}</td>
+                        <td class="py-2 text-slate-300">${primeraEntrada}</td>
+                        <td class="py-2 text-slate-300">${salidaTexto}</td>
+                        <td class="py-2 text-right text-emerald-300 font-bold">${horasTexto}</td>
+                        <td class="py-2 text-right">
+                            <button onclick='abrirDetallesDia("${fecha}", ${JSON.stringify(regs).replace(/'/g, "&apos;")})' class="bg-indigo-600/40 hover:bg-indigo-600 text-indigo-300 hover:text-white px-2 py-1 rounded text-[11px] transition">Ver Detalles</button>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function abrirDetallesDia(fecha, regs) {
+            document.getElementById('modal-detalles-titulo').innerHTML = `<i class="fa-solid fa-calendar-day"></i> Detalle de Turnos y Pausas del Día: ${fecha}`;
+            const tbody = document.getElementById('tabla-modal-detalles');
+            tbody.innerHTML = '';
+
+            regs.forEach(r => {
+                let dE = parseFechaHora(r.entrada);
+                let dS = parseFechaHora(r.salida);
+                let hrs = (dE && dS) ? Math.max(0, (dS - dE) / (1000 * 60 * 60)) : 0;
+                let horasTexto = r.salida ? `${hrs.toFixed(2)} hrs` : '<span class="text-emerald-400 font-semibold">En Curso</span>';
+
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-700/30 hover:bg-slate-800/30">
+                        <td class="py-2 font-mono text-slate-400">#${r.id}</td>
+                        <td class="py-2 text-slate-200">${r.entrada}</td>
+                        <td class="py-2 text-slate-400">${r.receso_inicio || '-'}</td>
+                        <td class="py-2 text-slate-400">${r.receso_fin || '-'}</td>
+                        <td class="py-2 text-slate-200">${r.salida || 'Activo'}</td>
+                        <td class="py-2 text-right font-bold text-emerald-300">${horasTexto}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('modal-detalles').classList.remove('hidden');
+        }
+
+        function verDetallesUsuarioAdmin(usuario) {
+            if(!globalAdminData) return;
+            let regsUsuario = globalAdminData.asistencias.filter(r => r.usuario.toLowerCase() === usuario.toLowerCase());
+            document.getElementById('modal-detalles-titulo').innerHTML = `<i class="fa-solid fa-user-clock"></i> Historial Completo de Asistencias: ${usuario}`;
+            const tbody = document.getElementById('tabla-modal-detalles');
+            tbody.innerHTML = '';
+
+            if(regsUsuario.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500">Este usuario no tiene registros guardados.</td></tr>`;
+            } else {
+                regsUsuario.sort((a, b) => parseFechaHora(b.entrada) - parseFechaHora(a.entrada));
+                regsUsuario.forEach(r => {
+                    let dE = parseFechaHora(r.entrada);
+                    let dS = parseFechaHora(r.salida);
+                    let hrs = (dE && dS) ? Math.max(0, (dS - dE) / (1000 * 60 * 60)) : 0;
+                    let horasTexto = r.salida ? `${hrs.toFixed(2)} hrs` : '<span class="text-emerald-400 font-semibold">Activo</span>';
+
+                    tbody.innerHTML += `
+                        <tr class="border-b border-slate-700/30 hover:bg-slate-800/30">
+                            <td class="py-2 font-mono text-slate-400">#${r.id}</td>
+                            <td class="py-2 text-slate-200">${r.entrada}</td>
+                            <td class="py-2 text-slate-400">${r.receso_inicio || '-'}</td>
+                            <td class="py-2 text-slate-400">${r.receso_fin || '-'}</td>
+                            <td class="py-2 text-slate-200">${r.salida || 'Activo'}</td>
+                            <td class="py-2 text-right font-bold text-emerald-300">${horasTexto}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById('modal-detalles').classList.remove('hidden');
+        }
+
+        function cerrarModalDetalles() {
+            document.getElementById('modal-detalles').classList.add('hidden');
+        }
+
+        function calcularHorasWorker() {
+            const desde = document.getElementById('worker-desde').value;
+            const hasta = document.getElementById('worker-hasta').value;
+            if(!desde || !hasta) { alert("Selecciona ambas fechas."); return; }
+
+            let dDesde = new Date(desde + "T00:00:00");
+            let dHasta = new Date(hasta + "T23:59:59");
+            let total = 0;
+
+            registrosGlobalesTrabajador.forEach(r => {
+                let dEntrada = parseFechaHora(r.entrada);
+                let dSalida = parseFechaHora(r.salida);
+                if(dEntrada && dEntrada >= dDesde && dEntrada <= dHasta && dSalida) {
+                    total += Math.max(0, (dSalida - dEntrada) / (1000 * 60 * 60));
+                }
+            });
+
+            document.getElementById('worker-total-horas-rango').textContent = `${total.toFixed(2)} hrs`;
         }
 
         async function cargarAdminDatos() {
             try {
                 const res = await fetch('/api/admin/datos');
                 const data = await res.json();
-                globalAdminData = data;
+                if(res.ok) {
+                    globalAdminData = data;
+                    localStorage.setItem('timetracker_backup_local', JSON.stringify(data));
 
-                // 1. Poblar tabla de asistencias en tiempo real
-                const tbodyAsistencias = document.getElementById('tabla-asistencias-admin');
-                if (tbodyAsistencias) {
-                    tbodyAsistencias.innerHTML = '';
-                    if (data.asistencias && data.asistencias.length > 0) {
-                        data.asistencias.forEach(r => {
-                            const tr = document.createElement('tr');
-                            tr.className = 'border-b border-slate-700/40 hover:bg-slate-800/40';
-                            const salidaTxt = r.salida ? r.salida : '<span class="text-emerald-400 font-semibold animate-pulse">En Curso</span>';
-                            tr.innerHTML = `
-                                <td class="py-2 px-2 font-medium text-white">${r.usuario || ''}</td>
-                                <td class="py-2 px-2 text-slate-300">${r.entrada || ''}</td>
-                                <td class="py-2 px-2 text-slate-300">${salidaTxt}</td>
-                                <td class="py-2 px-2 text-right font-bold text-emerald-400">-</td>
-                                <td class="py-2 px-2 text-right">
-                                    <button onclick="abrirModalEditarRegistro(${r.id}, '${r.usuario}', '${r.entrada}', '${r.salida || ''}')" class="text-emerald-400 hover:text-emerald-300 mr-2" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                                    <button onclick="eliminarRegistro(${r.id})" class="text-rose-400 hover:text-rose-300" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                    const tU = document.getElementById('tabla-usuarios');
+                    tU.innerHTML = '';
+                    let i = 0;
+                    for(let [u, info] of Object.entries(data.usuarios)) {
+                        i++;
+                        let tipoPago = info.tipo_pago || 'Horas';
+                        let montoMostrar = (tipoPago.toLowerCase() === 'horas') ? info.tarifa_hora : (tipoPago.toLowerCase() === 'gasolina' ? '1.4L/h × $0.5' : info.monto_fijo);
+                        tU.innerHTML += `
+                            <tr class="border-b border-slate-700/30">
+                                <td class="py-1.5 font-medium">${u}</td>
+                                <td class="py-1.5 text-slate-400">
+                                    <span id="pin-text-${i}">••••</span>
+                                    <button onclick="togglePinTabla('${info.pin}', 'pin-text-${i}')" class="ml-2 text-emerald-400 hover:text-white"><i class="fa-solid fa-eye text-[10px]"></i></button>
                                 </td>
-                            `;
-                            tbodyAsistencias.appendChild(tr);
-                        });
-                    } else {
-                        tbodyAsistencias.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-slate-500">No hay registros de horas aún.</td></tr>';
-                    }
-                }
-
-                // 2. Poblar tabla de usuarios registrados
-                const tbodyUsuarios = document.getElementById('tabla-usuarios');
-                if (tbodyUsuarios && data.usuarios) {
-                    tbodyUsuarios.innerHTML = '';
-                    Object.values(data.usuarios).forEach(u => {
-                        if (u.usuario === 'ADMIN') return;
-                        const tr = document.createElement('tr');
-                        tr.className = 'border-b border-slate-700/40 hover:bg-slate-800/40';
-                        tr.innerHTML = `
-                            <td class="py-2 px-2 font-medium text-white">${u.usuario}</td>
-                            <td class="py-2 px-2 text-slate-400">••••</td>
-                            <td class="py-2 px-2 text-slate-300">${u.tipo_pago || 'Horas'}</td>
-                            <td class="py-2 px-2 text-slate-300">$${parseFloat(u.monto_fijo || u.tarifa_hora || 1.5).toFixed(2)}</td>
-                            <td class="py-2 px-2 text-slate-300">${u.area || 'Operaciones'}</td>
-                            <td class="py-2 px-2 text-right">
-                                <button onclick="editarUsuario('${u.usuario}')" class="text-emerald-400 hover:text-emerald-300 mr-2 text-xs">Editar</button>
-                                <button onclick="eliminarUsuario('${u.usuario}')" class="text-rose-400 hover:text-rose-300 text-xs">Borrar</button>
-                            </td>
+                                <td class="py-1.5 capitalize">${tipoPago}</td>
+                                <td class="py-1.5 text-emerald-300 font-semibold">${typeof montoMostrar === 'number' ? '$' + montoMostrar : montoMostrar}</td>
+                                <td class="py-1.5 text-slate-300 font-medium">${info.area || 'Operaciones'}</td>
+                                <td class="py-1.5 text-right">
+                                    <button onclick="verDetallesUsuarioAdmin('${u}')" class="text-indigo-400 hover:underline mr-2" title="Ver Historial de Asistencias">Detalles</button>
+                                    <button onclick="editarUsuario('${u}', '${info.pin}', '${tipoPago}', '${info.monto_fijo || 0}', '${info.tarifa_hora || 1.5}', '${info.area || 'Operaciones'}', '${info.rol_sistema}')" class="text-emerald-400 hover:underline mr-2">Editar</button>
+                                    <button onclick="eliminarUsuario('${u}')" class="text-red-400 hover:underline">Borrar</button>
+                                </td>
+                            </tr>
                         `;
-                        tbodyUsuarios.appendChild(tr);
+                    }
+
+                    let asistenciasOrdenadas = data.asistencias.slice().sort((a, b) => parseFechaHora(b.entrada) - parseFechaHora(a.entrada));
+
+                    const tA = document.getElementById('tabla-asistencias-admin');
+                    tA.innerHTML = '';
+                    asistenciasOrdenadas.forEach(r => {
+                        let dE = parseFechaHora(r.entrada);
+                        let dS = parseFechaHora(r.salida);
+                        let hrs = (dE && dS) ? Math.max(0, (dS - dE) / (1000 * 60 * 60)) : 0;
+                        let salidaHumana = r.salida ? r.salida : '<span class="text-emerald-400 font-semibold animate-pulse">Activo</span>';
+                        let horasTexto = r.salida ? `${hrs.toFixed(2)} hrs` : '-';
+
+                        tA.innerHTML += `
+                            <tr class="border-b border-slate-700/30 hover:bg-slate-800/40">
+                                <td class="py-1.5 font-medium">${r.usuario}</td>
+                                <td class="py-1.5 text-slate-300">${r.entrada}</td>
+                                <td class="py-1.5 text-slate-300">${salidaHumana}</td>
+                                <td class="py-1.5 text-right font-bold text-emerald-300">${horasTexto}</td>
+                                <td class="py-1.5 text-right">
+                                    <button onclick='abrirModalEditarRegistro(${r.id}, "${r.usuario}", "${r.entrada}", "${r.salida || ""}")' class="text-indigo-400 hover:underline mr-2" title="Editar Registro"><i class="fa-solid fa-pen"></i></button>
+                                    <button onclick="eliminarRegistroAdmin(${r.id})" class="text-red-400 hover:underline" title="Eliminar Registro"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    const selectManual = document.getElementById('manual-usuario');
+                    selectManual.innerHTML = '';
+                    for(let u in data.usuarios) { selectManual.innerHTML += `<option value="${u}">${u}</option>`; }
+                }
+            } catch(e) {}
+        }
+
+        async function restaurarRespaldoServidor() {
+            if(!confirm("¿Deseas restaurar todos los registros y usuarios desde el respaldo del servidor?")) return;
+            try {
+                const res = await fetch('/api/admin/restaurar-respaldo', { method: 'POST' });
+                const data = await res.json();
+                if(res.ok) {
+                    alert("¡Respaldo restaurado con éxito!");
+                    cargarAdminDatos();
+                } else {
+                    restaurarRespaldoLocalNavegador();
+                }
+            } catch(err) {
+                restaurarRespaldoLocalNavegador();
+            }
+        }
+
+        async function restaurarRespaldoLocalNavegador() {
+            const backupLocal = localStorage.getItem('timetracker_backup_local');
+            if(!backupLocal) {
+                alert("No se encontró ningún respaldo local ni en el servidor.");
+                return;
+            }
+            try {
+                let dataObj = JSON.parse(backupLocal);
+                for(let r of dataObj.asistencias) {
+                    await fetch('/api/admin/registro-manual', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ usuario: r.usuario, entrada: r.entrada, salida: r.salida, es_continua: r.es_continua })
                     });
                 }
-            } catch (e) {
-                console.error("Error al cargar datos administrativos:", e);
+                alert("¡Datos restaurados exitosamente desde la copia de seguridad del navegador!");
+                cargarAdminDatos();
+            } catch(e) {
+                alert("Error al restaurar el respaldo local.");
             }
-        }
-
-        function abrirModalManual() {
-            document.getElementById('form-manual').reset();
-            const sel = document.getElementById('manual-usuario');
-            sel.innerHTML = '';
-            if (globalAdminData && globalAdminData.usuarios) {
-                Object.values(globalAdminData.usuarios).forEach(u => {
-                    if (u.usuario !== 'ADMIN') {
-                        const opt = document.createElement('option');
-                        opt.value = u.usuario;
-                        opt.textContent = u.usuario;
-                        sel.appendChild(opt);
-                    }
-                });
-            }
-            document.getElementById('modal-manual').classList.remove('hidden');
-        }
-
-        function cerrarModalManual() {
-            document.getElementById('modal-manual').classList.add('hidden');
-        }
-
-        function abrirModalUsuario() {
-            document.getElementById('form-usuario').reset();
-            document.getElementById('modal-titulo').textContent = "Registrar Nuevo Usuario";
-            document.getElementById('edit-antiguo').value = "";
-            document.getElementById('input-u-nombre').disabled = false;
-            document.getElementById('modal-usuario').classList.remove('hidden');
-        }
-
-        function cerrarModalUsuario() {
-            document.getElementById('modal-usuario').classList.add('hidden');
-        }
-
-        function actualizarLabelMonto() {
-            const tp = document.getElementById('input-u-tipopago').value;
-            const lbl = document.getElementById('label-monto-tarifa');
-            if (tp === 'Semanal' || tp === 'Fijo') {
-                lbl.textContent = "Monto Semanal ($)";
-            } else if (tp === 'Gasolina') {
-                lbl.textContent = "Tarifa Gasolina ($)";
-            } else {
-                lbl.textContent = "Tarifa por Hora ($)";
-            }
-        }
-
-        async function eliminarRegistro(id) {
-            if (!confirm("¿Estás seguro de eliminar este registro?")) return;
-            try {
-                const res = await fetch('/api/admin/eliminar-registro/' + id, { method: 'DELETE' });
-                if (res.ok) cargarAdminDatos();
-            } catch(e) {}
         }
 
         function abrirModalEditarRegistro(id, usuario, entrada, salida) {
@@ -789,43 +990,210 @@ Ricardo | 14-10-2026 03:40 PM | 15-10-2026 12:00 AM" class="w-full bg-slate-900 
         document.getElementById('form-editar-registro').addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = parseInt(document.getElementById('edit-reg-id').value);
-            const entrada = document.getElementById('edit-reg-entrada').value;
-            const salida = document.getElementById('edit-reg-salida').value;
+            const entrada = convertirFechaFlex(document.getElementById('edit-reg-entrada').value);
+            const salidaInput = document.getElementById('edit-reg-salida').value.trim();
+            const salida = salidaInput ? convertirFechaFlex(salidaInput) : null;
 
             try {
                 const res = await fetch('/api/admin/editar-registro', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ registro_id: id, entrada, salida: salida || null })
+                    body: JSON.stringify({ registro_id: id, entrada: entrada, salida: salida })
                 });
-                if (res.ok) {
+                if(res.ok) {
                     cerrarModalEditarRegistro();
+                    alert("Registro actualizado con éxito");
                     cargarAdminDatos();
+                } else {
+                    const data = await res.json();
+                    alert(data.detail || "Error al actualizar registro");
                 }
-            } catch(e) {}
+            } catch(err) {
+                alert("Error de conexión");
+            }
         });
+
+        async function eliminarRegistroAdmin(id) {
+            if(!confirm("¿Estás seguro de eliminar este registro de asistencia?")) return;
+            try {
+                const res = await fetch(`/api/admin/eliminar-registro/${id}`, { method: 'DELETE' });
+                if(res.ok) {
+                    cargarAdminDatos();
+                } else {
+                    alert("Error al eliminar el registro.");
+                }
+            } catch(err) {
+                alert("Error de conexión");
+            }
+        }
+
+        function calcularResumenFechas() {
+            if(!globalAdminData) return;
+            const fDesde = document.getElementById('filtro-fecha-desde').value;
+            const fHasta = document.getElementById('filtro-fecha-hasta').value;
+            if(!fDesde || !fHasta) { alert("Selecciona ambas fechas."); return; }
+
+            let dDesde = new Date(fDesde + "T00:00:00");
+            let dHasta = new Date(fHasta + "T23:59:59");
+
+            let resumen = {};
+            for(let u in globalAdminData.usuarios) {
+                resumen[u] = {
+                    tipo_pago: globalAdminData.usuarios[u].tipo_pago || 'Horas',
+                    monto_fijo: globalAdminData.usuarios[u].monto_fijo || 0,
+                    tarifa_hora: globalAdminData.usuarios[u].tarifa_hora !== undefined ? globalAdminData.usuarios[u].tarifa_hora : 1.5,
+                    rol_sistema: globalAdminData.usuarios[u].rol_sistema || 'trabajador',
+                    horas: 0
+                };
+            }
+
+            globalAdminData.asistencias.forEach(r => {
+                let dEntrada = parseFechaHora(r.entrada);
+                let dSalida = parseFechaHora(r.salida);
+                if(dEntrada && dEntrada >= dDesde && dEntrada <= dHasta) {
+                    let hrs = dSalida ? Math.max(0, (dSalida - dEntrada) / (1000 * 60 * 60)) : 0;
+                    if(!resumen[r.usuario]) resumen[r.usuario] = { tipo_pago: 'Horas', monto_fijo: 0, tarifa_hora: 1.5, rol_sistema: 'trabajador', horas: 0 };
+                    resumen[r.usuario].horas += hrs;
+                }
+            });
+
+            const tR = document.getElementById('tabla-resumen-fechas');
+            tR.innerHTML = '';
+            for(let [u, info] of Object.entries(resumen)) {
+                let totalPagar = 0;
+                let tipoLower = info.tipo_pago.toLowerCase();
+                let valorTexto = "";
+
+                if(tipoLower === 'fijo') {
+                    totalPagar = info.monto_fijo;
+                    valorTexto = `$${info.monto_fijo}`;
+                } else if(tipoLower === 'gasolina') {
+                    totalPagar = info.horas * 1.4 * 0.5;
+                    valorTexto = "1.4L/h × $0.5";
+                } else {
+                    totalPagar = info.horas * info.tarifa_hora;
+                    valorTexto = `$${info.tarifa_hora}`;
+                }
+
+                tR.innerHTML += `
+                    <tr class="border-b border-slate-700/30">
+                        <td class="py-1.5 font-medium">${u}</td>
+                        <td class="py-1.5 capitalize">${info.tipo_pago}</td>
+                        <td class="py-1.5 text-emerald-300 font-semibold">${info.horas.toFixed(2)} hrs</td>
+                        <td class="py-1.5">${valorTexto}</td>
+                        <td class="py-1.5 text-right text-emerald-400 font-bold">$${totalPagar.toFixed(2)}</td>
+                    </tr>
+                `;
+            }
+        }
+
+        function togglePinTabla(pinReal, spanId) {
+            const span = document.getElementById(spanId);
+            span.textContent = (span.textContent === "••••") ? pinReal : "••••";
+        }
+
+        function abrirModalUsuario() {
+            document.getElementById('modal-titulo').textContent = "Registrar Nuevo Usuario";
+            document.getElementById('form-usuario').reset();
+            document.getElementById('edit-antiguo').value = "";
+            document.getElementById('input-u-tipopago').value = "Horas";
+            document.getElementById('input-u-area').value = "Operaciones";
+            actualizarLabelMonto();
+            document.getElementById('modal-usuario').classList.remove('hidden');
+        }
+
+        function editarUsuario(u, pin, tipo, monto, tarifa, area, rol) {
+            document.getElementById('modal-titulo').textContent = `Editar Usuario: ${u}`;
+            document.getElementById('edit-antiguo').value = u;
+            document.getElementById('input-u-nombre').value = u;
+            document.getElementById('input-u-pin').value = pin;
+            document.getElementById('input-u-tipopago').value = tipo;
+            document.getElementById('input-u-area').value = area;
+            document.getElementById('input-u-rol').value = rol;
+            actualizarLabelMonto();
+            if(tipo.toLowerCase() === 'horas') document.getElementById('input-u-monto').value = tarifa;
+            else if(tipo.toLowerCase() === 'gasolina') document.getElementById('input-u-monto').value = 0;
+            else document.getElementById('input-u-monto').value = monto;
+            document.getElementById('modal-usuario').classList.remove('hidden');
+        }
+
+        function cerrarModalUsuario() { document.getElementById('modal-usuario').classList.add('hidden'); }
+
+        function abrirModalManual() {
+            document.getElementById('form-manual').reset();
+            cambiarModoManual('individual');
+            document.getElementById('modal-manual').classList.remove('hidden');
+        }
+
+        function cerrarModalManual() { document.getElementById('modal-manual').classList.add('hidden'); }
 
         document.getElementById('form-usuario').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const usuarioAntiguo = document.getElementById('edit-antiguo').value;
-            const usuario = document.getElementById('input-u-nombre').value;
-            const pin = document.getElementById('input-u-pin').value;
-            const tipo_pago = document.getElementById('input-u-tipopago').value;
-            const monto_fijo = parseFloat(document.getElementById('input-u-monto').value) || 0;
-            const area = document.getElementById('input-u-area').value;
-            const rol_sistema = document.getElementById('input-u-rol').value;
+            const tipoPago = document.getElementById('input-u-tipopago').value;
+            const valorInput = parseFloat(document.getElementById('input-u-monto').value) || 0;
 
-            try {
-                const res = await fetch('/api/admin/usuario', {
+            const payload = {
+                usuario_antiguo: document.getElementById('edit-antiguo').value,
+                usuario: document.getElementById('input-u-nombre').value.trim(),
+                pin: document.getElementById('input-u-pin').value,
+                tipo_pago: tipoPago,
+                monto_fijo: tipoPago.toLowerCase() === 'fijo' ? valorInput : 0.0,
+                tarifa_hora: tipoPago.toLowerCase() === 'horas' ? valorInput : 1.5,
+                area: document.getElementById('input-u-area').value || "Operaciones",
+                rol_sistema: document.getElementById('input-u-rol').value
+            };
+
+            const res = await fetch('/api/admin/usuario', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            if(res.ok) { cerrarModalUsuario(); cargarAdminDatos(); }
+            else { alert('Error al guardar usuario'); }
+        });
+
+        document.getElementById('form-manual').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(modoManualActual === 'individual') {
+                const entradaFlex = convertirFechaFlex(document.getElementById('manual-entrada').value);
+                const salidaFlex = convertirFechaFlex(document.getElementById('manual-salida').value);
+                const res = await fetch('/api/admin/registro-manual', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ usuario_antiguo: usuarioAntiguo || null, usuario, pin, tipo_pago, monto_fijo, tarifa_hora: monto_fijo, area, rol_sistema })
+                    body: JSON.stringify({
+                        usuario: document.getElementById('manual-usuario').value,
+                        entrada: entradaFlex,
+                        salida: salidaFlex,
+                        es_continua: document.getElementById('manual-continua').checked
+                    })
                 });
-                if (res.ok) {
-                    cerrarModalUsuario();
-                    cargarAdminDatos();
+                if(res.ok) { cerrarModalManual(); alert("Guardado"); cargarAdminDatos(); }
+            } else {
+                const texto = document.getElementById('manual-texto-simple').value;
+                const lineas = texto.split('\n');
+                let exitosos = 0;
+                for(let linea of lineas) {
+                    linea = linea.trim();
+                    if(!linea) continue;
+                    let partes = linea.split('|').map(p => p.trim());
+                    if(partes.length >= 3) {
+                        const res = await fetch('/api/admin/registro-manual', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                usuario: partes[0],
+                                entrada: convertirFechaFlex(partes[1]),
+                                salida: convertirFechaFlex(partes[2]),
+                                es_continua: false
+                            })
+                        });
+                        if(res.ok) exitosos++;
+                    }
                 }
-            } catch(e) {}
+                cerrarModalManual();
+                alert(`¡Se procesaron ${exitosos} registros con éxito!`);
+                cargarAdminDatos();
+            }
         });
 
         async function eliminarUsuario(u) {
