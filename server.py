@@ -3,18 +3,15 @@ from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 import os
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from supabase import create_client, Client
 
 app = FastAPI()
 
-SUPABASE_URL = "https://dvpfynkqtjwkmcndael.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2cGZ5bmtxdGp3a21jbmRhZWwiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc5MjA4MzUwNywiZXhwIjoyMTA3NjU5NTA3fQ.7gjZWE3AbR1ta8grbzr-Xpdd5vugYm0KSFJ54giI89Y"
+SUPABASE_URL = "https://dvpfynkqtjwkvmcndael.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2cGZ5bmtxdGp3a3ZtY25kYWVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwODM1MDcsImV4cCI6MjEwNzY1OTUwN30.7gjZWE3AbR1ta8grbzr-Xpdd5vugYm0KSFJ54giI89Y"
 
-try:
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-except Exception:
-    supabase = None
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 PERSONAL_FIJO = {
     "ADMIN": {"usuario": "ADMIN", "pin": "1234", "rol_sistema": "admin", "tipo_pago": "Fijo", "monto_fijo": 300.0, "tarifa_hora": 1.5, "area": "Gerencia"},
@@ -98,6 +95,7 @@ def leer_raiz():
             patch_ui = """
             <script>
             document.addEventListener("DOMContentLoaded", () => {
+                // 1. Tuerca global en panel admin
                 const headerActions = document.querySelector('header') || document.querySelector('.flex.justify-between') || document.querySelector('#panel-admin');
                 if (headerActions && !document.getElementById('btn-config-global')) {
                     const btnConfig = document.createElement('button');
@@ -113,71 +111,7 @@ def leer_raiz():
                     }
                 }
 
-                if (window.alert && !window._alertaNeutralizada) {
-                    window._alertaNeutralizada = true;
-                    const alertaOriginal = window.alert;
-                    window.alert = function(msg) {
-                        if (typeof msg === 'string' && msg.includes('Selecciona ambas fechas')) {
-                            return;
-                        }
-                        alertaOriginal(msg);
-                    };
-                }
-
-                setInterval(() => {
-                    document.querySelectorAll('input[type="number"]').forEach(input => {
-                        if (input.step !== 'any') {
-                            input.setAttribute('step', 'any');
-                        }
-                    });
-                }, 400);
-
-                // Autocompletar la semana en curso (Lunes a Domingo) en los campos de fecha del panel trabajador/admin
-                setTimeout(() => {
-                    let inputsFecha = [];
-                    document.querySelectorAll('input').forEach(el => {
-                        if ((el.placeholder && el.placeholder.includes('dd/mm/aaaa')) || el.type === 'date' || el.id.includes('desde') || el.id.includes('hasta')) {
-                            inputsFecha.push(el);
-                        }
-                    });
-
-                    if (inputsFecha.length >= 2) {
-                        const hoy = new Date();
-                        const diaSemana = hoy.getDay();
-                        const diffLunes = hoy.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1);
-                        const lunesSemana = new Date(new Date().setDate(diffLunes));
-                        const domingoSemana = new Date(lunesSemana);
-                        domingoSemana.setDate(lunesSemana.getDate() + 6);
-
-                        const pad = function(n) { return n < 10 ? '0' + n : n; };
-                        const formatDDMMYYYY = function(d) { return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear(); };
-
-                        const lunesStr = formatDDMMYYYY(lunesSemana);
-                        const domingoStr = formatDDMMYYYY(domingoSemana);
-
-                        let inputDesde = inputsFecha[inputsFecha.length - 2];
-                        let inputHasta = inputsFecha[inputsFecha.length - 1];
-
-                        const setVal = function(el, val) {
-                            if (el && !el.value) {
-                                el.value = val;
-                                el.dispatchEvent(new Event('input', { bubbles: true }));
-                                el.dispatchEvent(new Event('change', { bubbles: true }));
-                            }
-                        };
-
-                        setVal(inputDesde, lunesStr);
-                        setVal(inputHasta, domingoStr);
-
-                        setTimeout(function() {
-                            const btnCalcular = document.querySelector('button:has(.fa-calculator)') || Array.from(document.querySelectorAll('button')).find(function(el) { return el.textContent.includes('Calcular'); });
-                            if (btnCalcular) {
-                                try { btnCalcular.click(); } catch(err) {}
-                            }
-                        }, 300);
-                    }
-                }, 400);
-
+                // 2. Enriquecer tabla personal y iconos limpios en admin (SIN NINGÚN CUADRO DE NÓMINA GLOBAL)
                 setTimeout(() => {
                     const esAdmin = document.body.textContent.includes('Panel de Administración') || 
                                     document.body.textContent.includes('Personal Registrado y Tarifas') ||
@@ -188,7 +122,8 @@ def leer_raiz():
                     }
                 }, 500);
 
-                setTimeout(() => {
+                // 3. Simulador de cobro trabajador en su menú
+                const observerTrabajador = new MutationObserver(() => {
                     const dropdownMenu = document.querySelector('#menu-config-trabajador') || document.querySelector('.dropdown-menu') || document.querySelector('[role="menu"]') || document.querySelector('.absolute.right-0.mt-2');
                     if (dropdownMenu && !document.getElementById('simulador-cobro-btn')) {
                         if (!dropdownMenu.innerHTML.includes('Simulador')) {
@@ -200,37 +135,19 @@ def leer_raiz():
                             dropdownMenu.appendChild(itemSimulador);
                         }
                     }
-                }, 1000);
+                });
+                observerTrabajador.observe(document.body, { childList: true, subtree: true });
             });
 
-            function parsearFechaPersonalizada(str) {
-                if(!str) return null;
-                let partes = str.split(' ');
-                if(partes.length < 3) return new Date(str);
-                let f = partes[0].split('-');
-                if(f.length !== 3) return new Date(str);
-                let d = parseInt(f[0]), m = parseInt(f[1]), y = parseInt(f[2]);
-                let h = partes[1].split(':');
-                let hh = parseInt(h[0]), mm = parseInt(h[1]), ss = parseInt(h[2] || 0);
-                let ampm = partes[2];
-                if(ampm && ampm.toUpperCase() === 'PM' && hh < 12) hh += 12;
-                if(ampm && ampm.toUpperCase() === 'AM' && hh === 12) hh = 0;
-                return new Date(y, m-1, d, hh, mm, ss);
-            }
-
             function enriquecerTablaPersonalAdmin() {
-                let usuariosActivosInfo = {};
-                
+                let usuariosActivos = new Set();
                 document.querySelectorAll('tr').forEach(tr => {
                     const celdas = tr.querySelectorAll('td');
-                    if (celdas.length >= 4) {
+                    if (celdas.length >= 3) {
                         const nombreUsr = celdas[0].textContent.trim();
-                        const entradaTxt = celdas[1].textContent.trim();
                         const salidaTxt = celdas[2].textContent.trim();
                         if (salidaTxt.toLowerCase().includes('curso') || salidaTxt.toLowerCase().includes('activo')) {
-                            let fechaEntrada = parsearFechaPersonalizada(entradaTxt);
-                            let horasAbierto = fechaEntrada ? (new Date() - fechaEntrada) / (1000 * 60 * 60) : 0;
-                            usuariosActivosInfo[nombreUsr] = horasAbierto;
+                            usuariosActivos.add(nombreUsr);
                         }
                     }
                 });
@@ -238,84 +155,58 @@ def leer_raiz():
                 document.querySelectorAll('tr').forEach(tr => {
                     const celdas = tr.querySelectorAll('td');
                     if (celdas.length >= 6) {
+                        // Iconos limpios en acciones (Detalles, Editar, Borrar)
                         const celdaAcciones = celdas[celdas.length - 1];
                         if (celdaAcciones && !celdaAcciones.dataset.iconos) {
                             celdaAcciones.dataset.iconos = "true";
-                            const botones = celdaAcciones.querySelectorAll('button');
-                            if (botones.length >= 3) {
-                                let onclickDetalle = botones[0].getAttribute('onclick');
-                                let onclickEditar = botones[1].getAttribute('onclick');
-                                let onclickBorrar = botones[2].getAttribute('onclick');
-
-                                celdaAcciones.innerHTML = '<div class="flex items-center justify-end gap-3"><i class="fas fa-eye text-indigo-400 hover:text-indigo-300 cursor-pointer text-base" onclick="' + onclickDetalle + '" title="Ver Historial"></i><i class="fas fa-edit text-emerald-400 hover:text-emerald-300 cursor-pointer text-base" onclick="' + onclickEditar + '" title="Editar"></i><i class="fas fa-trash text-rose-500 hover:text-rose-400 cursor-pointer text-base" onclick="' + onclickBorrar + '" title="Borrar"></i></div>';
-                            }
+                            celdaAcciones.innerHTML = celdaAcciones.innerHTML
+                                .replace(/Detalles/g, '<i class="fas fa-eye text-indigo-400 hover:text-indigo-300 cursor-pointer text-base mr-3" title="Detalles"></i>')
+                                .replace(/Editar/g, '<i class="fas fa-edit text-emerald-400 hover:text-emerald-300 cursor-pointer text-base mr-3" title="Editar"></i>')
+                                .replace(/Borrar/g, '<i class="fas fa-trash text-rose-500 hover:text-rose-400 cursor-pointer text-base" title="Borrar"></i>');
                         }
 
+                        // Estado Activo y botón Finalizar al lado del Área
                         const nombrePersonal = celdas[0].textContent.trim();
-                        if (usuariosActivosInfo[nombrePersonal] !== undefined && !tr.dataset.enriquecido) {
+                        if (usuariosActivos.has(nombrePersonal) && !tr.dataset.enriquecido) {
                             tr.dataset.enriquecido = "true";
-                            const horasActivo = usuariosActivosInfo[nombrePersonal];
-                            const esTurnoExtendido = horasActivo >= 10;
-                            
                             const celdaArea = celdas[4]; 
                             if (celdaArea && !celdaArea.innerHTML.includes('Activo')) {
                                 const areaTexto = celdaArea.textContent.trim();
-                                celdaArea.innerHTML = '<div class="flex items-center gap-2 flex-wrap"><span>' + areaTexto + '</span><span class="px-2.5 py-0.5 ' + (esTurnoExtendido ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40') + ' rounded-full text-xs font-bold inline-flex items-center gap-1 shadow-sm"><span class="w-1.5 h-1.5 rounded-full ' + (esTurnoExtendido ? 'bg-amber-400 animate-ping' : 'bg-emerald-400 animate-pulse') + '"></span> ' + (esTurnoExtendido ? '⚠️ >10h Activo' : 'Activo') + '</span><button onclick="forzarCierreIndividual(\\'' + nombrePersonal + '\\')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full text-xs font-bold shadow transition inline-flex items-center">Finalizar</button></div>';
+                                celdaArea.innerHTML = `
+                                    <div class="flex items-center gap-3">
+                                        <span>${areaTexto}</span>
+                                        <span class="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-full text-xs font-bold inline-flex items-center gap-1 shadow-sm">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Activo
+                                        </span>
+                                        <button onclick="forzarCierreIndividual('${nombrePersonal}')" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full text-xs font-bold shadow transition inline-flex items-center">
+                                            Finalizar
+                                        </button>
+                                    </div>
+                                `;
                             }
                         }
                     }
                 });
-
-                const botonCalcular = document.querySelector('button:has(.fa-calculator)') || Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Calcular Horas'));
-                if (botonCalcular && !botonCalcular.dataset.modalAgregado) {
-                    botonCalcular.dataset.modalAgregado = "true";
-                    const eventoOriginal = botonCalcular.onclick;
-                    botonCalcular.onclick = function(e) {
-                        if (eventoOriginal) eventoOriginal.apply(this, arguments);
-                        setTimeout(mostrarModalTotalGeneral, 300);
-                    };
-                }
-            }
-
-            function mostrarModalTotalGeneral() {
-                let totalGeneral = 0;
-                let detalleHtml = '';
-
-                document.querySelectorAll('#tabla-resumen-fechas tr').forEach(tr => {
-                    const celdas = tr.querySelectorAll('td');
-                    if (celdas.length >= 5) {
-                        const trabajador = celdas[0].textContent.trim();
-                        const pagoStr = celdas[4].textContent.trim().replace('$', '');
-                        const valor = parseFloat(pagoStr) || 0;
-                        totalGeneral += valor;
-                        detalleHtml += '<div class="flex justify-between border-b border-slate-800/60 py-1 px-2 text-xs"><span class="text-slate-200 font-medium">' + trabajador + '</span><span class="font-bold text-emerald-400">$' + valor.toFixed(2) + '</span></div>';
-                    }
-                });
-
-                if (!detalleHtml) return;
-
-                let modal = document.getElementById('modal-total-general-emergente');
-                if (!modal) {
-                    modal = document.createElement('div');
-                    modal.id = 'modal-total-general-emergente';
-                    modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4';
-                    document.body.appendChild(modal);
-                }
-
-                modal.innerHTML = '<div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-5 text-white shadow-2xl animate-fade-in"><div class="flex justify-between items-center mb-2 border-b border-slate-800 pb-2"><h3 class="text-sm font-bold flex items-center gap-2 text-emerald-400"><i class="fas fa-file-invoice-dollar"></i> Resumen de Nómina y Total General</h3><button onclick="document.getElementById(\\'modal-total-general-emergente\\').remove()" class="text-slate-400 hover:text-white text-lg">&times;</button></div><p class="text-[11px] text-slate-400 mb-2">Desglose calculado para el período seleccionado:</p><div class="space-y-1 mb-3 bg-slate-950/40 p-2.5 rounded-xl border border-slate-800">' + detalleHtml + '</div><div class="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-3 flex justify-between items-center mb-4 shadow-inner"><span class="text-xs font-bold uppercase tracking-wider text-emerald-300">Total General a Pagar:</span><span class="text-xl font-black text-emerald-400">$' + totalGeneral.toFixed(2) + '</span></div><div class="flex justify-end"><button onclick="document.getElementById(\\'modal-total-general-emergente\\').remove()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-600/30">Cerrar Ventana</button></div></div>';
             }
 
             async function forzarCierreIndividual(usuario) {
-                if (!confirm('¿Estás seguro de finalizar el turno activo de ' + usuario + '?')) return;
+                // Confirmación para evitar cierres por error accidental
+                if (!confirm(`¿Estás seguro de finalizar el turno activo de ${usuario}?`)) return;
                 try {
-                    await fetch('/api/admin/forzar-cierre', {
+                    const res = await fetch('/api/admin/forzar-cierre', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ usuario: usuario })
                     });
-                    location.reload();
+                    const data = await res.json();
+                    if (res.ok) {
+                        alert(data.mensaje || "¡Turno finalizado con éxito!");
+                        location.reload();
+                    } else {
+                        alert(data.detail || "Error al finalizar el turno.");
+                    }
                 } catch(e) {
-                    location.reload();
+                    alert("Error de conexión: " + e);
                 }
             }
 
@@ -325,7 +216,24 @@ def leer_raiz():
                     modal = document.createElement('div');
                     modal.id = 'modal-config-global';
                     modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4';
-                    modal.innerHTML = '<div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-6 text-white shadow-2xl"><h3 class="text-lg font-bold mb-4 flex items-center gap-2 text-emerald-400"><i class="fas fa-sliders-h"></i> Configuración Global de Tarifas</h3><p class="text-sm text-slate-400 mb-4">Actualiza la tarifa por hora para <b>todo el personal al mismo tiempo</b>.</p><div class="mb-4"><label class="block text-xs uppercase font-bold text-slate-400 mb-1">Nueva Tarifa General ($ / hora)</label><input type="number" step="any" id="input-tarifa-global" value="1.5" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white"></div><div class="flex justify-end gap-3 mt-6"><button onclick="document.getElementById(\\'modal-config-global\\').remove()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm">Cancelar</button><button onclick="guardarTarifaGlobal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold">Aplicar a Todos</button></div></div>';
+                    modal.innerHTML = `
+                        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-6 text-white shadow-2xl">
+                            <h3 class="text-lg font-bold mb-4 flex items-center gap-2 text-emerald-400">
+                                <i class="fas fa-sliders-h"></i> Configuración Global de Tarifas
+                            </h3>
+                            <p class="text-sm text-slate-400 mb-4">
+                                Actualiza la tarifa por hora para <b>todo el personal al mismo tiempo</b>.
+                            </p>
+                            <div class="mb-4">
+                                <label class="block text-xs uppercase font-bold text-slate-400 mb-1">Nueva Tarifa General ($ / hora)</label>
+                                <input type="number" step="0.1" id="input-tarifa-global" value="1.5" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white">
+                            </div>
+                            <div class="flex justify-end gap-3 mt-6">
+                                <button onclick="document.getElementById('modal-config-global').remove()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm">Cancelar</button>
+                                <button onclick="guardarTarifaGlobal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold">Aplicar a Todos</button>
+                            </div>
+                        </div>
+                    `;
                     document.body.appendChild(modal);
                 }
             }
@@ -357,75 +265,72 @@ def leer_raiz():
             function abrirSimuladorTrabajador() {
                 let modal = document.getElementById('modal-simulador-trabajador');
                 if (!modal) {
-                    const hoy = new Date();
-                    const diaSemana = hoy.getDay();
-                    const diffLunes = hoy.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1);
-                    const lunesSemana = new Date(new Date().setDate(diffLunes));
-                    const domingoSemana = new Date(lunesSemana);
-                    domingoSemana.setDate(lunesSemana.getDate() + 6);
-                    const pad = function(n) { return n < 10 ? '0' + n : n; };
-                    const formatDDMMYYYY = function(d) { return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear(); };
-
                     modal = document.createElement('div');
                     modal.id = 'modal-simulador-trabajador';
                     modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4';
-                    modal.innerHTML = '<div class="bg-slate-900 border border-slate-700 rounded-xl max-w-sm w-full p-6 text-white shadow-2xl"><h3 class="text-lg font-bold mb-3 flex items-center gap-2 text-emerald-400"><i class="fas fa-calculator"></i> Simulador de Cobro</h3><p class="text-xs text-slate-400 mb-3">Selecciona el rango de fechas y tu tarifa para calcular.</p><div class="grid grid-cols-2 gap-2 mb-3"><div><label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Desde</label><input type="text" id="sim-desde" value="' + formatDDMMYYYY(lunesSemana) + '" onchange="calcularTotalSimulado()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"></div><div><label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Hasta</label><input type="text" id="sim-hasta" value="' + formatDDMMYYYY(domingoSemana) + '" onchange="calcularTotalSimulado()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white"></div></div><div class="mb-3"><label class="block text-xs uppercase font-bold text-slate-400 mb-1">Tarifa ($ / hora)</label><input type="number" step="any" id="input-tarifa-ref" value="1.5" oninput="calcularTotalSimulado()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-bold text-sm"></div><div class="mb-4 bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center"><span class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Total Estimado a Cobrar</span><span id="resultado-simulado-total" class="text-xl font-black text-emerald-400">$0.00</span><span id="info-horas-base" class="block text-[11px] text-slate-400 mt-1">Suma total de horas</span></div><div class="flex justify-end gap-2"><button onclick="document.getElementById(\\'modal-simulador-trabajador\\').remove()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold">Cerrar</button></div></div>';
+                    modal.innerHTML = `
+                        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-sm w-full p-6 text-white shadow-2xl">
+                            <h3 class="text-lg font-bold mb-3 flex items-center gap-2 text-emerald-400">
+                                <i class="fas fa-calculator"></i> Simulador de Cobro
+                            </h3>
+                            <p class="text-xs text-slate-400 mb-4">
+                                Ingresa tu tarifa referencial y visualiza tu cálculo estimado.
+                            </p>
+                            
+                            <div class="mb-4">
+                                <label class="block text-xs uppercase font-bold text-slate-400 mb-1">1. Tarifa Referencial ($ / hora)</label>
+                                <input type="number" step="0.1" id="input-tarifa-ref" value="1.5" oninput="calcularTotalSimulado()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-bold text-lg">
+                            </div>
+
+                            <div class="mb-5 bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center">
+                                <span class="block text-xs uppercase font-bold text-slate-400 mb-1">2. Total Estimado a Cobrar</span>
+                                <span id="resultado-simulado-total" class="text-2xl font-black text-emerald-400">$0.00</span>
+                                <span id="info-horas-base" class="block text-xs text-slate-400 mt-1">Suma total de horas</span>
+                            </div>
+
+                            <div class="flex justify-end gap-3">
+                                <button onclick="document.getElementById('modal-simulador-trabajador').remove()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold">Cerrar</button>
+                            </div>
+                        </div>
+                    `;
                     document.body.appendChild(modal);
                     calcularTotalSimulado();
                 }
-            }
-
-            function parsearFechaDMY(str) {
-                if (!str) return null;
-                let p = str.split('/');
-                if (p.length !== 3) return null;
-                return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
             }
 
             function calcularTotalSimulado() {
                 const tarifaInput = document.getElementById('input-tarifa-ref');
                 const resultadoSpan = document.getElementById('resultado-simulado-total');
                 const infoHoras = document.getElementById('info-horas-base');
-                const simDesde = document.getElementById('sim-desde');
-                const simHasta = document.getElementById('sim-hasta');
-                if (!tarifaInput || !resultadoSpan || !simDesde || !simHasta) return;
+                if (!tarifaInput || !resultadoSpan) return;
 
                 const tarifa = parseFloat(tarifaInput.value) || 0;
-                const fechaIni = parsearFechaDMY(simDesde.value);
-                const fechaFin = parsearFechaDMY(simHasta.value);
-                if (fechaFin) fechaFin.setHours(23, 59, 59, 999);
-
-                let totalHorasPeriodo = 0;
+                let sumaHorasUnicas = 0;
                 let filasVistas = new Set();
-
+                
                 document.querySelectorAll('tr').forEach(tr => {
                     const textoFila = tr.textContent;
                     const matchHrs = textoFila.match(/([0-9]+\.[0-9]+)\s*hrs/);
                     if (matchHrs && !filasVistas.has(textoFila)) {
                         filasVistas.add(textoFila);
                         const val = parseFloat(matchHrs[1]);
-                        
-                        let celdas = tr.querySelectorAll('td');
-                        if (celdas.length >= 2 && fechaIni && fechaFin) {
-                            let fechaTxt = celdas[0].textContent.trim();
-                            let partesF = fechaTxt.split('-');
-                            if (partesF.length === 3) {
-                                let fFila = new Date(parseInt(partesF[2]), parseInt(partesF[1]) - 1, parseInt(partesF[0]));
-                                if (fFila >= fechaIni && fFila <= fechaFin) {
-                                    if (!isNaN(val) && val < 200) totalHorasPeriodo += val;
-                                }
-                            } else {
-                                if (!isNaN(val) && val < 200) totalHorasPeriodo += val;
-                            }
-                        } else {
-                            if (!isNaN(val) && val < 200) totalHorasPeriodo += val;
+                        if (!isNaN(val) && val < 200) {
+                            sumaHorasUnicas += val;
                         }
                     }
                 });
 
-                const total = tarifa * totalHorasPeriodo;
-                resultadoSpan.textContent = '$' + total.toFixed(2);
-                infoHoras.textContent = 'Suma de ' + totalHorasPeriodo.toFixed(2) + ' hrs del período seleccionado';
+                if (sumaHorasUnicas === 0) {
+                    const elPeriodo = document.querySelector('#total-periodo, .total-periodo');
+                    if (elPeriodo) {
+                        const match = elPeriodo.textContent.match(/([0-9]+\.[0-9]+)/);
+                        if (match) sumaHorasUnicas = parseFloat(match[1]) || 0;
+                    }
+                }
+
+                const total = tarifa * sumaHorasUnicas;
+                resultadoSpan.textContent = `$${total.toFixed(2)}`;
+                infoHoras.textContent = `Suma de ${sumaHorasUnicas.toFixed(2)} hrs únicas`;
             }
             </script>
             """
@@ -476,153 +381,86 @@ class ForzarCierreRequest(BaseModel):
 def login(req: LoginRequest):
     u = req.usuario.strip()
     p = str(req.pin).strip()
-    
     if u.lower() == "admin" and p == "1234":
         return {"usuario": "ADMIN", "pin": "1234", "rol_sistema": "admin"}
     
-    for k, v in PERSONAL_FIJO.items():
-        if k.lower() == u.lower() and str(v["pin"]).strip() == p:
-            return {"usuario": v["usuario"], "pin": p, "rol_sistema": v.get("rol_sistema", "trabajador")}
-
-    if supabase:
-        try:
-            res = supabase.table("usuarios").select("*").ilike("usuario", u).execute()
-            user_info = res.data[0] if res.data else None
-            if user_info and str(user_info.get("pin", "")).strip() == p:
-                return {"usuario": user_info["usuario"], "pin": p, "rol_sistema": user_info.get("rol_sistema", "trabajador")}
-        except Exception:
-            pass
-
-    raise HTTPException(status_code=400, detail="Credenciales inválidas")
+    res = supabase.table("usuarios").select("*").ilike("usuario", u).execute()
+    user_info = res.data[0] if res.data else None
+    if not user_info:
+        for k, v in PERSONAL_FIJO.items():
+            if k.lower() == u.lower():
+                user_info = v
+                break
+    if not user_info or str(user_info["pin"]).strip() != p:
+        raise HTTPException(status_code=400, detail="Credenciales inválidas")
+    return {"usuario": user_info["usuario"], "pin": req.pin, "rol_sistema": user_info.get("rol_sistema", "trabajador")}
 
 @app.post("/api/admin/forzar-cierre")
 def forzar_cierre(req: ForzarCierreRequest):
     u_real = req.usuario.strip().capitalize()
     hora_actual = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
-    
-    if supabase:
-        try:
-            res_all = supabase.table("asistencias").select("*").ilike("usuario", u_real).execute()
-            if res_all.data:
-                for r in res_all.data:
-                    if not r.get("salida"):
-                        supabase.table("asistencias").update({"salida": hora_actual}).eq("id", r["id"]).execute()
-        except Exception:
-            pass
-            
-    for r in HISTORIAL_INICIAL:
-        if str(r.get("usuario", "")).strip().lower() == u_real.lower() and not r.get("salida"):
-            r["salida"] = hora_actual
-
-    return {"mensaje": f"Turno de {u_real} finalizado"}
+    try:
+        res_activo = supabase.table("asistencias").select("*").ilike("usuario", u_real).is_("salida", "null").execute()
+        if not res_activo.data:
+            raise HTTPException(status_code=400, detail=f"No se encontró ningún turno activo para {u_real}")
+        
+        activo = res_activo.data[0]
+        supabase.table("asistencias").update({"salida": hora_actual}).eq("id", activo["id"]).execute()
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"mensaje": f"¡Turno de {u_real} finalizado correctamente a las {hora_actual}!"}
 
 @app.post("/api/cambiar-pin")
 def cambiar_pin(req: CambiarPinRequest):
-    u = req.usuario.strip()
-    pin_actual = str(req.pin_actual).strip()
-    pin_nuevo = str(req.pin_nuevo).strip()
-
-    actualizado = False
-    for k, v in PERSONAL_FIJO.items():
-        if k.lower() == u.lower():
-            if str(v["pin"]).strip() == pin_actual:
-                PERSONAL_FIJO[k]["pin"] = pin_nuevo
-                actualizado = True
-            else:
-                raise HTTPException(status_code=400, detail="PIN actual incorrecto")
-            break
-
-    if supabase:
-        try:
-            res = supabase.table("usuarios").select("*").ilike("usuario", u).execute()
-            if res.data:
-                user_info = res.data[0]
-                if str(user_info.get("pin", "")).strip() == pin_actual:
-                    supabase.table("usuarios").update({"pin": pin_nuevo}).ilike("usuario", u).execute()
-                    actualizado = True
-                elif not actualizado:
-                    raise HTTPException(status_code=400, detail="PIN actual incorrecto")
-        except Exception as e:
-            if isinstance(e, HTTPException):
-                raise e
-
-    if not actualizado:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
-    return {"mensaje": "PIN actualizado con éxito"}
+    try:
+        supabase.table("usuarios").update({"pin": req.pin_nuevo.strip()}).ilike("usuario", req.usuario.strip()).execute()
+    except Exception:
+        pass
+    return {"mensaje": "PIN actualizado"}
 
 @app.post("/api/mis-horas")
 def mis_horas(req: LoginRequest):
     u = req.usuario.strip()
     if u.lower() == "admin" and str(req.pin).strip() == "1234":
-        if supabase:
-            try:
-                res_a = supabase.table("asistencias").select("*").execute()
-                return {"registros": res_a.data if res_a.data else []}
-            except Exception:
-                pass
-        return {"registros": HISTORIAL_INICIAL}
-            
-    registros_filtrados = []
-    if supabase:
         try:
-            res_all = supabase.table("asistencias").select("*").execute()
-            if res_all.data:
-                for r in res_all.data:
-                    usr_reg = str(r.get("usuario", "")).strip().lower()
-                    if usr_reg == u.lower():
-                        registros_filtrados.append(r)
+            res_a = supabase.table("asistencias").select("*").execute()
+            return {"registros": res_a.data if res_a.data else []}
         except Exception:
-            pass
+            return {"registros": []}
             
-    if not registros_filtrados:
-        for r in HISTORIAL_INICIAL:
-            if str(r.get("usuario", "")).strip().lower() == u.lower():
-                registros_filtrados.append(r)
-
-    return {"registros": registros_filtrados}
+    try:
+        res_all = supabase.table("asistencias").select("*").execute()
+        registros_filtrados = []
+        if res_all.data:
+            for r in res_all.data:
+                usr_reg = str(r.get("usuario", "")).strip().lower()
+                if usr_reg == u.lower():
+                    registros_filtrados.append(r)
+        return {"registros": registros_filtrados}
+    except Exception:
+        return {"registros": []}
 
 @app.post("/api/marcar")
 def marcar(req: LoginRequest):
     u = req.usuario.strip()
     u_real = "ADMIN" if u.lower() == "admin" else u.capitalize()
     hora_actual = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
-    
-    turno_abierto_id = None
-    if supabase:
-        try:
-            res_all = supabase.table("asistencias").select("*").ilike("usuario", u_real).execute()
-            if res_all.data:
-                for r in res_all.data:
-                    if not r.get("salida"):
-                        turno_abierto_id = r["id"]
-                        break
-        except Exception:
-            pass
-
-    if turno_abierto_id and supabase:
-        try:
-            supabase.table("asistencias").update({"salida": hora_actual}).eq("id", turno_abierto_id).execute()
-        except Exception:
-            pass
-    else:
-        encontrado_local = False
-        for r in HISTORIAL_INICIAL:
-            if str(r.get("usuario", "")).strip().lower() == u_real.lower() and not r.get("salida"):
-                r["salida"] = hora_actual
-                encontrado_local = True
-                break
-                
-        if not encontrado_local:
-            nuevo_registro = {"usuario": u_real, "entrada": hora_actual, "receso_inicio": None, "receso_fin": None, "salida": None, "es_continua": False}
-            if supabase:
-                try:
-                    supabase.table("asistencias").insert(nuevo_registro).execute()
-                except Exception:
-                    HISTORIAL_INICIAL.insert(0, nuevo_registro)
+    try:
+        res_activo = supabase.table("asistencias").select("*").ilike("usuario", u_real).is_("salida", "null").execute()
+        if res_activo.data:
+            activo = res_activo.data[0]
+            if activo.get("receso_inicio") and not activo.get("receso_fin"):
+                supabase.table("asistencias").update({"receso_fin": hora_actual}).eq("id", activo["id"]).execute()
             else:
-                HISTORIAL_INICIAL.insert(0, nuevo_registro)
-        
+                supabase.table("asistencias").update({"salida": hora_actual}).eq("id", activo["id"]).execute()
+        else:
+            supabase.table("asistencias").insert({
+                "usuario": u_real, "entrada": hora_actual, "receso_inicio": None, "receso_fin": None, "salida": None, "es_continua": False
+            }).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     return {"mensaje": "Registrado con éxito"}
 
 @app.post("/api/receso")
@@ -630,153 +468,118 @@ def receso(req: LoginRequest):
     u = req.usuario.strip()
     u_real = "ADMIN" if u.lower() == "admin" else u.capitalize()
     hora_actual = datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")
-    
-    if supabase:
-        try:
-            res_all = supabase.table("asistencias").select("*").ilike("usuario", u_real).execute()
-            if res_all.data:
-                for r in res_all.data:
-                    if not r.get("salida"):
-                        supabase.table("asistencias").update({"salida": hora_actual}).eq("id", r["id"]).execute()
-                        break
-        except Exception:
-            pass
-            
-    for r in HISTORIAL_INICIAL:
-        if str(r.get("usuario", "")).strip().lower() == u_real.lower() and not r.get("salida"):
-            r["salida"] = hora_actual
-            break
-
-    return {"mensaje": "Receso procesado y tiempo detenido"}
+    try:
+        res_activo = supabase.table("asistencias").select("*").ilike("usuario", u_real).is_("salida", "null").execute()
+        if not res_activo.data:
+            raise HTTPException(status_code=400, detail="No hay turno activo")
+        activo = res_activo.data[0]
+        if not activo.get("receso_inicio"):
+            supabase.table("asistencias").update({"receso_inicio": hora_actual}).eq("id", activo["id"]).execute()
+        elif not activo.get("receso_fin"):
+            supabase.table("asistencias").update({"receso_fin": hora_actual}).eq("id", activo["id"]).execute()
+        else:
+            supabase.table("asistencias").update({"salida": hora_actual}).eq("id", activo["id"]).execute()
+            supabase.table("asistencias").insert({
+                "usuario": u_real, "entrada": hora_actual, "receso_inicio": None, "receso_fin": None, "salida": None, "es_continua": True
+            }).execute()
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"mensaje": "Receso procesado"}
 
 @app.get("/api/admin/datos")
 def admin_datos():
     usuarios_dict = PERSONAL_FIJO.copy()
-    if supabase:
-        try:
-            res_u = supabase.table("usuarios").select("*").execute()
-            if res_u.data:
-                for u in res_u.data:
-                    if u.get("tipo_pago", "").lower() in ["fijo", "semanal"] and (u.get("monto_fijo") is None or u.get("monto_fijo") == 0):
-                        if u.get("tarifa_hora", 0) > 0:
-                            u["monto_fijo"] = u["tarifa_hora"]
-                    usuarios_dict[u["usuario"]] = u
-        except Exception:
-            pass
+    try:
+        res_u = supabase.table("usuarios").select("*").execute()
+        if res_u.data:
+            for u in res_u.data:
+                usuarios_dict[u["usuario"]] = u
+    except Exception:
+        pass
 
-    asistencias_list = HISTORIAL_INICIAL
-    if supabase:
-        try:
-            res_a = supabase.table("asistencias").select("*").execute()
-            if res_a.data and len(res_a.data) > 0:
-                asistencias_list = res_a.data
-            else:
-                supabase.table("asistencias").insert(HISTORIAL_INICIAL).execute()
-        except Exception:
-            pass
+    asistencias_list = []
+    try:
+        res_a = supabase.table("asistencias").select("*").execute()
+        if res_a.data and len(res_a.data) > 0:
+            asistencias_list = res_a.data
+        else:
+            supabase.table("asistencias").insert(HISTORIAL_INICIAL).execute()
+            res_a_nuevas = supabase.table("asistencias").select("*").execute()
+            asistencias_list = res_a_nuevas.data if res_a_nuevas.data else HISTORIAL_INICIAL
+    except Exception:
+        asistencias_list = HISTORIAL_INICIAL
 
     return {"usuarios": usuarios_dict, "asistencias": asistencias_list}
 
 @app.post("/api/admin/configurar-tarifas-global")
 def configurar_tarifas_global(req: ConfigGlobalRequest):
     try:
+        res_u = supabase.table("usuarios").select("usuario").execute()
+        if res_u.data:
+            for u in res_u.data:
+                supabase.table("usuarios").update({"tarifa_hora": req.tarifa_hora}).eq("usuario", u["usuario"]).execute()
         for k in PERSONAL_FIJO:
             PERSONAL_FIJO[k]["tarifa_hora"] = req.tarifa_hora
-        if supabase:
-            try:
-                res_u = supabase.table("usuarios").select("usuario").execute()
-                if res_u.data:
-                    for u in res_u.data:
-                        supabase.table("usuarios").update({"tarifa_hora": req.tarifa_hora}).eq("usuario", u["usuario"]).execute()
-            except Exception:
-                pass
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"mensaje": "Tarifa global actualizada con éxito"}
 
 @app.post("/api/admin/registro-manual")
 def admin_registro_manual(req: RegistroManualRequest):
-    nuevo = {"usuario": req.usuario.strip().capitalize(), "entrada": req.entrada, "receso_inicio": None, "receso_fin": None, "salida": req.salida, "es_continua": req.es_continua}
-    if supabase:
-        try:
-            supabase.table("asistencias").insert(nuevo).execute()
-        except Exception:
-            HISTORIAL_INICIAL.insert(0, nuevo)
-    else:
-        HISTORIAL_INICIAL.insert(0, nuevo)
+    try:
+        supabase.table("asistencias").insert({
+            "usuario": req.usuario.strip().capitalize(), "entrada": req.entrada, "receso_inicio": None, "receso_fin": None, "salida": req.salida, "es_continua": req.es_continua
+        }).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     return {"mensaje": "Guardado"}
 
 @app.post("/api/admin/editar-registro")
 def admin_editar_registro(req: EditarRegistroRequest):
-    if supabase:
-        try:
-            supabase.table("asistencias").update({"entrada": req.entrada, "salida": req.salida}).eq("id", req.registro_id).execute()
-        except Exception:
-            pass
+    try:
+        supabase.table("asistencias").update({"entrada": req.entrada, "salida": req.salida}).eq("id", req.registro_id).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     return {"mensaje": "Actualizado"}
 
 @app.delete("/api/admin/eliminar-registro/{registro_id}")
 def admin_eliminar_registro(registro_id: int):
-    if supabase:
-        try:
-            supabase.table("asistencias").delete().eq("id", registro_id).execute()
-        except Exception:
-            pass
+    try:
+        supabase.table("asistencias").delete().eq("id", registro_id).execute()
+    except Exception:
+        pass
     return {"mensaje": "Eliminado"}
 
 @app.post("/api/admin/usuario")
 def admin_guardar_usuario(req: UsuarioAdminRequest):
-    tipo = req.tipo_pago.strip()
-    m_fijo = req.monto_fijo if tipo.lower() in ["fijo", "semanal"] else 0.0
-    t_hora = req.tarifa_hora if tipo.lower() == "horas" else (req.monto_fijo if tipo.lower() in ["fijo", "semanal"] else (0.5 if tipo.lower() == "gasolina" else 0.0))
-
     payload = {
-        "usuario": req.usuario.strip(),
-        "pin": str(req.pin).strip(),
-        "rol_sistema": req.rol_sistema,
-        "tipo_pago": tipo,
-        "monto_fijo": m_fijo,
-        "tarifa_hora": t_hora,
-        "area": req.area
+        "usuario": req.usuario.strip(), "pin": req.pin, "rol_sistema": req.rol_sistema, "tipo_pago": req.tipo_pago,
+        "monto_fijo": req.monto_fijo if req.tipo_pago.lower() == "fijo" else 0.0,
+        "tarifa_hora": req.tarifa_hora if req.tipo_pago.lower() == "horas" else 0.0, "area": req.area
     }
-    
-    PERSONAL_FIJO[req.usuario.strip()] = payload
-
-    if supabase:
-        try:
-            if req.usuario_antiguo and req.usuario_antiguo.strip() != req.usuario.strip():
-                supabase.table("usuarios").delete().ilike("usuario", req.usuario_antiguo.strip()).execute()
-            
-            supabase.table("usuarios").upsert(payload).execute()
-        except Exception as e:
-            print("Error al guardar usuario en Supabase:", e)
-            
-    return {"mensaje": "Guardado exitosamente"}
+    try:
+        supabase.table("usuarios").upsert(payload).execute()
+    except Exception:
+        pass
+    return {"mensaje": "Guardado"}
 
 @app.delete("/api/admin/usuario/{usuario}")
 def admin_eliminar_usuario(usuario: str):
-    if usuario in PERSONAL_FIJO:
-        del PERSONAL_FIJO[usuario]
-    if supabase:
-        try:
-            supabase.table("usuarios").delete().ilike("usuario", usuario).execute()
-        except Exception:
-            pass
+    try:
+        supabase.table("usuarios").delete().ilike("usuario", usuario).execute()
+    except Exception:
+        pass
     return {"mensaje": "Eliminado"}
 
 @app.get("/api/admin/exportar-excel")
 def exportar_excel():
-    data_rows = []
-    if supabase:
-        try:
-            res_a = supabase.table("asistencias").select("*").execute()
-            if res_a.data:
-                data_rows = [{"ID": r["id"], "Usuario": r["usuario"], "Entrada": r["entrada"], "Salida": r["salida"] if r["salida"] else "En Curso", "Es Continua": "Sí" if r["es_continua"] else "No"} for r in res_a.data]
-        except Exception:
-            pass
-    if not data_rows:
-        data_rows = [{"ID": i+1, "Usuario": r["usuario"], "Entrada": r["entrada"], "Salida": r.get("salida", "En Curso"), "Es Continua": "No"} for i, r in enumerate(HISTORIAL_INICIAL)]
-        
+    try:
+        res_a = supabase.table("asistencias").select("*").execute()
+        data_rows = [{"ID": r["id"], "Usuario": r["usuario"], "Entrada": r["entrada"], "Salida": r["salida"] if r["salida"] else "En Curso", "Es Continua": "Sí" if r["es_continua"] else "No"} for r in res_a.data] if res_a.data else []
+    except Exception:
+        data_rows = []
     df = pd.DataFrame(data_rows)
     export_path = "reporte_asistencia.xlsx"
     df.to_excel(export_path, index=False)
